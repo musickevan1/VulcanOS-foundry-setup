@@ -1,0 +1,120 @@
+[user]
+    # Configure your name and email
+    # name = Your Name
+    # email = your.email@example.com
+
+[init]
+    defaultBranch = main
+
+[core]
+    editor = nvim
+    pager = delta
+    autocrlf = input
+    whitespace = fix,-indent-with-non-tab,trailing-space,cr-at-eol
+
+[interactive]
+    diffFilter = delta --color-only
+
+[delta]
+    navigate = true
+    side-by-side = true
+    line-numbers = true
+    syntax-theme = TwoDark
+    plus-style = "syntax #283b4d"
+    minus-style = "syntax #3f2d3d"
+    plus-emph-style = "syntax #316172"
+    minus-emph-style = "syntax #763842"
+    line-numbers-left-style = "#414868"
+    line-numbers-right-style = "#414868"
+    line-numbers-minus-style = "#f7768e"
+    line-numbers-plus-style = "#9ece6a"
+
+[merge]
+    conflictstyle = diff3
+    tool = nvim
+
+[diff]
+    colorMoved = default
+    algorithm = histogram
+
+[alias]
+    # Basic shortcuts
+    co = checkout
+    br = branch
+    ci = commit
+    st = status
+
+    # Enhanced log views
+    lg = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset' --abbrev-commit
+    ll = log --pretty=format:'%C(yellow)%h%Cred%d\\ %Creset%s%Cblue\\ [%cn]' --decorate --numstat
+    ls = log --pretty=format:'%C(yellow)%h%Cred%d\\ %Creset%s%Cblue\\ [%cn]' --decorate
+    lc = log ORIG_HEAD.. --stat --no-merges
+
+    # Useful shortcuts
+    unstage = reset HEAD --
+    last = log -1 HEAD --stat
+    cm = commit -m
+    rv = remote -v
+    d = diff
+    dv = difftool -t vimdiff -y
+
+    # Branch management
+    branches = branch -a
+    tags = tag -l
+    remotes = remote -v
+
+    # Stash shortcuts
+    sl = stash list
+    sa = stash apply
+    ss = stash save
+    sp = stash pop
+
+    # Amend the last commit
+    amend = commit --amend --no-edit
+
+    # Undo last commit but keep changes
+    undo = reset HEAD~1 --mixed
+
+    # Clean merged branches
+    cleanup = "!git branch --merged | grep -v '\\*\\|main\\|master\\|develop' | xargs -n 1 -r git branch -d"
+
+[pull]
+    rebase = true
+
+[push]
+    default = current
+    autoSetupRemote = true
+
+[fetch]
+    prune = true
+
+[rebase]
+    autoStash = true
+
+[color]
+    ui = auto
+
+[color "branch"]
+    current = yellow reverse
+    local = yellow
+    remote = green
+
+[color "diff"]
+    meta = 11
+    frag = magenta bold
+    old = red bold
+    new = green bold
+    func = 146 bold
+    commit = yellow bold
+    whitespace = red reverse
+
+[color "status"]
+    added = green
+    changed = yellow
+    untracked = cyan
+
+[help]
+    autocorrect = 10
+
+[credential]
+    helper = store

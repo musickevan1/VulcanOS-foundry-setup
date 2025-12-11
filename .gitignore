@@ -1,0 +1,38 @@
+# Build outputs
+out/
+*.iso
+
+# Work directories
+/tmp/
+work/
+
+# Custom repository (built packages)
+customrepo/x86_64/*.pkg.tar.*
+customrepo/x86_64/*.db*
+customrepo/x86_64/*.files*
+
+# Pre-built packages cached in airootfs
+archiso/airootfs/root/packages/*.pkg.tar.*
+
+# Claude Code local settings
+.claude/
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+*.orig
+
+# System files
+.directory
+Thumbs.db

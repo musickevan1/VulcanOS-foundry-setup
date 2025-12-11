@@ -1,0 +1,239 @@
+/* Waybar Style - Dark Theme for Development Workstation */
+
+* {
+    font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", monospace;
+    font-size: 13px;
+    font-weight: 500;
+    min-height: 0;
+    border: none;
+    border-radius: 0;
+}
+
+window#waybar {
+    background-color: #1a1b26;
+    color: #c0caf5;
+    transition-property: background-color;
+    transition-duration: 0.5s;
+}
+
+window#waybar.hidden {
+    opacity: 0.2;
+}
+
+#workspaces {
+    background-color: transparent;
+    margin: 0 4px;
+}
+
+#workspaces button {
+    background-color: #24283b;
+    color: #565f89;
+    padding: 0 8px;
+    margin: 4px 2px;
+    border-radius: 4px;
+    border: 1px solid #414868;
+    transition: all 0.3s ease;
+}
+
+#workspaces button:hover {
+    background-color: #414868;
+    color: #c0caf5;
+    border-color: #7aa2f7;
+}
+
+#workspaces button.active {
+    background-color: #7aa2f7;
+    color: #1a1b26;
+    border-color: #7aa2f7;
+    font-weight: bold;
+}
+
+#workspaces button.urgent {
+    background-color: #f7768e;
+    color: #1a1b26;
+    border-color: #f7768e;
+}
+
+#custom-separator {
+    color: #414868;
+    padding: 0 4px;
+}
+
+#window {
+    color: #a9b1d6;
+    padding: 0 10px;
+    margin: 4px 0;
+}
+
+#clock {
+    background-color: #24283b;
+    color: #7aa2f7;
+    padding: 0 12px;
+    margin: 4px 0;
+    border-radius: 4px;
+    border: 1px solid #414868;
+    font-weight: bold;
+}
+
+#clock:hover {
+    background-color: #414868;
+    border-color: #7aa2f7;
+}
+
+#tray {
+    background-color: #24283b;
+    padding: 0 8px;
+    margin: 4px 2px;
+    border-radius: 4px;
+    border: 1px solid #414868;
+}
+
+#tray > .passive {
+    -gtk-icon-effect: dim;
+}
+
+#tray > .needs-attention {
+    -gtk-icon-effect: highlight;
+    background-color: #f7768e;
+}
+
+#bluetooth {
+    background-color: #24283b;
+    color: #7aa2f7;
+    padding: 0 10px;
+    margin: 4px 2px;
+    border-radius: 4px;
+    border: 1px solid #414868;
+}
+
+#bluetooth:hover {
+    background-color: #414868;
+    border-color: #7aa2f7;
+}
+
+#bluetooth.connected {
+    color: #9ece6a;
+}
+
+#bluetooth.disabled {
+    color: #565f89;
+}
+
+#network {
+    background-color: #24283b;
+    color: #9ece6a;
+    padding: 0 10px;
+    margin: 4px 2px;
+    border-radius: 4px;
+    border: 1px solid #414868;
+}
+
+#network:hover {
+    background-color: #414868;
+    border-color: #9ece6a;
+}
+
+#network.disconnected {
+    color: #f7768e;
+}
+
+#network.linked {
+    color: #e0af68;
+}
+
+#pulseaudio {
+    background-color: #24283b;
+    color: #bb9af7;
+    padding: 0 10px;
+    margin: 4px 2px;
+    border-radius: 4px;
+    border: 1px solid #414868;
+}
+
+#pulseaudio:hover {
+    background-color: #414868;
+    border-color: #bb9af7;
+}
+
+#pulseaudio.muted {
+    color: #565f89;
+}
+
+#cpu {
+    background-color: #24283b;
+    color: #7dcfff;
+    padding: 0 10px;
+    margin: 4px 2px;
+    border-radius: 4px;
+    border: 1px solid #414868;
+}
+
+#cpu:hover {
+    background-color: #414868;
+    border-color: #7dcfff;
+}
+
+#memory {
+    background-color: #24283b;
+    color: #e0af68;
+    padding: 0 10px;
+    margin: 4px 2px;
+    border-radius: 4px;
+    border: 1px solid #414868;
+}
+
+#memory:hover {
+    background-color: #414868;
+    border-color: #e0af68;
+}
+
+#battery {
+    background-color: #24283b;
+    color: #9ece6a;
+    padding: 0 10px;
+    margin: 4px 2px 4px 2px;
+    border-radius: 4px;
+    border: 1px solid #414868;
+}
+
+#battery:hover {
+    background-color: #414868;
+    border-color: #9ece6a;
+}
+
+#battery.charging,
+#battery.plugged {
+    color: #9ece6a;
+}
+
+#battery.warning:not(.charging) {
+    color: #e0af68;
+}
+
+#battery.critical:not(.charging) {
+    background-color: #f7768e;
+    color: #1a1b26;
+    animation-name: blink;
+    animation-duration: 0.5s;
+    animation-timing-function: linear;
+    animation-iteration-count: infinite;
+    animation-direction: alternate;
+}
+
+@keyframes blink {
+    to {
+        background-color: #1a1b26;
+        color: #f7768e;
+    }
+}
+
+tooltip {
+    background-color: #1a1b26;
+    border: 1px solid #414868;
+    border-radius: 4px;
+}
+
+tooltip label {
+    color: #c0caf5;
+    padding: 4px;
+}
