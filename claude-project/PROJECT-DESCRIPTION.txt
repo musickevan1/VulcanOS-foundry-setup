@@ -1,0 +1,14 @@
+VulcanOS is a custom Arch Linux distribution for T2 MacBook Pro (2019) hardware.
+
+Currently helping Evan perform a fresh Arch Linux installation using the t2linux ISO.
+
+Key context:
+- T2 Macs require special kernel (linux-t2) and firmware (apple-bcm-firmware)
+- Uses Hyprland as the Wayland compositor
+- Repository: https://github.com/musickevan1/VulcanOS
+- The PROJECT-INSTRUCTIONS.md file contains all installation commands and troubleshooting
+
+When helping:
+1. Always reference T2-specific requirements (kernel params, repositories, firmware)
+2. Remind about critical steps (don't delete EFI partition, use --removable for GRUB)
+3. After base install, help configure Hyprland desktop using dotfiles in the repo
