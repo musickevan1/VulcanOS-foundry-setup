@@ -1,19 +1,34 @@
 # ============================================================================
-# VulcanOS - Minimal VM Testing Build
-# Lightweight package list for fast iteration in QEMU
-# For full T2 build, use packages.x86_64.full
+# VulcanOS - T2 MacBook Pro Build
+# Full package list for T2 MacBook Pro hardware
 # ============================================================================
 
 # ----------------------------------------------------------------------------
 # BASE SYSTEM
 # ----------------------------------------------------------------------------
 base
-linux
-linux-headers
+linux-t2
+linux-t2-headers
 linux-firmware
+
+# ----------------------------------------------------------------------------
+# T2 HARDWARE SUPPORT
+# ----------------------------------------------------------------------------
+apple-bcm-firmware
+apple-t2-audio-config
+t2fanrd
+tiny-dfr
+
+# ----------------------------------------------------------------------------
+# BOOTLOADER
+# ----------------------------------------------------------------------------
 grub
 efibootmgr
 syslinux
+
+# ----------------------------------------------------------------------------
+# SYSTEM ESSENTIALS
+# ----------------------------------------------------------------------------
 networkmanager
 sudo
 which
@@ -21,13 +36,15 @@ mkinitcpio
 mkinitcpio-archiso
 
 # ----------------------------------------------------------------------------
-# DESKTOP ENVIRONMENT - Hyprland
+# DESKTOP ENVIRONMENT - Hyprland + SDDM
 # ----------------------------------------------------------------------------
 hyprland
 xdg-desktop-portal-hyprland
 xdg-desktop-portal-gtk
-greetd
-greetd-tuigreet
+sddm
+qt6-5compat
+qt6-declarative
+qt6-svg
 polkit-gnome
 waybar
 wofi
@@ -35,7 +52,7 @@ swaync
 hyprlock
 hypridle
 hyprpaper
-alacritty
+kitty
 
 # ----------------------------------------------------------------------------
 # FILE MANAGEMENT
@@ -49,6 +66,10 @@ gvfs
 wl-clipboard
 grim
 slurp
+swappy
+wf-recorder
+hyprpicker
+brightnessctl
 
 # ----------------------------------------------------------------------------
 # AUDIO - PipeWire Stack (minimal)
@@ -77,16 +98,28 @@ fzf
 bat
 eza
 btop
+starship
+zoxide
 tree
 less
 unzip
 zip
 
 # ----------------------------------------------------------------------------
+# SCREENSAVERS
+# ----------------------------------------------------------------------------
+cmatrix
+
+# ----------------------------------------------------------------------------
 # THEMING
 # ----------------------------------------------------------------------------
 nwg-look
 papirus-icon-theme
+kvantum
+qt5ct
+qt6ct
+gnome-themes-extra
+libnotify
 
 # ----------------------------------------------------------------------------
 # FONTS (minimal)
