@@ -1,0 +1,806 @@
+#!/bin/bash
+# VulcanOS Systems Menu
+# Central control hub for system management
+# Usage: vulcan-menu [category] [action]
+
+set -e
+
+# Configuration
+WOFI_WIDTH=400
+WOFI_HEIGHT=450
+TERMINAL="${TERMINAL:-kitty}"
+EDITOR="${EDITOR:-nvim}"
+CONFIG_DIR="${HOME}/.config"
+
+# Icons (Nerd Font)
+ICON_SYSTEM="󰒋"
+ICON_STYLE="󰏘"
+ICON_INSTALL="󰏗"
+ICON_REMOVE="󰩺"
+ICON_SETUP="󰒓"
+ICON_UPDATE="󰚰"
+ICON_POWER="󰐥"
+ICON_BACK="󰁍"
+ICON_T2="󰌢"
+
+# Helpers
+notify() {
+    if command -v notify-send &> /dev/null; then
+        notify-send "Vulcan Menu" "$1" -i preferences-system -t 3000
+    fi
+}
+
+run_in_terminal() {
+    $TERMINAL -e "$@"
+}
+
+run_in_terminal_hold() {
+    $TERMINAL --hold -e "$@"
+}
+
+# Wofi menu helper
+wofi_menu() {
+    local prompt="$1"
+    local options="$2"
+    local width="${3:-$WOFI_WIDTH}"
+    local height="${4:-$WOFI_HEIGHT}"
+
+    echo -e "$options" | wofi --dmenu \
+        --prompt "$prompt" \
+        --cache-file /dev/null \
+        --width "$width" \
+        --height "$height" \
+        --location center \
+        --hide-scroll \
+        --no-actions 2>/dev/null
+}
+
+# =============================================================================
+# MAIN MENU
+# =============================================================================
+
+show_main_menu() {
+    local options="$ICON_SYSTEM  System
+$ICON_STYLE  Style
+$ICON_INSTALL  Install
+$ICON_REMOVE  Remove
+$ICON_SETUP  Setup
+$ICON_UPDATE  Update
+$ICON_T2  T2 MacBook
+$ICON_POWER  Power"
+
+    local choice
+    choice=$(wofi_menu "Vulcan Menu" "$options")
+
+    local action
+    action=$(echo "$choice" | sed 's/^[^ ]* *//' | tr '[:upper:]' '[:lower:]')
+
+    case "$action" in
+        "system")     show_system_menu ;;
+        "style")      show_style_menu ;;
+        "install")    show_install_menu ;;
+        "remove")     show_remove_menu ;;
+        "setup")      show_setup_menu ;;
+        "update")     show_update_menu ;;
+        "t2 macbook") show_t2_menu ;;
+        "power")      exec vulcan-power ;;
+        *)            exit 0 ;;
+    esac
+}
+
+# =============================================================================
+# SYSTEM SUBMENU
+# =============================================================================
+
+show_system_menu() {
+    local options="󰄪  System Monitor (btop)
+󰋊  Disk Usage
+󰍛  Process Manager (htop)
+󰙪  System Logs
+󰌢  Hardware Info
+󰖩  Network Status
+󰂯  Bluetooth Manager
+󰕾  Audio Settings
+󰍹  Display Settings
+$ICON_BACK  Back"
+
+    local choice
+    choice=$(wofi_menu "System" "$options")
+
+    local action
+    action=$(echo "$choice" | sed 's/^[^ ]* *//')
+
+    case "$action" in
+        "System Monitor (btop)")  run_in_terminal btop ;;
+        "Disk Usage")             run_in_terminal ncdu --color dark / ;;
+        "Process Manager (htop)") run_in_terminal htop ;;
+        "System Logs")            run_in_terminal journalctl -f ;;
+        "Hardware Info")          run_in_terminal_hold fastfetch ;;
+        "Network Status")         run_in_terminal nmtui ;;
+        "Bluetooth Manager")      blueman-manager & ;;
+        "Audio Settings")         pavucontrol & ;;
+        "Display Settings")
+            if command -v nwg-displays &> /dev/null; then
+                nwg-displays &
+            elif command -v wdisplays &> /dev/null; then
+                wdisplays &
+            else
+                notify "No display manager found. Install nwg-displays or wdisplays."
+            fi
+            ;;
+        "Back")                   show_main_menu ;;
+        *)                        exit 0 ;;
+    esac
+}
+
+# =============================================================================
+# STYLE SUBMENU
+# =============================================================================
+
+show_style_menu() {
+    local options="󰏘  Theme Selector
+󰸉  Wallpaper
+󰛖  GTK Settings
+󰆍  Font Manager
+$ICON_BACK  Back"
+
+    local choice
+    choice=$(wofi_menu "Style" "$options")
+
+    local action
+    action=$(echo "$choice" | sed 's/^[^ ]* *//')
+
+    case "$action" in
+        "Theme Selector")
+            vulcan-theme menu
+            ;;
+        "Wallpaper")
+            show_wallpaper_menu
+            ;;
+        "GTK Settings")
+            if command -v nwg-look &> /dev/null; then
+                nwg-look &
+            else
+                notify "nwg-look not installed"
+            fi
+            ;;
+        "Font Manager")
+            if command -v font-manager &> /dev/null; then
+                font-manager &
+            else
+                notify "font-manager not installed"
+            fi
+            ;;
+        "Back")
+            show_main_menu
+            ;;
+        *)
+            exit 0
+            ;;
+    esac
+}
+
+show_wallpaper_menu() {
+    local wallpaper_dir="${HOME}/Pictures/Wallpapers"
+
+    local options="󰥶  Browse Wallpapers
+󰷊  Random Wallpaper
+$ICON_BACK  Back"
+
+    local choice
+    choice=$(wofi_menu "Wallpaper" "$options" 300 200)
+
+    local action
+    action=$(echo "$choice" | sed 's/^[^ ]* *//')
+
+    case "$action" in
+        "Browse Wallpapers")
+            if [[ -d "$wallpaper_dir" ]]; then
+                local wallpaper
+                wallpaper=$(find "$wallpaper_dir" -type f \( -name "*.jpg" -o -name "*.png" -o -name "*.svg" \) | \
+                    xargs -I {} basename {} | \
+                    wofi --dmenu --prompt "Select Wallpaper" --cache-file /dev/null 2>/dev/null)
+
+                if [[ -n "$wallpaper" ]]; then
+                    set_wallpaper "${wallpaper_dir}/${wallpaper}"
+                fi
+            else
+                notify "Wallpaper directory not found: $wallpaper_dir"
+            fi
+            ;;
+        "Random Wallpaper")
+            if [[ -d "$wallpaper_dir" ]]; then
+                local wallpaper
+                wallpaper=$(find "$wallpaper_dir" -type f \( -name "*.jpg" -o -name "*.png" -o -name "*.svg" \) | shuf -n 1)
+                if [[ -n "$wallpaper" ]]; then
+                    set_wallpaper "$wallpaper"
+                fi
+            else
+                notify "Wallpaper directory not found: $wallpaper_dir"
+            fi
+            ;;
+        "Back")
+            show_style_menu
+            ;;
+        *)
+            exit 0
+            ;;
+    esac
+}
+
+set_wallpaper() {
+    local wallpaper="$1"
+
+    if [[ ! -f "$wallpaper" ]]; then
+        notify "Wallpaper not found: $wallpaper"
+        return 1
+    fi
+
+    # Update hyprpaper config
+    local hyprpaper_conf="${CONFIG_DIR}/hypr/hyprpaper.conf"
+    cat > "$hyprpaper_conf" << EOF
+preload = ${wallpaper}
+wallpaper = ,${wallpaper}
+splash = false
+EOF
+
+    # Reload hyprpaper
+    pkill hyprpaper 2>/dev/null || true
+    sleep 0.2
+    hyprctl dispatch exec hyprpaper &> /dev/null || true
+
+    notify "Wallpaper set: $(basename "$wallpaper")"
+}
+
+# =============================================================================
+# INSTALL SUBMENU
+# =============================================================================
+
+show_install_menu() {
+    local options="󰏗  Search Packages (pacman)
+󰣇  Search AUR (yay)
+󰨞  Editor
+󰖟  Browser
+󱃲  Development Tools
+$ICON_BACK  Back"
+
+    local choice
+    choice=$(wofi_menu "Install" "$options")
+
+    local action
+    action=$(echo "$choice" | sed 's/^[^ ]* *//')
+
+    case "$action" in
+        "Search Packages (pacman)")
+            local pkg
+            pkg=$(pacman -Ssq 2>/dev/null | wofi --dmenu --prompt "Install Package" --cache-file /dev/null 2>/dev/null)
+            if [[ -n "$pkg" ]]; then
+                run_in_terminal_hold sudo pacman -S "$pkg"
+            fi
+            ;;
+        "Search AUR (yay)")
+            local pkg
+            pkg=$(yay -Ssq 2>/dev/null | wofi --dmenu --prompt "Install AUR Package" --cache-file /dev/null 2>/dev/null)
+            if [[ -n "$pkg" ]]; then
+                run_in_terminal_hold yay -S "$pkg"
+            fi
+            ;;
+        "Editor")
+            show_editor_install_menu
+            ;;
+        "Browser")
+            show_browser_install_menu
+            ;;
+        "Development Tools")
+            show_devtools_install_menu
+            ;;
+        "Back")
+            show_main_menu
+            ;;
+        *)
+            exit 0
+            ;;
+    esac
+}
+
+show_editor_install_menu() {
+    local options="󰨞  VS Code
+󰘦  Cursor
+󰘦  Zed
+󰘦  Sublime Text
+$ICON_BACK  Back"
+
+    local choice
+    choice=$(wofi_menu "Install Editor" "$options" 300 280)
+
+    local action
+    action=$(echo "$choice" | sed 's/^[^ ]* *//')
+
+    case "$action" in
+        "VS Code")       run_in_terminal_hold yay -S visual-studio-code-bin ;;
+        "Cursor")        run_in_terminal_hold yay -S cursor-bin ;;
+        "Zed")           run_in_terminal_hold yay -S zed ;;
+        "Sublime Text")  run_in_terminal_hold yay -S sublime-text-4 ;;
+        "Back")          show_install_menu ;;
+        *)               exit 0 ;;
+    esac
+}
+
+show_browser_install_menu() {
+    local options="󰈹  Firefox
+󰊯  Chromium
+󰊯  Brave
+󰈹  Zen Browser
+$ICON_BACK  Back"
+
+    local choice
+    choice=$(wofi_menu "Install Browser" "$options" 300 280)
+
+    local action
+    action=$(echo "$choice" | sed 's/^[^ ]* *//')
+
+    case "$action" in
+        "Firefox")     run_in_terminal_hold sudo pacman -S firefox ;;
+        "Chromium")    run_in_terminal_hold sudo pacman -S chromium ;;
+        "Brave")       run_in_terminal_hold yay -S brave-bin ;;
+        "Zen Browser") run_in_terminal_hold yay -S zen-browser-bin ;;
+        "Back")        show_install_menu ;;
+        *)             exit 0 ;;
+    esac
+}
+
+show_devtools_install_menu() {
+    local options="󰡨  Docker
+󰢩  Postman
+󰊢  GitKraken
+󰆧  DBeaver
+$ICON_BACK  Back"
+
+    local choice
+    choice=$(wofi_menu "Install Dev Tools" "$options" 300 280)
+
+    local action
+    action=$(echo "$choice" | sed 's/^[^ ]* *//')
+
+    case "$action" in
+        "Docker")    run_in_terminal_hold sudo pacman -S docker docker-compose && sudo systemctl enable --now docker ;;
+        "Postman")   run_in_terminal_hold yay -S postman-bin ;;
+        "GitKraken") run_in_terminal_hold yay -S gitkraken ;;
+        "DBeaver")   run_in_terminal_hold sudo pacman -S dbeaver ;;
+        "Back")      show_install_menu ;;
+        *)           exit 0 ;;
+    esac
+}
+
+# =============================================================================
+# REMOVE SUBMENU
+# =============================================================================
+
+show_remove_menu() {
+    local options="󰩺  Uninstall Package
+󰃢  Remove Orphans
+󰃨  Clean Package Cache
+󰃨  Clean Journal Logs
+$ICON_BACK  Back"
+
+    local choice
+    choice=$(wofi_menu "Remove" "$options")
+
+    local action
+    action=$(echo "$choice" | sed 's/^[^ ]* *//')
+
+    case "$action" in
+        "Uninstall Package")
+            local pkg
+            pkg=$(pacman -Qq 2>/dev/null | wofi --dmenu --prompt "Uninstall Package" --cache-file /dev/null 2>/dev/null)
+            if [[ -n "$pkg" ]]; then
+                run_in_terminal_hold sudo pacman -Rns "$pkg"
+            fi
+            ;;
+        "Remove Orphans")
+            local orphans
+            orphans=$(pacman -Qdtq 2>/dev/null)
+            if [[ -n "$orphans" ]]; then
+                run_in_terminal_hold sudo pacman -Rns $orphans
+            else
+                notify "No orphaned packages found"
+            fi
+            ;;
+        "Clean Package Cache")
+            run_in_terminal_hold sudo paccache -rk 2
+            ;;
+        "Clean Journal Logs")
+            run_in_terminal_hold sudo journalctl --vacuum-time=7d
+            ;;
+        "Back")
+            show_main_menu
+            ;;
+        *)
+            exit 0
+            ;;
+    esac
+}
+
+# =============================================================================
+# SETUP SUBMENU
+# =============================================================================
+
+show_setup_menu() {
+    local options="󰒓  Default Applications
+󰌌  Input Settings
+󰍹  Display Settings
+󰒒  Autostart Apps
+󰖟  Network
+󰌆  Security
+󰏗  Edit Configs
+$ICON_BACK  Back"
+
+    local choice
+    choice=$(wofi_menu "Setup" "$options")
+
+    local action
+    action=$(echo "$choice" | sed 's/^[^ ]* *//')
+
+    case "$action" in
+        "Default Applications")
+            show_defaults_menu
+            ;;
+        "Input Settings")
+            notify "Edit ~/.config/hypr/input.conf to customize input"
+            run_in_terminal $EDITOR "${CONFIG_DIR}/hypr/input.conf"
+            ;;
+        "Display Settings")
+            if command -v nwg-displays &> /dev/null; then
+                nwg-displays &
+            elif command -v wdisplays &> /dev/null; then
+                wdisplays &
+            else
+                notify "No display manager found"
+            fi
+            ;;
+        "Autostart Apps")
+            run_in_terminal $EDITOR "${CONFIG_DIR}/hypr/autostart.conf"
+            ;;
+        "Network")
+            run_in_terminal nmtui
+            ;;
+        "Security")
+            show_security_menu
+            ;;
+        "Edit Configs")
+            show_configs_menu
+            ;;
+        "Back")
+            show_main_menu
+            ;;
+        *)
+            exit 0
+            ;;
+    esac
+}
+
+show_defaults_menu() {
+    local options="󰆍  Default Terminal
+󰖟  Default Browser
+󰨞  Default Editor
+󰉋  Default File Manager
+$ICON_BACK  Back"
+
+    local choice
+    choice=$(wofi_menu "Default Applications" "$options" 350 280)
+
+    # TODO: Implement default app selection via xdg-mime
+    notify "Default app configuration coming soon"
+    show_setup_menu
+}
+
+show_security_menu() {
+    local options="󰒃  Firewall Status
+󰌆  SSH Keys
+󰯄  GPG Keys
+$ICON_BACK  Back"
+
+    local choice
+    choice=$(wofi_menu "Security" "$options" 300 240)
+
+    local action
+    action=$(echo "$choice" | sed 's/^[^ ]* *//')
+
+    case "$action" in
+        "Firewall Status")
+            run_in_terminal_hold sudo ufw status verbose
+            ;;
+        "SSH Keys")
+            run_in_terminal_hold bash -c "ls -la ~/.ssh/ && echo '' && cat ~/.ssh/*.pub 2>/dev/null || echo 'No public keys found'"
+            ;;
+        "GPG Keys")
+            run_in_terminal_hold gpg --list-keys
+            ;;
+        "Back")
+            show_setup_menu
+            ;;
+        *)
+            exit 0
+            ;;
+    esac
+}
+
+show_configs_menu() {
+    local options="󰖬  Hyprland Config
+󰀻  Waybar Config
+󰆍  Terminal Config
+󰏘  Theme Colors
+󰑓  Reload All Configs
+$ICON_BACK  Back"
+
+    local choice
+    choice=$(wofi_menu "Edit Configs" "$options" 320 320)
+
+    local action
+    action=$(echo "$choice" | sed 's/^[^ ]* *//')
+
+    case "$action" in
+        "Hyprland Config")
+            run_in_terminal $EDITOR "${CONFIG_DIR}/hypr/hyprland.conf"
+            ;;
+        "Waybar Config")
+            run_in_terminal $EDITOR "${CONFIG_DIR}/waybar/config.jsonc"
+            ;;
+        "Terminal Config")
+            if [[ -f "${CONFIG_DIR}/kitty/kitty.conf" ]]; then
+                run_in_terminal $EDITOR "${CONFIG_DIR}/kitty/kitty.conf"
+            elif [[ -f "${CONFIG_DIR}/alacritty/alacritty.toml" ]]; then
+                run_in_terminal $EDITOR "${CONFIG_DIR}/alacritty/alacritty.toml"
+            fi
+            ;;
+        "Theme Colors")
+            run_in_terminal $EDITOR "${CONFIG_DIR}/themes/colors/"
+            ;;
+        "Reload All Configs")
+            hyprctl reload
+            pkill -SIGUSR2 waybar 2>/dev/null || true
+            notify "Configs reloaded"
+            ;;
+        "Back")
+            show_setup_menu
+            ;;
+        *)
+            exit 0
+            ;;
+    esac
+}
+
+# =============================================================================
+# UPDATE SUBMENU
+# =============================================================================
+
+show_update_menu() {
+    local options="󰚰  Quick Update (pacman)
+󰚰  Full Update (yay)
+󰑐  Refresh Mirrors
+󰑓  Restore Defaults
+$ICON_BACK  Back"
+
+    local choice
+    choice=$(wofi_menu "Update" "$options")
+
+    local action
+    action=$(echo "$choice" | sed 's/^[^ ]* *//')
+
+    case "$action" in
+        "Quick Update (pacman)")
+            run_in_terminal_hold sudo pacman -Syu
+            ;;
+        "Full Update (yay)")
+            run_in_terminal_hold yay -Syu
+            ;;
+        "Refresh Mirrors")
+            if command -v reflector &> /dev/null; then
+                notify "Refreshing mirrors... This may take a moment."
+                run_in_terminal_hold sudo reflector --latest 20 --protocol https --sort rate --save /etc/pacman.d/mirrorlist
+            else
+                notify "reflector not installed. Install with: sudo pacman -S reflector"
+            fi
+            ;;
+        "Restore Defaults")
+            show_restore_menu
+            ;;
+        "Back")
+            show_main_menu
+            ;;
+        *)
+            exit 0
+            ;;
+    esac
+}
+
+show_restore_menu() {
+    local options="󰖬  Restore Hyprland Config
+󰀻  Restore Waybar Config
+󰗼  Restore All Configs
+$ICON_BACK  Back"
+
+    local choice
+    choice=$(wofi_menu "Restore Defaults" "$options" 350 240)
+
+    # TODO: Implement restore from /etc/skel or backup
+    notify "Restore functionality coming soon"
+    show_update_menu
+}
+
+# =============================================================================
+# T2 MACBOOK SUBMENU
+# =============================================================================
+
+show_t2_menu() {
+    local options="󰌢  Touch Bar Settings
+󰈐  Fan Control
+󰃟  Keyboard Backlight
+󰖩  WiFi Status
+󰋐  Audio Status
+$ICON_BACK  Back"
+
+    local choice
+    choice=$(wofi_menu "T2 MacBook" "$options")
+
+    local action
+    action=$(echo "$choice" | sed 's/^[^ ]* *//')
+
+    case "$action" in
+        "Touch Bar Settings")
+            show_touchbar_menu
+            ;;
+        "Fan Control")
+            if systemctl is-active --quiet t2fanrd; then
+                run_in_terminal_hold bash -c "echo 'T2 Fan Daemon Status:' && systemctl status t2fanrd"
+            else
+                notify "t2fanrd not running. Enable with: sudo systemctl enable --now t2fanrd"
+            fi
+            ;;
+        "Keyboard Backlight")
+            show_kbd_backlight_menu
+            ;;
+        "WiFi Status")
+            run_in_terminal_hold bash -c "echo 'WiFi Status:' && iwctl station list && echo '' && iwctl station wlan0 show"
+            ;;
+        "Audio Status")
+            run_in_terminal_hold bash -c "echo 'Audio Devices:' && aplay -l && echo '' && echo 'PipeWire Status:' && wpctl status"
+            ;;
+        "Back")
+            show_main_menu
+            ;;
+        *)
+            exit 0
+            ;;
+    esac
+}
+
+show_touchbar_menu() {
+    local options="󰔛  Function Keys Mode
+󰝚  Media Keys Mode
+󰒓  Configure tiny-dfr
+$ICON_BACK  Back"
+
+    local choice
+    choice=$(wofi_menu "Touch Bar" "$options" 320 240)
+
+    local action
+    action=$(echo "$choice" | sed 's/^[^ ]* *//')
+
+    case "$action" in
+        "Function Keys Mode")
+            echo 2 | sudo tee /sys/class/input/*/device/fnmode &>/dev/null || true
+            notify "Touch Bar set to Function Keys mode"
+            ;;
+        "Media Keys Mode")
+            echo 1 | sudo tee /sys/class/input/*/device/fnmode &>/dev/null || true
+            notify "Touch Bar set to Media Keys mode"
+            ;;
+        "Configure tiny-dfr")
+            if [[ -f /etc/tiny-dfr/config.toml ]]; then
+                run_in_terminal sudo $EDITOR /etc/tiny-dfr/config.toml
+            else
+                notify "tiny-dfr config not found"
+            fi
+            ;;
+        "Back")
+            show_t2_menu
+            ;;
+        *)
+            exit 0
+            ;;
+    esac
+}
+
+show_kbd_backlight_menu() {
+    local current_brightness
+    current_brightness=$(cat /sys/class/leds/*kbd_backlight/brightness 2>/dev/null || echo "N/A")
+    local max_brightness
+    max_brightness=$(cat /sys/class/leds/*kbd_backlight/max_brightness 2>/dev/null || echo "N/A")
+
+    local options="󰃠  Brightness: $current_brightness / $max_brightness
+󰃞  Set to 0% (Off)
+󰃝  Set to 25%
+󰃟  Set to 50%
+󰃠  Set to 100%
+$ICON_BACK  Back"
+
+    local choice
+    choice=$(wofi_menu "Keyboard Backlight" "$options" 320 320)
+
+    local action
+    action=$(echo "$choice" | sed 's/^[^ ]* *//')
+
+    case "$action" in
+        "Set to 0% (Off)")
+            brightnessctl -d '*::kbd_backlight' set 0% 2>/dev/null
+            notify "Keyboard backlight off"
+            ;;
+        "Set to 25%")
+            brightnessctl -d '*::kbd_backlight' set 25% 2>/dev/null
+            notify "Keyboard backlight at 25%"
+            ;;
+        "Set to 50%")
+            brightnessctl -d '*::kbd_backlight' set 50% 2>/dev/null
+            notify "Keyboard backlight at 50%"
+            ;;
+        "Set to 100%")
+            brightnessctl -d '*::kbd_backlight' set 100% 2>/dev/null
+            notify "Keyboard backlight at 100%"
+            ;;
+        "Back")
+            show_t2_menu
+            ;;
+        *)
+            exit 0
+            ;;
+    esac
+}
+
+# =============================================================================
+# ENTRY POINT
+# =============================================================================
+
+show_help() {
+    echo "VulcanOS Systems Menu"
+    echo ""
+    echo "Usage: vulcan-menu [category]"
+    echo ""
+    echo "Categories:"
+    echo "  (none)    Show main menu"
+    echo "  system    System tools and monitoring"
+    echo "  style     Themes and appearance"
+    echo "  install   Package installation"
+    echo "  remove    Package removal and cleanup"
+    echo "  setup     System configuration"
+    echo "  update    System updates"
+    echo "  t2        T2 MacBook specific options"
+    echo "  power     Power/session menu"
+    echo ""
+}
+
+main() {
+    local category="${1:-}"
+
+    case "$category" in
+        "")         show_main_menu ;;
+        system)     show_system_menu ;;
+        style)      show_style_menu ;;
+        install)    show_install_menu ;;
+        remove)     show_remove_menu ;;
+        setup)      show_setup_menu ;;
+        update)     show_update_menu ;;
+        t2)         show_t2_menu ;;
+        power)      exec vulcan-power ;;
+        help|--help|-h)
+            show_help
+            ;;
+        *)
+            echo "Unknown category: $category"
+            show_help
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"

@@ -1,0 +1,99 @@
+# VulcanBar Configuration
+# Copy to /etc/vulcanbar/config.toml or ~/.config/vulcanbar/config.toml to customize
+
+[general]
+# Font family (fontconfig pattern)
+font = "JetBrains Mono Nerd Font:bold"
+font-size = 32.0
+
+# Enable pixel shifting for OLED longevity
+enable-pixel-shift = false
+
+# Show button outlines when not pressed
+show-button-outlines = true
+
+# Adaptive brightness follows main display
+adaptive-brightness = true
+
+# Brightness level when active (0-255)
+active-brightness = 128
+
+# Spacing between modules in pixels
+spacing = 16
+
+[layout]
+# Waybar-style layout
+left = ["workspaces", "window-title"]
+center = ["clock"]
+right = ["brightness", "battery"]
+
+# Alternative: F-keys only (legacy tiny-dfr style)
+# left = []
+# center = ["fkeys"]
+# right = []
+
+#
+# Module Configurations
+#
+
+[modules.fkeys]
+# Show media layer by default (vs F-keys)
+media-layer-default = false
+
+# Custom F-key definitions (optional)
+# keys = [
+#   { label = "F1", action = "F1" },
+#   { label = "F2", action = "F2" },
+#   ...
+# ]
+
+# Custom media key definitions (optional)
+# media-keys = [
+#   { icon = "brightness_low", action = "BrightnessDown" },
+#   { icon = "brightness_high", action = "BrightnessUp" },
+#   ...
+# ]
+
+[modules.clock]
+# Time format (strftime)
+format = "%H:%M"
+# Update interval in seconds
+interval = 60
+# Locale for formatting (optional)
+# locale = "en_US"
+
+[modules.battery]
+# Display: "icon", "percentage", or "both"
+display = "both"
+# Update interval in seconds
+interval = 30
+# Warning thresholds
+low-threshold = 20
+critical-threshold = 10
+
+[modules.volume]
+# Display: "icon", "percentage", or "both"
+display = "icon"
+# Action on tap
+on-click = "toggle-mute"
+
+[modules.brightness]
+# Display: "icon", "percentage", or "both"
+display = "icon"
+# Update interval in seconds
+interval = 5
+
+[modules.workspaces]
+# Number of persistent workspace buttons
+persistent-workspaces = 5
+# Show only workspaces with windows
+active-only = false
+# Label format
+format = "{id}"
+
+[modules.window-title]
+# Maximum length before truncation (chars)
+# Use shorter value than Waybar's 50 for narrow Touch Bar
+max-length = 30
+# Update interval in seconds
+interval = 1

@@ -1,0 +1,73 @@
+# VulcanBar Multi-Page Configuration (Test)
+# This demonstrates the multi-page system with swipe gestures
+# Swipe left/right to switch between pages
+
+[general]
+font = "JetBrains Mono Nerd Font:bold"
+font-size = 28.0
+enable-pixel-shift = true
+show-button-outlines = true
+spacing = 12
+
+# Multi-page configuration
+[pages]
+default = "main"
+enable-swipe = true
+transition-duration-ms = 200
+
+# Page 1: Main - Workspaces + Clock + Battery
+[[pages.list]]
+name = "main"
+[pages.list.layout]
+left = ["workspaces"]
+center = ["clock"]
+right = ["battery"]
+
+# Page 2: Controls - Brightness + Volume
+[[pages.list]]
+name = "controls"
+[pages.list.layout]
+left = []
+center = ["brightness", "volume"]
+right = ["clock"]
+
+# Page 3: Full Clock (different format)
+[[pages.list]]
+name = "clock"
+[pages.list.layout]
+left = []
+center = ["clock"]
+right = ["battery"]
+
+# Gesture thresholds
+[gestures]
+swipe-threshold-px = 50
+swipe-velocity-threshold = 100.0
+long-press-duration-ms = 500
+
+#
+# Module Configurations
+#
+
+[modules.clock]
+format = "%a %b %d  %I:%M %p"
+interval = 60
+
+[modules.battery]
+display = "both"
+interval = 30
+low-threshold = 20
+critical-threshold = 10
+
+[modules.brightness]
+display = "both"
+interval = 5
+
+[modules.volume]
+display = "both"
+on-click = "toggle-mute"
+
+[modules.workspaces]
+persistent-workspaces = 5
+active-only = false
+format = "{id}"

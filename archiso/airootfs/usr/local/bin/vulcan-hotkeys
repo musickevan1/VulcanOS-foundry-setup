@@ -1,0 +1,115 @@
+#!/bin/bash
+# VulcanOS Hotkeys Display
+# Shows all keybindings in a searchable wofi menu
+# Usage: vulcan-hotkeys
+
+HOTKEYS="󰌌  NAVIGATION
+────────────────────────────────
+Super + Space             App Launcher
+Super + Alt + Space       Vulcan Menu
+Super + Escape            Power Menu
+Super + K                 Show Hotkeys (this menu)
+
+󱂬  WINDOW MANAGEMENT
+────────────────────────────────
+Super + W                 Close Window
+Ctrl + Alt + Delete       Close All Windows
+Super + T                 Toggle Floating
+Super + O                 Pin Window (Sticky)
+Super + F                 Fullscreen
+Super + Alt + F           Full Width
+Super + Shift + Q         Exit Hyprland
+
+󰖯  WORKSPACES
+────────────────────────────────
+Super + 1-4               Switch to Workspace 1-4
+Super + 5-0               Extended Workspaces 5-10
+Super + Tab               Next Workspace
+Super + Shift + Tab       Previous Workspace
+Super + Ctrl + Tab        Last Workspace
+Super + Shift + 1-0       Move Window to Workspace
+Super + Z                 Toggle Scratchpad
+Super + Ctrl + Z          Move to Scratchpad
+Super + Alt + Z           Pop from Scratchpad
+
+󰆾  FOCUS & MOVEMENT
+────────────────────────────────
+Super + Arrow Keys        Move Focus
+Super + H/J/K/L           Move Focus (Vim)
+Super + Shift + Arrows    Swap Windows
+Super + Shift + H/J/K/L   Swap Windows (Vim)
+Super + V                 Toggle Split Direction
+Super + Equal/Minus       Resize Width
+Super + Shift + =/−       Resize Height
+
+󰕰  WINDOW GROUPS
+────────────────────────────────
+Super + G                 Toggle Group
+Super + Alt + G           Remove from Group
+Super + Alt + Tab         Cycle Group
+Super + Alt + 1-4         Switch to Tab 1-4
+Super + Alt + Arrows      Move into Group
+
+󰘔  LAUNCHING APPS
+────────────────────────────────
+Super + Return            Terminal
+Super + Shift + A         Claude AI
+Super + Shift + B         Browser (Chromium)
+Super + Shift + F         File Manager
+Super + Shift + T         System Monitor (btop)
+Super + Shift + N         Neovim
+Super + Shift + G         Lazygit
+Super + Shift + D         Lazydocker
+Super + Shift + W         Network Manager
+
+󰏘  STYLE & THEMES
+────────────────────────────────
+Super + Ctrl + Shift + Space    Theme Selector
+Super + Ctrl + Space      Rotate Wallpaper
+Super + Backspace         Toggle Transparency
+
+󰆹  CLIPBOARD & CAPTURE
+────────────────────────────────
+Super + Ctrl + V          Clipboard History
+Super + Shift + S         Screenshot (Region)
+Super + Ctrl + S          Screenshot (Full Screen)
+Super + Alt + S           Screenshot (Active Window)
+Print                     Screenshot + Edit (Swappy)
+Shift + Print             Screenshot to Clipboard
+Alt + Print               Screen Recording
+Super + Print             Color Picker
+
+󰂚  NOTIFICATIONS
+────────────────────────────────
+Super + ,                 Toggle Notification Panel
+Super + Shift + ,         Clear All Notifications
+Super + Ctrl + ,          Toggle Do Not Disturb
+
+󰌆  SYSTEM
+────────────────────────────────
+Super + Ctrl + L          Lock Screen
+Super + Ctrl + Escape     System Menu
+Super + Ctrl + U          Update Menu
+
+󰝚  MEDIA KEYS
+────────────────────────────────
+Volume Up/Down            Adjust Volume
+Mute                      Toggle Mute
+Brightness Up/Down        Adjust Brightness
+Play/Pause                Media Play/Pause
+Next/Prev                 Media Next/Previous
+
+󱊷  MOUSE
+────────────────────────────────
+Super + Left Click        Move Window
+Super + Right Click       Resize Window
+Super + Scroll            Switch Workspace"
+
+echo "$HOTKEYS" | wofi --dmenu \
+    --prompt "VulcanOS Hotkeys" \
+    --cache-file /dev/null \
+    --width 500 \
+    --height 600 \
+    --location center \
+    --hide-scroll \
+    --no-actions 2>/dev/null

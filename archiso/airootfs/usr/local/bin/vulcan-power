@@ -1,0 +1,156 @@
+#!/bin/bash
+# VulcanOS Power Menu
+# A polished power/session menu using wofi
+# Usage: vulcan-power [action]
+
+set -e
+
+# Configuration
+WOFI_WIDTH=280
+WOFI_HEIGHT=320
+
+# Icons (Nerd Font)
+ICON_LOCK="󰌾"
+ICON_SUSPEND="󰤄"
+ICON_LOGOUT="󰗼"
+ICON_REBOOT="󰜉"
+ICON_SHUTDOWN="󰐥"
+ICON_CANCEL="󰜺"
+
+# Colors for notifications
+notify_action() {
+    local title="$1"
+    local message="$2"
+    local icon="${3:-system-shutdown}"
+
+    if command -v notify-send &> /dev/null; then
+        notify-send "$title" "$message" -i "$icon" -u normal -t 3000
+    fi
+}
+
+# Confirmation dialog
+confirm_action() {
+    local action="$1"
+    local icon="$2"
+
+    local choice
+    choice=$(echo -e "Yes, $action\nNo, cancel" | wofi --dmenu \
+        --prompt "$icon Confirm $action?" \
+        --cache-file /dev/null \
+        --width 250 \
+        --height 100 \
+        --lines 2 \
+        --location center \
+        --hide-scroll \
+        --no-actions 2>/dev/null)
+
+    [[ "$choice" == "Yes, $action" ]]
+}
+
+# Actions
+do_lock() {
+    notify_action "Locking" "Screen will lock now" "system-lock-screen"
+    sleep 0.3
+    hyprlock
+}
+
+do_suspend() {
+    if confirm_action "suspend" "$ICON_SUSPEND"; then
+        notify_action "Suspending" "System will suspend now" "system-suspend"
+        sleep 0.5
+        systemctl suspend
+    fi
+}
+
+do_logout() {
+    if confirm_action "logout" "$ICON_LOGOUT"; then
+        notify_action "Logging out" "Session will end now" "system-log-out"
+        sleep 0.5
+        hyprctl dispatch exit
+    fi
+}
+
+do_reboot() {
+    if confirm_action "reboot" "$ICON_REBOOT"; then
+        notify_action "Rebooting" "System will restart now" "system-reboot"
+        sleep 0.5
+        systemctl reboot
+    fi
+}
+
+do_shutdown() {
+    if confirm_action "shutdown" "$ICON_SHUTDOWN"; then
+        notify_action "Shutting down" "System will power off now" "system-shutdown"
+        sleep 0.5
+        systemctl poweroff
+    fi
+}
+
+# Main menu
+show_menu() {
+    local options="$ICON_LOCK  Lock
+$ICON_SUSPEND  Suspend
+$ICON_LOGOUT  Logout
+$ICON_REBOOT  Reboot
+$ICON_SHUTDOWN  Shutdown"
+
+    local choice
+    choice=$(echo -e "$options" | wofi --dmenu \
+        --prompt "Power Menu" \
+        --cache-file /dev/null \
+        --width "$WOFI_WIDTH" \
+        --height "$WOFI_HEIGHT" \
+        --lines 5 \
+        --location center \
+        --hide-scroll \
+        --no-actions \
+        --define=hide_search=true 2>/dev/null)
+
+    # Extract action from choice (remove icon prefix)
+    local action
+    action=$(echo "$choice" | sed 's/^[^ ]* *//' | tr '[:upper:]' '[:lower:]')
+
+    case "$action" in
+        "lock")     do_lock ;;
+        "suspend")  do_suspend ;;
+        "logout")   do_logout ;;
+        "reboot")   do_reboot ;;
+        "shutdown") do_shutdown ;;
+        *)          exit 0 ;;
+    esac
+}
+
+# Entry point
+main() {
+    local action="${1:-menu}"
+
+    case "$action" in
+        menu)     show_menu ;;
+        lock)     do_lock ;;
+        suspend)  do_suspend ;;
+        logout)   do_logout ;;
+        reboot)   do_reboot ;;
+        shutdown) do_shutdown ;;
+        help|--help|-h)
+            echo "VulcanOS Power Menu"
+            echo ""
+            echo "Usage: vulcan-power [action]"
+            echo ""
+            echo "Actions:"
+            echo "  menu      Show interactive power menu (default)"
+            echo "  lock      Lock the screen"
+            echo "  suspend   Suspend the system"
+            echo "  logout    Log out of Hyprland"
+            echo "  reboot    Reboot the system"
+            echo "  shutdown  Shutdown the system"
+            echo ""
+            ;;
+        *)
+            echo "Unknown action: $action"
+            echo "Run 'vulcan-power help' for usage"
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"
