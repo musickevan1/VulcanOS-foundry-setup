@@ -1,0 +1,333 @@
+# =============================================================================
+# VulcanOS Starship Prompt - Traditional Style
+# Format: [user@vulcan dir]$ with git info
+# https://starship.rs/config/
+# =============================================================================
+
+# Prompt format - traditional Linux style with git info
+format = """
+[\\[](fg:#f97316)\
+$username\
+[@](fg:#fafaf9)\
+$hostname\
+[ ](fg:#fafaf9)\
+$directory\
+[\\]](fg:#f97316)\
+$git_branch\
+$git_status\
+$character"""
+
+# Right prompt for command duration (optional)
+right_format = """$cmd_duration"""
+
+# No newline between prompts
+add_newline = false
+
+# Command timeout
+command_timeout = 1000
+
+# =============================================================================
+# PROMPT COMPONENTS
+# =============================================================================
+
+[username]
+show_always = true
+style_user = "fg:#fafaf9 bold"
+style_root = "fg:#ef4444 bold"
+format = '[$user]($style)'
+disabled = false
+
+[hostname]
+ssh_only = false
+ssh_symbol = " "
+style = "fg:#fbbf24 bold"
+format = '[$ssh_symbol$hostname]($style)'
+disabled = false
+trim_at = "."
+
+[directory]
+style = "fg:#3b82f6 bold"
+format = '[$path]($style)[$read_only]($read_only_style)'
+truncation_length = 3
+truncation_symbol = ".../"
+truncate_to_repo = true
+read_only = " "
+read_only_style = "fg:#ef4444"
+home_symbol = "~"
+
+# Git branch - shown inline after directory
+[git_branch]
+symbol = " "
+style = "fg:#a855f7"
+format = '[ $symbol$branch(:$remote_branch)]($style)'
+truncation_length = 20
+truncation_symbol = "..."
+
+# Git status - compact indicators
+[git_status]
+style = "fg:#fbbf24"
+format = '[$all_status$ahead_behind]($style)'
+conflicted = "=${count}"
+ahead = "${count}"
+behind = "${count}"
+diverged = "${ahead_count}${behind_count}"
+untracked = "?${count}"
+stashed = "*${count}"
+modified = "!${count}"
+staged = "+${count}"
+renamed = "~${count}"
+deleted = "-${count}"
+
+# Character - the final $ or # for root
+[character]
+success_symbol = '[\\$](bold fg:#22c55e)'
+error_symbol = '[\\$](bold fg:#ef4444)'
+vimcmd_symbol = '[\\$](bold fg:#fbbf24)'
+
+# =============================================================================
+# RIGHT PROMPT
+# =============================================================================
+
+[cmd_duration]
+min_time = 2000
+format = '[$duration]($style)'
+style = "fg:#78716c"
+show_milliseconds = false
+
+# =============================================================================
+# DISABLED MODULES (keep prompt minimal)
+# =============================================================================
+
+[aws]
+disabled = true
+
+[azure]
+disabled = true
+
+[battery]
+disabled = true
+
+[buf]
+disabled = true
+
+[bun]
+disabled = true
+
+[c]
+disabled = true
+
+[cmake]
+disabled = true
+
+[cobol]
+disabled = true
+
+[conda]
+disabled = true
+
+[container]
+disabled = true
+
+[crystal]
+disabled = true
+
+[daml]
+disabled = true
+
+[dart]
+disabled = true
+
+[deno]
+disabled = true
+
+[docker_context]
+disabled = true
+
+[dotnet]
+disabled = true
+
+[elixir]
+disabled = true
+
+[elm]
+disabled = true
+
+[env_var]
+disabled = true
+
+[erlang]
+disabled = true
+
+[fennel]
+disabled = true
+
+[fill]
+disabled = true
+
+[fossil_branch]
+disabled = true
+
+[gcloud]
+disabled = true
+
+[git_commit]
+disabled = true
+
+[git_metrics]
+disabled = true
+
+[git_state]
+disabled = true
+
+[golang]
+disabled = true
+
+[gradle]
+disabled = true
+
+[guix_shell]
+disabled = true
+
+[haskell]
+disabled = true
+
+[haxe]
+disabled = true
+
+[helm]
+disabled = true
+
+[hg_branch]
+disabled = true
+
+[java]
+disabled = true
+
+[jobs]
+disabled = true
+
+[julia]
+disabled = true
+
+[kotlin]
+disabled = true
+
+[kubernetes]
+disabled = true
+
+[line_break]
+disabled = true
+
+[localip]
+disabled = true
+
+[lua]
+disabled = true
+
+[memory_usage]
+disabled = true
+
+[meson]
+disabled = true
+
+[nim]
+disabled = true
+
+[nix_shell]
+disabled = true
+
+[nodejs]
+disabled = true
+
+[ocaml]
+disabled = true
+
+[opa]
+disabled = true
+
+[openstack]
+disabled = true
+
+[os]
+disabled = true
+
+[package]
+disabled = true
+
+[perl]
+disabled = true
+
+[php]
+disabled = true
+
+[pijul_channel]
+disabled = true
+
+[pulumi]
+disabled = true
+
+[purescript]
+disabled = true
+
+[python]
+disabled = true
+
+[rlang]
+disabled = true
+
+[raku]
+disabled = true
+
+[red]
+disabled = true
+
+[ruby]
+disabled = true
+
+[rust]
+disabled = true
+
+[scala]
+disabled = true
+
+[shell]
+disabled = true
+
+[shlvl]
+disabled = true
+
+[singularity]
+disabled = true
+
+[solidity]
+disabled = true
+
+[spack]
+disabled = true
+
+[status]
+disabled = true
+
+[sudo]
+disabled = true
+
+[swift]
+disabled = true
+
+[terraform]
+disabled = true
+
+[time]
+disabled = true
+
+[vagrant]
+disabled = true
+
+[vcsh]
+disabled = true
+
+[vlang]
+disabled = true
+
+[zig]
+disabled = true
