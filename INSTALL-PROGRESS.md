@@ -34,7 +34,7 @@
 - [ ] Set hostname
 - [ ] Create user account
 - [ ] Install and configure GRUB
-- [ ] Enable NetworkManager
+- [ ] Enable iwd
 - [ ] Install T2 packages (firmware, audio, fan control, Touch Bar)
 
 ### Phase 4: Desktop Environment (VulcanOS Style)
@@ -203,8 +203,8 @@ passwd evan
 EDITOR=nano visudo
 # Uncomment: %wheel ALL=(ALL:ALL) ALL
 
-# Enable NetworkManager
-systemctl enable NetworkManager
+# Enable iwd
+systemctl enable iwd
 ```
 
 ---
@@ -338,8 +338,8 @@ reboot
 │    EDITOR=nano visudo                                   │
 │    # Uncomment: %wheel ALL=(ALL:ALL) ALL                │
 │                                                         │
-│    # NetworkManager                                     │
-│    systemctl enable NetworkManager                      │
+│    # iwd (network)                                      │
+│    systemctl enable iwd                                 │
 ├─────────────────────────────────────────────────────────┤
 │  GRUB:                                                  │
 │    pacman -S grub efibootmgr                            │

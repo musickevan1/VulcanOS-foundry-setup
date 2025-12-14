@@ -14,9 +14,6 @@ customrepo/x86_64/*.files*
 # Pre-built packages cached in airootfs
 archiso/airootfs/root/packages/*.pkg.tar.*
 
-# Claude Code local settings
-.claude/
-
 # Editor/IDE
 .vscode/
 .idea/

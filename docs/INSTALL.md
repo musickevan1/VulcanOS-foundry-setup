@@ -265,7 +265,7 @@ nano /etc/pacman.conf
 pacman -Syu
 pacman -S apple-bcm-firmware apple-t2-audio-config t2fanrd tiny-dfr
 pacman -S networkmanager grub efibootmgr
-pacman -S hyprland waybar wofi alacritty # ... and other desired packages
+pacman -S hyprland waybar wofi kitty starship # ... and other desired packages
 
 # Configure mkinitcpio
 nano /etc/mkinitcpio.conf
@@ -284,7 +284,7 @@ nano /etc/default/grub
 grub-mkconfig -o /boot/grub/grub.cfg
 
 # Enable services
-systemctl enable NetworkManager
+systemctl enable iwd
 systemctl enable greetd
 systemctl enable t2fanrd
 systemctl enable bluetooth
@@ -314,8 +314,10 @@ reboot
 ### 2. Connect to WiFi
 
 ```bash
-nmtui
-# Or use Super+W to open network settings
+iwctl
+# station wlan0 scan
+# station wlan0 get-networks
+# station wlan0 connect "Your-Network-Name"
 ```
 
 ### 3. Update System
@@ -373,10 +375,50 @@ rustup component add rust-src rust-analyzer
 git config --global user.name "Your Name"
 git config --global user.email "your@email.com"
 
-# Initialize starship prompt
+# Starship prompt is pre-configured in VulcanOS
+# If needed, initialize manually:
 starship init bash >> ~/.bashrc
 source ~/.bashrc
 ```
+
+### 8. Install Syntax Highlighting (Optional)
+
+VulcanOS supports **ble.sh** for real-time command syntax highlighting. This is an AUR package:
+
+```bash
+# Install yay (AUR helper) if not already installed
+sudo pacman -S --needed git base-devel
+git clone https://aur.archlinux.org/yay.git
+cd yay
+makepkg -si
+
+# Install ble.sh for syntax highlighting
+yay -S blesh
+
+# ble.sh is automatically configured in ~/.bashrc
+# Restart your terminal to see syntax highlighting
+```
+
+**What ble.sh provides:**
+- Real-time syntax highlighting as you type
+- Auto-suggestions based on history
+- Fish-like command completion
+- Error highlighting before you press Enter
+
+**Note:** ble.sh is optional. The terminal works perfectly without it.
+
+### 9. Terminal Keybindings
+
+VulcanOS uses **Kitty** as the default terminal with these keybindings:
+
+| Keybinding | Action |
+|------------|--------|
+| Ctrl+Shift+T | New tab |
+| Ctrl+Shift+Q | Close tab |
+| Ctrl+1-9 | Switch to tab 1-9 |
+| Ctrl+Shift+Enter | New window (split) |
+| Ctrl+Shift+H | Show scrollback in pager |
+| Ctrl+Shift+= / - | Increase/decrease font size |
 
 ---
 
@@ -399,11 +441,11 @@ sudo mount -t hfsplus /dev/nvme0n1p2 /mnt/macos
 # Run firmware extraction script
 ```
 
-3. Switch to iwd backend:
+3. Ensure iwd is running:
 ```bash
-sudo pacman -S iwd
 sudo systemctl enable --now iwd
-# Configure NetworkManager to use iwd backend
+iwctl station wlan0 scan
+iwctl station wlan0 get-networks
 ```
 
 ### No Audio Output

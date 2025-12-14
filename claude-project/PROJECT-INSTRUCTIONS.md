@@ -106,8 +106,8 @@ passwd evan
 EDITOR=nano visudo
 # Uncomment: %wheel ALL=(ALL:ALL) ALL
 
-# Enable NetworkManager
-systemctl enable NetworkManager
+# Enable iwd
+systemctl enable iwd
 ```
 
 ### Install GRUB Bootloader
@@ -184,14 +184,14 @@ After base system is working, the next steps are:
 
 ### WiFi not working after install
 ```bash
-# Ensure iwd is backend for NetworkManager
-sudo nano /etc/NetworkManager/conf.d/iwd.conf
-# Add:
-# [device]
-# wifi.backend=iwd
-
+# Ensure iwd is running
 sudo systemctl enable --now iwd
-sudo systemctl restart NetworkManager
+
+# Connect using iwctl
+iwctl
+# station wlan0 scan
+# station wlan0 get-networks
+# station wlan0 connect "Your-Network-Name"
 ```
 
 ### No audio

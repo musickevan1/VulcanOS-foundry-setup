@@ -2,6 +2,43 @@
 
 A development-focused, opinionated Arch Linux distribution designed for T2 MacBook Pro (2019) hardware with Hyprland compositor.
 
+## ⚠️ CRITICAL: Dotfiles Structure (READ BEFORE MODIFYING)
+
+**The `dotfiles/` directory uses GNU Stow symlink structure. DO NOT delete or "clean up" the `.config/` subdirectories.**
+
+```
+dotfiles/
+├── hypr/
+│   └── .config/
+│       └── hypr/           ← ACTUAL CONFIG FILES (stow source)
+│           ├── hyprland.conf
+│           ├── bindings.conf
+│           └── ...
+├── waybar/
+│   └── .config/
+│       └── waybar/         ← ACTUAL CONFIG FILES (stow source)
+└── ...
+
+~/.config/
+├── hypr -> /home/evan/VulcanOS/dotfiles/hypr/.config/hypr  ← SYMLINK
+├── waybar -> /home/evan/VulcanOS/dotfiles/waybar/.config/waybar  ← SYMLINK
+└── ...
+```
+
+### What NOT to do:
+```bash
+# NEVER DO THIS - it will break the user's live desktop session:
+rm -rf dotfiles/*/.config/
+```
+
+### Why this structure exists:
+GNU Stow creates symlinks by mirroring directory structure. When you run `stow hypr` from `dotfiles/`, it creates `~/.config/hypr` pointing to `dotfiles/hypr/.config/hypr/`.
+
+### Safe operations:
+- Edit files in `dotfiles/*/.config/*/` - changes apply immediately via symlink
+- Copy files TO archiso: `cp dotfiles/hypr/.config/hypr/* archiso/.../etc/skel/.config/hypr/`
+- Add new config files to the stow directories
+
 ## Project Overview
 
 VulcanOS is a custom Arch Linux-based distribution built using archiso, targeting developers who need:
@@ -35,15 +72,15 @@ VulcanOS/
 │   ├── packages.x86_64        # Package manifest
 │   ├── pacman.conf            # Package manager configuration
 │   └── profiledef.sh          # Build profile metadata
-├── dotfiles/                   # Pre-configured user dotfiles
-│   ├── hypr/                  # Hyprland configuration
-│   ├── waybar/                # Status bar configuration
-│   ├── alacritty/             # Terminal configuration
-│   ├── wofi/                  # Launcher configuration
-│   ├── swaync/                # Notification center
-│   ├── nvim/                  # Neovim configuration
-│   ├── git/                   # Git configuration
-│   └── bash/                  # Shell configuration
+├── dotfiles/                   # Pre-configured user dotfiles (GNU Stow structure)
+│   ├── hypr/.config/hypr/     # Hyprland config (stow target: ~/.config/hypr)
+│   ├── waybar/.config/waybar/ # Status bar config (stow target: ~/.config/waybar)
+│   ├── kitty/.config/kitty/   # Terminal config (stow target: ~/.config/kitty)
+│   ├── wofi/.config/wofi/     # Launcher config (stow target: ~/.config/wofi)
+│   ├── swaync/.config/swaync/ # Notification center (stow target: ~/.config/swaync)
+│   ├── nvim/.config/nvim/     # Neovim config (stow target: ~/.config/nvim)
+│   ├── starship/.config/      # Starship prompt (stow target: ~/.config/)
+│   └── themes/                # Theme system files
 ├── scripts/                    # Build and utility scripts
 │   ├── build.sh               # Main build script
 │   ├── build-aur-repo.sh      # AUR package builder
@@ -121,7 +158,7 @@ out/
 - Base: base, linux-t2, linux-t2-headers, linux-firmware
 - Boot: grub, efibootmgr, os-prober
 - Init: base-devel, sudo, which
-- Network: networkmanager, iwd, ufw
+- Network: iwd, ufw
 - T2: apple-bcm-firmware, apple-t2-audio-config, t2fanrd, tiny-dfr
 
 ### Desktop Environment (~35 packages)
@@ -189,7 +226,7 @@ Key packages from arch-mact2:
 
 ### Hyprland Configuration
 
-Located in `dotfiles/hypr/`:
+Located in `dotfiles/hypr/.config/hypr/` (stow symlinks to `~/.config/hypr/`):
 - `hyprland.conf` - Main config, sources modular files
 - `monitors.conf` - Display setup
 - `input.conf` - Keyboard/mouse settings
@@ -200,6 +237,8 @@ Located in `dotfiles/hypr/`:
 - `windowrules.conf` - Window behavior rules
 - `hypridle.conf` - Idle management
 - `hyprlock.conf` - Lock screen appearance
+
+**Note:** Edits to these files take effect immediately (symlinked to live config).
 
 ### Key Environment Variables
 
@@ -258,7 +297,7 @@ These must be added to GRUB configuration.
 
 ### Known Issues
 
-1. **WiFi stability**: Use iwd as NetworkManager backend
+1. **WiFi**: Use `iwctl` for CLI or `iwgtk` for GUI network management
 2. **Suspend**: Touch Bar may not work after resume
 3. **Dual GPU**: Force Intel iGPU as default on hybrid models
 4. **Force Touch**: Not supported (hardware limitation)
@@ -280,9 +319,12 @@ These must be added to GRUB configuration.
 
 ### Customizing Dotfiles
 
-1. Modify files in `dotfiles/` directory
-2. Test locally before including in ISO
-3. Ensure files will be deployed to `/etc/skel/` in airootfs
+**⚠️ Important:** The `dotfiles/` directory uses GNU Stow. See the critical warning at the top of this file.
+
+1. Edit files in `dotfiles/<app>/.config/<app>/` - changes apply immediately via symlinks
+2. Test locally (configs are live via stow symlinks)
+3. Sync to archiso: copy files to `archiso/airootfs/etc/skel/.config/<app>/`
+4. **NEVER delete the `.config/` subdirectories** - they are the actual config sources
 
 ### Changing Theming
 
@@ -334,9 +376,9 @@ CODENAME="Genesis"
 | Shell | Bash | Maximum compatibility |
 | AUR Helper | yay | Popular, feature-rich, Go-based |
 | Editor | Neovim + VS Code | Terminal + GUI options |
-| Dotfile Management | git + stow | Version controlled symlinks |
+| Dotfile Management | git + stow | Version controlled symlinks - **DO NOT delete dotfiles/*/.config/** |
 | Firewall | UFW | Simple, effective |
-| Network | NetworkManager + iwd | GUI integration + T2 WiFi stability |
+| Network | iwd | Lightweight, T2 WiFi stability, iwctl/iwgtk |
 
 ## Maintenance
 
@@ -393,7 +435,10 @@ CODENAME="Genesis"
 | Add package | `archiso/packages.x86_64` |
 | Kernel params | `archiso/grub/grub.cfg` |
 | Build metadata | `archiso/profiledef.sh` |
-| User configs | `dotfiles/*` → `archiso/airootfs/etc/skel/` |
+| Edit Hyprland config | `dotfiles/hypr/.config/hypr/*.conf` (live via stow) |
+| Edit Waybar config | `dotfiles/waybar/.config/waybar/` (live via stow) |
+| Edit Kitty config | `dotfiles/kitty/.config/kitty/kitty.conf` (live via stow) |
+| Sync to ISO | Copy from `dotfiles/*/.config/` → `archiso/airootfs/etc/skel/.config/` |
 | System configs | `archiso/airootfs/etc/*` |
 | Custom scripts | `archiso/airootfs/usr/local/bin/` |
 | Enable service | `archiso/airootfs/etc/systemd/system/*.wants/` |
