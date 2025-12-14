@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  VulcanOS Wallpaper - Abstract Landscape
+  Stylized forge/mountain scene with layered geometric shapes
+
+  Resolution: 4K (3840x2160)
+  Style: Layered mountains, volcanic/forge atmosphere
+-->
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 3840 2160"
+  width="3840"
+  height="2160"
+>
+  <defs>
+    <!-- Logo gradient -->
+    <linearGradient id="forgeGlow" x1="50%" y1="100%" x2="50%" y2="0%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="50%" stop-color="#f97316"/>
+      <stop offset="100%" stop-color="#ea580c"/>
+    </linearGradient>
+
+    <!-- Sky gradient - dark to warm -->
+    <linearGradient id="skyGradient" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#1c1917"/>
+      <stop offset="60%" stop-color="#292524"/>
+      <stop offset="100%" stop-color="#44403c"/>
+    </linearGradient>
+
+    <!-- Lava/forge glow at horizon -->
+    <linearGradient id="lavaGlow" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#ea580c" stop-opacity="0.3"/>
+      <stop offset="100%" stop-color="#1c1917" stop-opacity="0"/>
+    </linearGradient>
+
+    <!-- Mountain gradients - back to front, lighter to darker -->
+    <linearGradient id="mountain1" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#57534e"/>
+      <stop offset="100%" stop-color="#44403c"/>
+    </linearGradient>
+
+    <linearGradient id="mountain2" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#44403c"/>
+      <stop offset="100%" stop-color="#292524"/>
+    </linearGradient>
+
+    <linearGradient id="mountain3" x1="50%" y1="0%" x2="50%" y2="100%">
+      <stop offset="0%" stop-color="#292524"/>
+      <stop offset="100%" stop-color="#1c1917"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Sky background -->
+  <rect width="3840" height="2160" fill="url(#skyGradient)"/>
+
+  <!-- Horizon glow - volcanic/forge light -->
+  <ellipse cx="1920" cy="1400" rx="2400" ry="600" fill="url(#lavaGlow)"/>
+
+  <!-- Stars/particles -->
+  <g fill="#fafaf9" opacity="0.3">
+    <circle cx="200" cy="150" r="1.5"/>
+    <circle cx="500" cy="280" r="1"/>
+    <circle cx="890" cy="120" r="1.5"/>
+    <circle cx="1200" cy="350" r="1"/>
+    <circle cx="1580" cy="180" r="1.5"/>
+    <circle cx="2100" cy="250" r="1"/>
+    <circle cx="2500" cy="140" r="1.5"/>
+    <circle cx="2900" cy="320" r="1"/>
+    <circle cx="3200" cy="200" r="1.5"/>
+    <circle cx="3600" cy="280" r="1"/>
+    <circle cx="350" cy="450" r="1"/>
+    <circle cx="750" cy="520" r="1"/>
+    <circle cx="3100" cy="480" r="1"/>
+    <circle cx="3500" cy="400" r="1"/>
+  </g>
+
+  <!-- Back mountains (furthest, lightest) -->
+  <polygon
+    points="0,1600 600,1100 1000,1300 1400,950 1800,1200 2200,1000 2600,1250 3000,1050 3400,1300 3840,1100 3840,2160 0,2160"
+    fill="url(#mountain1)"
+    opacity="0.6"
+  />
+
+  <!-- Middle mountains -->
+  <polygon
+    points="0,1750 400,1350 800,1500 1200,1200 1600,1450 2000,1250 2400,1400 2800,1150 3200,1350 3600,1200 3840,1400 3840,2160 0,2160"
+    fill="url(#mountain2)"
+    opacity="0.8"
+  />
+
+  <!-- Front mountains (closest, darkest) -->
+  <polygon
+    points="0,1900 300,1550 700,1700 1100,1450 1500,1650 1920,1400 2340,1650 2740,1450 3140,1700 3540,1500 3840,1700 3840,2160 0,2160"
+    fill="url(#mountain3)"
+  />
+
+  <!-- Central logo - floating above landscape, centered in sky area -->
+  <g transform="translate(1710, 830) scale(2, -2)">
+    <path
+      d="m 105.8125,16.625 c -7.39687,18.135158 -11.858304,29.997682 -20.09375,47.59375 5.04936,5.35232 11.247211,11.585364 21.3125,18.625 C 96.210077,78.390904 88.828713,73.920352 83.3125,69.28125 72.7727,91.274163 56.259864,122.60209 22.75,182.8125 49.087628,167.60733 69.504089,158.23318 88.53125,154.65625 87.714216,151.1422 87.2497,147.34107 87.28125,143.375 l 0.03125,-0.84375 c 0.417917,-16.87382 9.195665,-29.84979 19.59375,-28.96875 10.39809,0.88104 18.48041,15.28242 18.0625,32.15625 -0.0786,3.17512 -0.43674,6.22955 -1.0625,9.0625 18.82058,3.68164 39.01873,13.03179 65,28.03125 -5.123,-9.4318 -9.69572,-17.93388 -14.0625,-26.03125 -6.87839,-5.33121 -14.05289,-12.2698 -28.6875,-19.78125 10.05899,2.61375 17.2611,5.62932 22.875,9 C 124.63297,63.338161 121.03766,52.354109 105.8125,16.625 z"
+      fill="url(#forgeGlow)"
+      fill-rule="evenodd"
+    />
+  </g>
+
+  <!-- Ember particles rising -->
+  <g fill="#f97316">
+    <circle cx="1800" cy="1350" r="3" opacity="0.8"/>
+    <circle cx="1950" cy="1280" r="2" opacity="0.6"/>
+    <circle cx="2100" cy="1320" r="2.5" opacity="0.7"/>
+    <circle cx="1870" cy="1200" r="2" opacity="0.5"/>
+    <circle cx="2020" cy="1150" r="1.5" opacity="0.4"/>
+    <circle cx="1920" cy="1050" r="1.5" opacity="0.3"/>
+  </g>
+</svg>

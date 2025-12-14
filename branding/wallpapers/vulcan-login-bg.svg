@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  VulcanOS Login Background
+  Minimal dark background with subtle geometric accents
+  NO LOGO - logo is displayed separately in the login UI
+
+  Resolution: 4K (3840x2160)
+  Style: Minimal, atmospheric
+-->
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 3840 2160"
+  width="3840"
+  height="2160"
+>
+  <defs>
+    <!-- Subtle radial glow - atmospheric effect -->
+    <radialGradient id="ambientGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#f97316" stop-opacity="0.06"/>
+      <stop offset="100%" stop-color="#1c1917" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="3840" height="2160" fill="#1c1917"/>
+
+  <!-- Subtle ambient glow - gives depth without logo -->
+  <ellipse cx="1920" cy="1080" rx="1400" ry="900" fill="url(#ambientGlow)"/>
+
+  <!-- Subtle geometric accents - corners -->
+  <!-- Top left corner lines -->
+  <line x1="0" y1="300" x2="400" y2="0" stroke="#44403c" stroke-width="1" opacity="0.3"/>
+  <line x1="0" y1="400" x2="500" y2="0" stroke="#44403c" stroke-width="1" opacity="0.2"/>
+
+  <!-- Bottom right corner lines -->
+  <line x1="3440" y1="2160" x2="3840" y2="1860" stroke="#44403c" stroke-width="1" opacity="0.3"/>
+  <line x1="3340" y1="2160" x2="3840" y2="1760" stroke="#44403c" stroke-width="1" opacity="0.2"/>
+</svg>

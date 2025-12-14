@@ -1,0 +1,107 @@
+# VulcanOS GRUB Theme
+# Theme: Vulcan Forge
+# A custom boot theme for VulcanOS on T2 MacBook Pro
+
+# =============================================================================
+# Global Settings
+# =============================================================================
+
+title-text: ""
+desktop-image: "background.png"
+desktop-color: "#1c1917"
+
+terminal-font: "Inter Regular 14"
+terminal-box: "terminal_box_*.png"
+terminal-left: "0"
+terminal-top: "0"
+terminal-width: "100%"
+terminal-height: "100%"
+
+# =============================================================================
+# VulcanOS Logo - Centered at top
+# =============================================================================
+
++ image {
+    top = 5%
+    left = 50%-200
+    width = 400
+    height = 100
+    file = "logo.png"
+}
+
+# =============================================================================
+# Boot Menu - Centered
+# =============================================================================
+
++ boot_menu {
+    left = 20%
+    top = 30%
+    width = 60%
+    height = 45%
+
+    item_font = "Inter Regular 14"
+    item_color = "#a8a29e"
+    item_height = 36
+    item_padding = 8
+    item_spacing = 8
+
+    selected_item_font = "Inter Regular 18"
+    selected_item_color = "#fafaf9"
+
+    icon_width = 0
+    icon_height = 0
+
+    scrollbar = false
+}
+
+# =============================================================================
+# Timeout Progress Bar
+# =============================================================================
+
++ progress_bar {
+    id = "__timeout__"
+    left = 30%
+    top = 82%
+    width = 40%
+    height = 6
+
+    fg_color = "#f97316"
+    bg_color = "#292524"
+    border_color = "#44403c"
+
+    text_color = "#fafaf9"
+    text = ""
+}
+
+# =============================================================================
+# Timeout Label
+# =============================================================================
+
++ label {
+    id = "__timeout__"
+    top = 86%
+    left = 0
+    width = 100%
+    height = 24
+
+    text = "Booting in %d seconds..."
+    align = "center"
+    font = "Inter Regular 12"
+    color = "#78716c"
+}
+
+# =============================================================================
+# Help Text - Bottom
+# =============================================================================
+
++ label {
+    top = 100%-40
+    left = 0
+    width = 100%
+    height = 24
+
+    text = "Use arrow keys to navigate, Enter to boot, 'e' to edit"
+    align = "center"
+    font = "Inter Regular 12"
+    color = "#57534e"
+}
