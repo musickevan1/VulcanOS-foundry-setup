@@ -1,0 +1,11 @@
+[SddmGreeterTheme]
+Name=VulcanOS
+Description=VulcanOS Vulcan Forge theme - minimal and welcoming
+Author=VulcanOS
+Version=1.0
+Website=https://github.com/vulcanos
+License=MIT
+Type=sddm-theme
+MainScript=Main.qml
+ConfigFile=theme.conf
+TranslationsDirectory=translations
