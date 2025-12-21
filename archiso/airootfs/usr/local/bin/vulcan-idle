@@ -1,0 +1,65 @@
+#!/bin/bash
+# vulcan-idle - Toggle hypridle autolock on/off
+# Usage: vulcan-idle toggle|status|on|off
+
+STATE_FILE="${XDG_RUNTIME_DIR:-/tmp}/hypridle-disabled"
+ICON_LOCKED="$HOME/.local/share/icons/vulcan/vulcan-lock.svg"
+ICON_UNLOCKED="$HOME/.local/share/icons/vulcan/vulcan-lock-open.svg"
+
+notify() {
+    local icon="$1"
+    local title="$2"
+    local msg="$3"
+    notify-send -i "$icon" -t 3000 "$title" "$msg"
+}
+
+is_running() {
+    pgrep -x hypridle > /dev/null
+}
+
+start_hypridle() {
+    if ! is_running; then
+        hypridle &
+        disown
+        sleep 0.5
+    fi
+    rm -f "$STATE_FILE"
+    notify "$ICON_LOCKED" "Autolock Enabled" "Screen will lock after idle timeout"
+}
+
+stop_hypridle() {
+    if is_running; then
+        pkill -x hypridle
+    fi
+    touch "$STATE_FILE"
+    notify "$ICON_UNLOCKED" "Autolock Disabled" "Screen will not lock automatically"
+}
+
+case "${1:-toggle}" in
+    toggle)
+        if is_running; then
+            stop_hypridle
+        else
+            start_hypridle
+        fi
+        ;;
+    on|enable)
+        start_hypridle
+        ;;
+    off|disable)
+        stop_hypridle
+        ;;
+    status)
+        if is_running; then
+            echo "hypridle is running (autolock enabled)"
+            exit 0
+        else
+            echo "hypridle is stopped (autolock disabled)"
+            exit 1
+        fi
+        ;;
+    *)
+        echo "Usage: vulcan-idle [toggle|on|off|status]"
+        exit 1
+        ;;
+esac
