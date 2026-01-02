@@ -162,3 +162,10 @@ libreoffice-fresh
 ttf-jetbrains-mono-nerd
 noto-fonts
 noto-fonts-emoji
+
+# ----------------------------------------------------------------------------
+# SPEECH-TO-TEXT
+# ----------------------------------------------------------------------------
+python-faster-whisper
+rust
+cargo

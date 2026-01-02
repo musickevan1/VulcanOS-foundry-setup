@@ -9,7 +9,9 @@
     "modules-left": [
         "hyprland/workspaces",
         "custom/separator",
-        "hyprland/window"
+        "hyprland/window",
+        "custom/separator",
+        "custom/s2t"
     ],
 
     "modules-center": [
@@ -54,6 +56,21 @@
         "format": "|",
         "interval": "once",
         "tooltip": false
+    },
+
+    "custom/s2t": {
+        "exec": "~/.local/bin/vulcan-s2t-waybar",
+        "interval": 2,
+        "return-type": "json",
+        "format": "{icon}",
+        "format-icons": {
+            "idle": "<span foreground='#928374'>󰍜</span>",
+            "ready": "<span foreground='#a3be8c'>󰍜</span>",
+            "recording": "<span foreground='#fb4934'>󰍁</span>"
+        },
+        "tooltip": true,
+        "on-click": "vulcan-s2t settings",
+        "on-click-right": "vulcan-s2t toggle"
     },
 
     "hyprland/window": {
@@ -142,7 +159,7 @@
         "on-scroll-up": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+",
         "on-scroll-down": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-",
         "scroll-step": 5,
-        "smooth-scrolling-threshold": 1
+        "smooth-scrolling-threshold":1
     },
 
     "cpu": {

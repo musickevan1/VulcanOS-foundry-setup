@@ -1,0 +1,280 @@
+#!/usr/bin/env bash
+# VulcanOS Speech-to-Text Server Wrapper
+# Manages realtime-stt-server.py lifecycle
+#
+# Commands:
+#   start    - Start the S2T server
+#   stop     - Stop the S2T server
+#   status   - Show server status
+#   restart  - Restart the S2T server
+
+set -euo pipefail
+
+# VulcanOS color scheme
+BLUE=$'\e[0;34m'
+GREEN=$'\e[0;32m'
+YELLOW=$'\e[1;33m'
+RED=$'\e[0;31m'
+NC=$'\e[0m'
+
+# Paths
+CONFIG_DIR="$HOME/.config/vulcan-s2t"
+SERVER_FILE="$CONFIG_DIR/server.conf"
+DATA_DIR="$HOME/.local/share/vulcan-s2t"
+SERVER_SCRIPT="$DATA_DIR/realtime-stt-server.py"
+SERVER_PID="$DATA_DIR/server.pid"
+SERVER_LOG="$DATA_DIR/server.log"
+
+# GitHub source for server
+SERVER_URL="https://raw.githubusercontent.com/oddlama/whisper-overlay/main/realtime-stt-server.py"
+
+# Ensure directories exist
+init_dirs() {
+    mkdir -p "$DATA_DIR"
+    mkdir -p "$CONFIG_DIR"
+}
+
+# Download server script if missing
+download_server() {
+    if [[ ! -f "$SERVER_SCRIPT" ]]; then
+        printf "${BLUE}Downloading realtime-stt-server.py...${NC}\n"
+        if command -v curl &>/dev/null; then
+            curl -fsSL "$SERVER_URL" -o "$SERVER_SCRIPT"
+        elif command -v wget &>/dev/null; then
+            wget -q "$SERVER_URL" -O "$SERVER_SCRIPT"
+        else
+            printf "${RED}Error: Neither curl nor wget found${NC}\n" >&2
+            return 1
+        fi
+
+        if [[ -f "$SERVER_SCRIPT" ]]; then
+            chmod +x "$SERVER_SCRIPT"
+            printf "${GREEN}Server script downloaded${NC}\n"
+        else
+            printf "${RED}Error: Failed to download server script${NC}\n" >&2
+            return 1
+        fi
+    fi
+}
+
+# Check if server is running
+is_running() {
+    [[ -f "$SERVER_PID" ]] && kill -0 "$(cat "$SERVER_PID")" 2>/dev/null
+}
+
+# Check dependencies
+check_deps() {
+    if ! command -v python3 &>/dev/null; then
+        printf "${RED}Error: python3 not found${NC}\n" >&2
+        return 1
+    fi
+
+    if ! python3 -c "import faster_whisper" 2>/dev/null; then
+        printf "${RED}Error: python-faster-whisper not installed${NC}\n" >&2
+        printf "${YELLOW}Install: yay -S python-faster-whisper${NC}\n"
+        return 1
+    fi
+
+    if [[ ! -f "$SERVER_SCRIPT" ]]; then
+        printf "${RED}Error: Server script not found${NC}\n" >&2
+        return 1
+    fi
+}
+
+# Load server config
+load_config() {
+    if [[ -f "$SERVER_FILE" ]]; then
+        source "$SERVER_FILE"
+    else
+        # Defaults
+        S2T_MODEL_SIZE="small"
+        S2T_DEVICE="auto"
+        S2T_LANGUAGE=""
+        S2T_SAMPLE_RATE=16000
+        S2T_CHANNELS=1
+        S2T_LOG_LEVEL="info"
+    fi
+}
+
+# Start server
+start_server() {
+    init_dirs
+    download_server
+
+    if check_deps; then
+        load_config
+    else
+        return 1
+    fi
+
+    if is_running; then
+        printf "${YELLOW}Server already running (PID: $(cat "$SERVER_PID"))${NC}\n"
+        return 0
+    fi
+
+    printf "${BLUE}Starting S2T server...${NC}\n"
+
+    # Start server in background with logging
+    nohup python3 "$SERVER_SCRIPT" \
+        --host localhost \
+        --port 7007 \
+        --model "$S2T_MODEL_SIZE" \
+        --device "$S2T_DEVICE" \
+        ${S2T_LANGUAGE:+--language "$S2T_LANGUAGE"} \
+        --sample-rate "$S2T_SAMPLE_RATE" \
+        --channels "$S2T_CHANNELS" \
+        > "$SERVER_LOG" 2>&1 &
+
+    local pid=$!
+    echo "$pid" > "$SERVER_PID"
+
+    # Wait for server to be ready
+    local max_wait=30
+    local waited=0
+
+    while [[ $waited -lt $max_wait ]]; do
+        if ! kill -0 "$pid" 2>/dev/null; then
+            printf "${RED}Server failed to start${NC}\n" >&2
+            printf "${YELLOW}Check logs: $SERVER_LOG${NC}\n"
+            rm -f "$SERVER_PID"
+            return 1
+        fi
+
+        # Simple health check - try to connect
+        if command -v nc &>/dev/null; then
+            if nc -z localhost 7007 2>/dev/null; then
+                printf "${GREEN}Server started (PID: $pid)${NC}\n"
+                notify-send "S2T Server" "Started on localhost:7007" -i dialog-information
+                return 0
+            fi
+        fi
+
+        sleep 1
+        ((waited++))
+    done
+
+    printf "${RED}Server did not become ready within ${max_wait}s${NC}\n" >&2
+    printf "${YELLOW}Check logs: $SERVER_LOG${NC}\n"
+    return 1
+}
+
+# Stop server
+stop_server() {
+    if ! is_running; then
+        echo -e "${YELLOW}Server not running${NC}"
+        return 0
+    fi
+
+    local pid
+    pid=$(cat "$SERVER_PID")
+
+    printf "${BLUE}Stopping S2T server (PID: $pid)...${NC}\n"
+
+    # Try graceful shutdown
+    kill "$pid" 2>/dev/null || true
+
+    # Wait up to 5 seconds
+    local waited=0
+    while [[ $waited -lt 5 ]]; do
+        if ! kill -0 "$pid" 2>/dev/null; then
+            break
+        fi
+        sleep 1
+        ((waited++))
+    done
+
+    # Force kill if still running
+    if kill -0 "$pid" 2>/dev/null; then
+        kill -9 "$pid" 2>/dev/null || true
+    fi
+
+    rm -f "$SERVER_PID"
+    printf "${GREEN}Server stopped${NC}\n"
+    notify-send "S2T Server" "Stopped" -i dialog-information
+}
+
+# Show status
+show_status() {
+    if is_running; then
+        local pid
+        pid=$(cat "$SERVER_PID")
+        printf "${GREEN}Server: Running (PID: $pid)${NC}\n"
+
+        # Show uptime if we can
+        if command -v ps &>/dev/null; then
+            local uptime
+            uptime=$(ps -o etime= -p "$pid" 2>/dev/null | xargs || echo "")
+            if [[ -n "$uptime" ]]; then
+                printf "  ${BLUE}Uptime:${NC} $uptime\n"
+            fi
+        fi
+
+        # Check if listening
+        if command -v nc &>/dev/null; then
+            if nc -z localhost 7007 2>/dev/null; then
+                printf "  ${BLUE}Listening:${NC} localhost:7007\n"
+            fi
+        fi
+    else
+        printf "${RED}Server: Not running${NC}\n"
+    fi
+
+    if [[ -f "$SERVER_LOG" ]]; then
+        local log_size
+        log_size=$(du -h "$SERVER_LOG" | cut -f1)
+        printf "  ${BLUE}Log file:${NC} $SERVER_LOG ($log_size)\n"
+    fi
+}
+
+# Show help
+show_help() {
+    cat << EOF
+${BLUE}VulcanOS S2T Server Manager${NC}
+
+${GREEN}Usage:${NC}
+    vulcan-s2t-server <command>
+
+${GREEN}Commands:${NC}
+    start      Start the S2T server
+    stop       Stop the S2T server
+    status     Show server status
+    restart    Restart the S2T server
+    help       Show this help message
+
+${GREEN}Configuration:${NC}
+    Config file: $SERVER_FILE
+    Log file:   $SERVER_LOG
+EOF
+}
+
+# Main
+main() {
+    local command="${1:-help}"
+
+    case "$command" in
+        start)
+            start_server
+            ;;
+        stop)
+            stop_server
+            ;;
+        status)
+            show_status
+            ;;
+        restart)
+            stop_server
+            sleep 1
+            start_server
+            ;;
+        help|--help|-h)
+            show_help
+            ;;
+        *)
+            printf "${RED}Error: Unknown command '$command'${NC}\n" >&2
+            printf "Use ${BLUE}vulcan-s2t-server help${NC} to see available commands\n"
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"

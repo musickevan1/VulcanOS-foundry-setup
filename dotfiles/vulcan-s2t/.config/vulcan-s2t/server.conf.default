@@ -1,0 +1,9 @@
+# VulcanOS Speech-to-Text Server Configuration
+# This file controls the realtime-stt-server behavior
+
+S2T_MODEL_SIZE="small"
+S2T_DEVICE="auto"
+S2T_LANGUAGE=""
+S2T_SAMPLE_RATE=16000
+S2T_CHANNELS=1
+S2T_LOG_LEVEL="info"

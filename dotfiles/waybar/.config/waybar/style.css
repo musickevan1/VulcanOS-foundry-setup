@@ -65,6 +65,46 @@ window#waybar.hidden {
     margin: 4px 0;
 }
 
+#custom-s2t {
+    margin-right: 8px;
+}
+
+#custom-s2t.idle {
+    opacity: 0.6;
+}
+
+#custom-s2t.ready {
+    animation: pulse 2s ease-in-out infinite;
+}
+
+#custom-s2t.recording {
+    animation: pulse-recording 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0.8;
+    }
+    50% {
+        opacity: 1;
+    }
+    100% {
+        opacity: 0.8;
+    }
+}
+
+@keyframes pulse-recording {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
 /* Clock - Primary Accent */
 #clock {
     background-color: #3c3836;
@@ -228,7 +268,11 @@ window#waybar.hidden {
 }
 
 @keyframes blink {
-    to {
+    0% {
+        background-color: #cc241d;
+        color: #282828;
+    }
+    100% {
         background-color: #282828;
         color: #cc241d;
     }

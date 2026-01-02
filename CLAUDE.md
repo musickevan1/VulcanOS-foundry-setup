@@ -95,6 +95,8 @@ VulcanOS/
 │   ├── INSTALL.md             # Installation guide
 │   ├── KEYBINDINGS.md         # Keyboard shortcuts reference
 │   ├── OPENCODE.md            # OpenCode AI assistant setup
+│   ├── S2T.md                # Speech-to-Text user guide
+│   ├── S2T-INSTALL.md        # Speech-to-Text installation guide
 │   ├── T2-SUPPORT.md          # T2-specific documentation
 │   └── DEVELOPMENT.md         # Development environment guide
 ├── branding/                   # Custom branding assets
@@ -337,6 +339,14 @@ These must be added to GRUB configuration.
 3. Configure GTK/Qt themes via respective configs
 4. Update wallpapers in `branding/wallpapers/`
 
+### Configuring Speech-to-Text (S2T)
+
+1. Start S2T system: `vulcan-s2t start`
+2. Open settings menu: `vulcan-s2t settings` or `Super + Shift + ``
+3. Adjust model, hotkey, language, audio device
+4. See `docs/S2T.md` for full user guide
+5. See `docs/S2T-INSTALL.md` for installation details
+
 ## Development Workflow
 
 ### Local Testing
@@ -444,6 +454,9 @@ CODENAME="Genesis"
 | Edit Kitty config | `dotfiles/kitty/.config/kitty/kitty.conf` (live via stow) |
 | Edit OpenCode config | `dotfiles/opencode/.config/opencode/` (live via stow) |
 | User scripts | `dotfiles/scripts/` (stow to ~/.local/bin) |
+| S2T user guide | `docs/S2T.md` |
+| S2T installation | `docs/S2T-INSTALL.md` |
+| S2T config | `dotfiles/vulcan-s2t/.config/vulcan-s2t/*.default` (stow to ~/.config/vulcan-s2t/) |
 | Sync to ISO | Copy from `dotfiles/*/.config/` → `archiso/airootfs/etc/skel/.config/` |
 | System configs | `archiso/airootfs/etc/*` |
 | Custom scripts | `archiso/airootfs/usr/local/bin/` |

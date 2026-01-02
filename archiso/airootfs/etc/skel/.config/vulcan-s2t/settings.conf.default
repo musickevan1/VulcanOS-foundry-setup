@@ -1,0 +1,11 @@
+# VulcanOS Speech-to-Text User Settings
+# This file controls client behavior and user preferences
+
+S2T_MODEL="small"
+S2T_HOTKEY="KEY_GRAVE"
+S2T_LANGUAGE=""
+S2T_HOST="localhost"
+S2T_PORT="7007"
+S2T_AUDIO_DEVICE="default"
+S2T_OUTPUT_MODE="type"
+S2T_DEBUG="false"
