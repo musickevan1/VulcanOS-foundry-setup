@@ -1,0 +1,63 @@
+╔══════════════════════════════════════════════════════════════════════╗
+║              ORCHESTRATOR QUICK LAUNCH INSTRUCTIONS                  ║
+╚══════════════════════════════════════════════════════════════════════╝
+
+STEP 1: Create Pre-Flight Backup
+─────────────────────────────────
+/home/evan/VulcanOS/scripts/backup-vulcan-config.sh "final-pre-orchestrator"
+/home/evan/VulcanOS/scripts/verify-backups.sh
+
+
+STEP 2: Open Launch Prompt
+───────────────────────────
+cat /home/evan/VulcanOS/.orchestrator/LAUNCH-PROMPT.md
+
+
+STEP 3: Copy the Prompt
+────────────────────────
+Select and copy everything from "@orchestrator" to the end
+
+
+STEP 4: Launch OpenCode
+────────────────────────
+opencode
+
+
+STEP 5: Paste and Execute
+──────────────────────────
+Paste the copied prompt into OpenCode and press Enter
+
+
+STEP 6: Monitor Progress
+─────────────────────────
+Watch for:
+- Phase completion confirmations
+- Backup creation notifications
+- Verification requests
+- WAIT at Phase 3 for confirmation
+
+
+STEP 7: Confirmation at Phase 3
+────────────────────────────────
+Before Phase 3, orchestrator will STOP and ask you to:
+1. Create manual backup (it will guide you)
+2. Git commit current state
+3. Confirm ready to proceed
+
+Type "proceed" when ready.
+
+
+ROLLBACK IF NEEDED
+──────────────────
+$(cat /tmp/vulcan-last-backup.txt)/quick-restore.sh
+
+
+═══════════════════════════════════════════════════════════════════════
+
+ESTIMATED TIME: 2-3 hours
+SAFETY LEVEL: Maximum (triple backups)
+RISK LEVEL: Low (instant rollback available)
+
+Ready? Start with Step 1!
+
+═══════════════════════════════════════════════════════════════════════
