@@ -1,0 +1,57 @@
+#!/bin/bash
+# VulcanOS Universal Copy/Paste
+# Detects terminal vs GUI apps and sends appropriate shortcuts
+# Usage: vulcan-copy-paste [copy|paste]
+
+ACTION="${1:-copy}"
+
+# Get active window info
+WINDOW_JSON=$(hyprctl activewindow -j 2>/dev/null)
+
+if [[ -z "$WINDOW_JSON" || "$WINDOW_JSON" == "null" ]]; then
+    exit 1
+fi
+
+CLASS=$(echo "$WINDOW_JSON" | jq -r '.class // empty')
+TITLE=$(echo "$WINDOW_JSON" | jq -r '.title // empty')
+
+# Determine if this is a terminal context
+is_terminal() {
+    # Direct terminal emulators
+    case "$CLASS" in
+        kitty|alacritty|xterm|gnome-terminal|xfce4-terminal|konsole|terminator|tilix|foot|wezterm)
+            return 0
+            ;;
+    esac
+
+    # VS Code with integrated terminal active
+    if [[ "$CLASS" == "code" || "$CLASS" == "Code" || "$CLASS" == "code-oss" ]]; then
+        if [[ "$TITLE" =~ [Tt]erminal ]]; then
+            return 0
+        fi
+    fi
+
+    return 1
+}
+
+# Send the appropriate shortcut using wtype
+case "$ACTION" in
+    copy)
+        if is_terminal; then
+            wtype -M ctrl -M shift c
+        else
+            wtype -M ctrl c
+        fi
+        ;;
+    paste)
+        if is_terminal; then
+            wtype -M ctrl -M shift v
+        else
+            wtype -M ctrl v
+        fi
+        ;;
+    *)
+        echo "Usage: vulcan-copy-paste [copy|paste]"
+        exit 1
+        ;;
+esac

@@ -4,6 +4,8 @@ Keyboard-first workflow inspired by [Omarchy](https://learn.omacom.io/2/the-omar
 
 **Main Modifier**: `Super` (Command key on Mac)
 
+**Quick Help**: Press `Super + K` to show all hotkeys in a searchable menu.
+
 ---
 
 ## Navigation
@@ -11,7 +13,9 @@ Keyboard-first workflow inspired by [Omarchy](https://learn.omacom.io/2/the-omar
 | Keybinding | Action |
 |------------|--------|
 | `Super + Space` | Application launcher |
-| `Super + Escape` | Lock screen |
+| `Super + Alt + Space` | Vulcan menu |
+| `Super + Escape` | Power menu |
+| `Super + K` | Show hotkeys guide |
 | `Super + W` | Close window |
 | `Ctrl + Alt + Delete` | Close all windows |
 | `Super + Shift + Q` | Exit Hyprland |
@@ -26,6 +30,7 @@ Keyboard-first workflow inspired by [Omarchy](https://learn.omacom.io/2/the-omar
 | `Super + O` | Toggle sticky (pin window) |
 | `Super + F` | Fullscreen |
 | `Super + Alt + F` | Fake fullscreen |
+| `Super + J` | Toggle split direction (H/V) |
 | `Super + P` | Pseudo-tile |
 | `Super + Backspace` | Toggle transparency |
 
@@ -38,16 +43,10 @@ Keyboard-first workflow inspired by [Omarchy](https://learn.omacom.io/2/the-omar
 |------------|--------|
 | `Super + Arrow` | Move focus in direction |
 
-### Focus (Vim-style)
-| Keybinding | Action |
-|------------|--------|
-| `Super + H/J/K/L` | Focus left/down/up/right |
-
 ### Swap Windows
 | Keybinding | Action |
 |------------|--------|
 | `Super + Shift + Arrow` | Swap window in direction |
-| `Super + Shift + H/J/K/L` | Swap (vim-style) |
 
 ---
 
@@ -66,7 +65,8 @@ Keyboard-first workflow inspired by [Omarchy](https://learn.omacom.io/2/the-omar
 
 | Keybinding | Action |
 |------------|--------|
-| `Super + 1/2/3/4` | Jump to workspace |
+| `Super + 1-4` | Jump to workspace 1-4 |
+| `Super + 5-0` | Extended workspaces 5-10 |
 | `Super + Tab` | Next workspace |
 | `Super + Shift + Tab` | Previous workspace |
 | `Super + Ctrl + Tab` | Last workspace |
@@ -80,8 +80,9 @@ Keyboard-first workflow inspired by [Omarchy](https://learn.omacom.io/2/the-omar
 ### Scratchpad
 | Keybinding | Action |
 |------------|--------|
-| `Super + S` | Toggle scratchpad |
-| `Super + Alt + S` | Move window to scratchpad |
+| `Super + Z` | Toggle scratchpad |
+| `Super + Ctrl + Z` | Move window to scratchpad |
+| `Super + Alt + Z` | Pop window from scratchpad |
 
 ---
 
@@ -92,7 +93,7 @@ Keyboard-first workflow inspired by [Omarchy](https://learn.omacom.io/2/the-omar
 | `Super + G` | Toggle grouping |
 | `Super + Alt + G` | Remove from group |
 | `Super + Alt + Tab` | Cycle windows in group |
-| `Super + Alt + 1/2/3/4` | Jump to window in group |
+| `Super + Alt + 1-4` | Jump to window in group |
 | `Super + Alt + Arrow` | Move window into group |
 
 ---
@@ -101,11 +102,14 @@ Keyboard-first workflow inspired by [Omarchy](https://learn.omacom.io/2/the-omar
 
 | Keybinding | Application |
 |------------|-------------|
-| `Super + Return` | Terminal |
+| `Super + Return` | Terminal (Kitty) |
+| `Super + Shift + A` | Claude AI |
+| `Super + Shift + B` | Browser (Chromium) |
 | `Super + Shift + F` | File manager (Thunar) |
-| `Super + Shift + T` | Activity monitor (btop) |
+| `Super + Shift + T` | System monitor (btop) |
 | `Super + Shift + N` | Neovim |
 | `Super + Shift + G` | Lazygit |
+| `Super + Shift + D` | Lazydocker |
 | `Super + Shift + W` | Network settings (nmtui) |
 
 ---
@@ -114,19 +118,28 @@ Keyboard-first workflow inspired by [Omarchy](https://learn.omacom.io/2/the-omar
 
 | Keybinding | Action |
 |------------|--------|
+| `Super + C` | Copy (universal - works in terminals and GUI apps) |
+| `Super + V` | Paste (universal - works in terminals and GUI apps) |
 | `Super + Ctrl + V` | Clipboard history |
 
 ---
 
 ## Screenshots & Capture
 
+### Quick Screenshots (Super + S)
 | Keybinding | Action |
 |------------|--------|
-| `Print` | Screenshot region (edit) |
+| `Super + Shift + S` | Screenshot region |
+| `Super + Ctrl + S` | Screenshot full screen |
+| `Super + Alt + S` | Screenshot active window |
+
+### Print Key Alternatives
+| Keybinding | Action |
+|------------|--------|
+| `Print` | Screenshot region (edit with Swappy) |
 | `Shift + Print` | Screenshot full to clipboard |
 | `Alt + Print` | Screen recording |
 | `Super + Print` | Color picker |
-| `Super + Shift + Print` | Screenshot region to file |
 
 Screenshots saved to: `~/Pictures/Screenshots/`
 Recordings saved to: `~/Videos/`
@@ -137,9 +150,44 @@ Recordings saved to: `~/Videos/`
 
 | Keybinding | Action |
 |------------|--------|
-| `Super + ,` | Dismiss notification |
-| `Super + Shift + ,` | Dismiss all |
-| `Super + Ctrl + ,` | Toggle notification center |
+| `Super + ,` | Toggle notification panel |
+| `Super + Shift + ,` | Clear all notifications |
+| `Super + Ctrl + ,` | Toggle Do Not Disturb |
+
+---
+
+## Style & Themes
+
+| Keybinding | Action |
+|------------|--------|
+| `Super + Ctrl + Shift + Space` | Theme selector |
+| `Super + Ctrl + Space` | Rotate wallpaper |
+| `Super + Backspace` | Toggle transparency |
+
+---
+
+## Monitor Configuration
+
+| Keybinding | Action |
+|------------|--------|
+| `Super + M` | Open HyprMon TUI (primary tool) |
+| `Super + Alt + M` | Open nwg-displays GUI (visual tweaking) |
+| `Super + F1` | Apply "3-monitor" monitor profile |
+| `Super + F2` | Apply "laptop-only" monitor profile |
+| `Super + F3` | Open profile selection menu |
+| `Super + Shift + W` | Rotate wallpaper profiles |
+| `Super + Alt + W` | Reload wallpapers (no profile change) |
+
+---
+
+## System
+
+| Keybinding | Action |
+|------------|--------|
+| `Super + Ctrl + L` | Lock screen |
+| `Super + Ctrl + I` | Toggle auto-lock (hypridle) |
+| `Super + Ctrl + Escape` | System menu |
+| `Super + Ctrl + U` | Update menu |
 
 ---
 
@@ -193,19 +241,36 @@ Super + Return       Terminal
 Super + W            Close window
 Super + F            Fullscreen
 Super + T            Float/Tile
-Super + Escape       Lock
+Super + K            Show hotkeys
+Super + Escape       Power menu
 
 WORKSPACES
 Super + 1-4          Switch workspace
 Super + Tab          Next workspace
-Super + S            Scratchpad
+Super + Z            Scratchpad
 
 WINDOWS
 Super + Arrow        Focus
 Super + Shift + Arrow   Move
-Super + =/- 		 Resize
+Super + =/−          Resize
+Super + J            Toggle split
+
+CLIPBOARD
+Super + C            Copy (universal)
+Super + V            Paste (universal)
+
+SCREENSHOTS
+Super + Shift + S    Region
+Super + Ctrl + S     Full screen
+Super + Alt + S      Window
+
+NOTIFICATIONS
+Super + ,            Toggle panel
+Super + Ctrl + ,     Do Not Disturb
 
 APPS
+Super + Shift + A    Claude AI
+Super + Shift + B    Browser
 Super + Shift + F    Files
 Super + Shift + N    Neovim
 Super + Shift + T    System monitor

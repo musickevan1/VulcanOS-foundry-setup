@@ -1,0 +1,100 @@
+#!/bin/bash
+# OpenCode Directory Picker
+# Shows a wofi popup to select a project directory before launching opencode
+# Keybinding: Super+Shift+O
+
+set -euo pipefail
+
+# Configuration - customize these paths
+PROJECT_ROOTS=(
+    "$HOME"
+    "$HOME/projects"
+    "$HOME/code"
+    "$HOME/work"
+    "$HOME/dev"
+)
+
+# Build list of directories
+build_list() {
+    # Option to browse for a directory
+    echo ":: Browse for folder..."
+    echo ":: Current: $(pwd)"
+    echo ":: Home: $HOME"
+    echo "---"
+    
+    # Recent directories from zoxide (if available)
+    if command -v zoxide &> /dev/null; then
+        echo "# Recent Directories"
+        zoxide query -l 2>/dev/null | head -15 | while read -r dir; do
+            [[ -d "$dir" ]] && echo ">  $dir"
+        done
+        echo "---"
+    fi
+    
+    # Find git repositories
+    echo "# Git Projects"
+    for base in "${PROJECT_ROOTS[@]}"; do
+        [[ -d "$base" ]] || continue
+        find "$base" -maxdepth 4 -type d -name ".git" 2>/dev/null | while read -r gitdir; do
+            project="${gitdir%/.git}"
+            # Get a shorter display name
+            name=$(basename "$project")
+            parent=$(basename "$(dirname "$project")")
+            echo "@  $parent/$name -> $project"
+        done
+    done | sort -u
+}
+
+# Show picker
+selected=$(build_list | wofi --dmenu \
+    --prompt "OpenCode Project" \
+    --width 700 \
+    --height 500 \
+    --cache-file /dev/null \
+    --insensitive)
+
+[[ -z "$selected" ]] && exit 0
+
+# Handle special options
+case "$selected" in
+    ":: Browse for folder..."*)
+        # Fall back to terminal-based selection with fzf if available
+        if command -v fzf &> /dev/null; then
+            dir=$(find "${PROJECT_ROOTS[@]}" -maxdepth 4 -type d 2>/dev/null | fzf --prompt="Select directory: ")
+        else
+            notify-send "OpenCode" "Install fzf for browse functionality" --urgency=normal
+            exit 1
+        fi
+        ;;
+    ":: Current:"*)
+        dir="$(pwd)"
+        ;;
+    ":: Home:"*)
+        dir="$HOME"
+        ;;
+    *" -> "*)
+        # Extract path after arrow
+        dir="${selected##* -> }"
+        ;;
+    "> "*)
+        # Recent directory
+        dir="${selected#>  }"
+        ;;
+    "#"*|"---")
+        # Header or separator, ignore
+        exit 0
+        ;;
+    *)
+        # Try to use as-is
+        dir="$selected"
+        ;;
+esac
+
+# Launch opencode in the selected directory
+if [[ -n "$dir" && -d "$dir" ]]; then
+    cd "$dir"
+    exec kitty -e opencode
+else
+    notify-send "OpenCode" "Invalid directory: $dir" --urgency=critical
+    exit 1
+fi

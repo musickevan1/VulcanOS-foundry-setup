@@ -1,0 +1,40 @@
+# Wallpaper Profiles for VulcanOS
+# Matches monitor profiles saved in hyprmon
+#
+# Usage:
+#   vulcan-wallpapers apply 3-monitor
+#   vulcan-wallpapers apply laptop-only
+#
+# To add new profiles:
+#   vulcan-wallpapers save <profile-name>
+
+[profile.3-monitor]
+description = "Full 3-monitor docked setup (laptop + 2 externals)"
+eDP-1 = "/home/evan/Pictures/Wallpapers/vulcan-lockscreen.png"
+DP-4 = "/home/evan/Pictures/Wallpapers/vulcan-gradient.png"
+DP-5 = "/home/evan/Pictures/Wallpapers/vulcan-landscape.svg"
+
+[profile.laptop-only]
+description = "Laptop only, external displays disabled"
+eDP-1 = "/home/evan/Pictures/Wallpapers/vulcan-lockscreen.png"
+
+[profile.presentation]
+description = "Mirrored to external for presentations"
+eDP-1 = "/home/evan/Pictures/Wallpapers/vulcan-login-bg.png"
+DP-4 = "/home/evan/Pictures/Wallpapers/vulcan-login-bg.png"
+
+[profile.gradient]
+description = "Gradient wallpaper across all monitors"
+eDP-1 = "/home/evan/Pictures/Wallpapers/vulcan-gradient.png"
+DP-4 = "/home/evan/Pictures/Wallpapers/vulcan-gradient.png"
+DP-5 = "/home/evan/Pictures/Wallpapers/vulcan-gradient.png"
+
+[profile.landscape]
+description = "Landscape artistic wallpaper"
+eDP-1 = "/home/evan/Pictures/Wallpapers/vulcan-landscape.svg"
+DP-4 = "/home/evan/Pictures/Wallpapers/vulcan-landscape.svg"
+DP-5 = "/home/evan/Pictures/Wallpapers/vulcan-landscape.svg"
+
+[profile.minimal]
+description = "Minimalist single wallpaper across all monitors"
+# Empty path applies default wallpaper to all monitors

@@ -1,0 +1,97 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "model": "anthropic/claude-sonnet-4-20250514",
+  "share": "manual",
+  "autoupdate": "notify",
+  "instructions": [
+    "AGENTS.md",
+    "knowledge/stack.md",
+    "knowledge/conventions.md"
+  ],
+  "tools": {
+    "edit": true,
+    "write": true,
+    "read": true,
+    "bash": true,
+    "glob": true,
+    "grep": true,
+    "webfetch": true,
+    "todoread": true,
+    "todowrite": true
+  },
+  "permission": {
+    "edit": "ask",
+    "bash": "ask",
+    "webfetch": "allow"
+  },
+  "agent": {
+    "build": {
+      "model": "anthropic/claude-sonnet-4-20250514",
+      "prompt": "agent/build.md"
+    },
+    "plan": {
+      "model": "anthropic/claude-sonnet-4-20250514",
+      "prompt": "agent/plan.md",
+      "tools": {
+        "edit": false,
+        "bash": false,
+        "write": false
+      }
+    }
+  },
+  "mcp": {
+    "docker": {
+      "type": "local",
+      "command": ["docker-mcp-gateway", "run"]
+    }
+  },
+  "lsp": {
+    "typescript": {
+      "command": ["typescript-language-server", "--stdio"],
+      "extensions": [".ts", ".tsx", ".js", ".jsx"]
+    },
+    "tailwindcss": {
+      "command": ["tailwindcss-language-server", "--stdio"],
+      "extensions": [".css", ".scss", ".html", ".tsx", ".jsx"]
+    },
+    "json": {
+      "command": ["vscode-json-language-server", "--stdio"],
+      "extensions": [".json", ".jsonc"]
+    },
+    "html": {
+      "command": ["vscode-html-language-server", "--stdio"],
+      "extensions": [".html", ".htm"]
+    },
+    "css": {
+      "command": ["vscode-css-language-server", "--stdio"],
+      "extensions": [".css", ".scss", ".less"]
+    },
+    "yaml": {
+      "command": ["yaml-language-server", "--stdio"],
+      "extensions": [".yaml", ".yml"]
+    },
+    "bash": {
+      "command": ["bash-language-server", "start"],
+      "extensions": [".sh", ".bash", ".zsh"]
+    },
+    "go": {
+      "command": ["gopls"],
+      "extensions": [".go"]
+    },
+    "rust": {
+      "command": ["rust-analyzer"],
+      "extensions": [".rs"]
+    },
+    "python": {
+      "command": ["pyright-langserver", "--stdio"],
+      "extensions": [".py", ".pyi"]
+    },
+    "lua": {
+      "command": ["lua-language-server"],
+      "extensions": [".lua"]
+    }
+  },
+  "tui": {
+    "scroll_speed": 3
+  }
+}

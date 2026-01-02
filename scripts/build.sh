@@ -122,6 +122,13 @@ prepare_skel() {
         info "  - Copied SwayNC configuration"
     fi
 
+    # Copy branding wallpapers
+    mkdir -p "$skel_dir/Pictures/Wallpapers"
+    if [[ -d "$PROJECT_DIR/branding/wallpapers" ]]; then
+        cp "$PROJECT_DIR/branding/wallpapers"/*.png "$PROJECT_DIR/branding/wallpapers"/*.svg "$skel_dir/Pictures/Wallpapers/" 2>/dev/null
+        info "  - Copied branding wallpapers"
+    fi
+
     # Copy bashrc
     if [[ -f "$PROJECT_DIR/dotfiles/bash/.bashrc" ]]; then
         cp "$PROJECT_DIR/dotfiles/bash/.bashrc" "$skel_dir/.bashrc"

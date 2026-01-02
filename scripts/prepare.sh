@@ -89,6 +89,7 @@ prepare_airootfs() {
         "etc/skel/.config"
         "etc/skel/.local/bin"
         "etc/skel/Pictures/Screenshots"
+        "etc/skel/Pictures/Wallpapers"
         "etc/skel/Documents"
         "etc/skel/Downloads"
         "etc/skel/Projects"
@@ -127,11 +128,53 @@ create_hyprpaper_config() {
     info "Creating hyprpaper configuration..."
 
     local hypr_dir="$PROJECT_DIR/dotfiles/hypr"
-    mkdir -p "$hypr_dir"
+    mkdir -p "$hypr_dir/wallpapers"
 
+    # Create default wallpaper profiles
+    cat > "$hypr_dir/wallpapers/profiles.toml" << 'EOF'
+# Wallpaper Profiles for VulcanOS
+# Matches monitor profiles saved in hyprmon
+#
+# Usage:
+#   vulcan-wallpapers apply 3-monitor
+#   vulcan-wallpapers apply laptop-only
+#
+# To add new profiles:
+#   vulcan-wallpapers save <profile-name>
+
+[profile.3-monitor]
+description = "Full 3-monitor docked setup (laptop + 2 externals)"
+eDP-1 = "~/Pictures/Wallpapers/vulcan-laptop.png"
+DP-4 = "~/Pictures/Wallpapers/vulcan-desktop.png"
+DP-5 = "~/Pictures/Wallpapers/vulcan-side.png"
+
+[profile.laptop-only]
+description = "Laptop only, external displays disabled"
+eDP-1 = "~/Pictures/Wallpapers/vulcan-laptop.png"
+
+[profile.presentation]
+description = "Mirrored to external for presentations"
+eDP-1 = "~/Pictures/Wallpapers/vulcan-clean.png"
+DP-4 = "~/Pictures/Wallpapers/vulcan-clean.png"
+
+[profile.dark-mode]
+description = "Dark wallpapers for nighttime use"
+eDP-1 = "~/Pictures/Wallpapers/vulcan-laptop.png"
+DP-4 = "~/Pictures/Wallpapers/vulcan-desktop.png"
+DP-5 = "~/Pictures/Wallpapers/vulcan-side.png"
+
+[profile.minimal]
+description = "Minimalist single wallpaper across all monitors"
+# Empty path applies default wallpaper to all monitors
+    EOF
+
+    success "Wallpaper profiles created"
+
+    # Create simple hyprpaper.conf (will be managed by vulcan-wallpapers)
     cat > "$hypr_dir/hyprpaper.conf" << 'EOF'
 # Hyprpaper Configuration
-# Wallpaper daemon for Hyprland
+# Managed by vulcan-wallpapers script
+# Edit wallpaper profiles: ~/.config/hypr/wallpapers/profiles.toml
 
 preload = ~/Pictures/Wallpapers/wallpaper.png
 
@@ -140,7 +183,7 @@ wallpaper = ,~/Pictures/Wallpapers/wallpaper.png
 
 # Disable splash
 splash = false
-EOF
+    EOF
 
     success "Hyprpaper configuration created"
 }

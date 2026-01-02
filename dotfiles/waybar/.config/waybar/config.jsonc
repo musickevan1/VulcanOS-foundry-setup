@@ -23,7 +23,8 @@
         "pulseaudio",
         "cpu",
         "memory",
-        "battery"
+        "battery",
+        "custom/orchestra"
     ],
 
     "hyprland/workspaces": {
@@ -170,5 +171,15 @@
         "format-alt": "{icon} {time}",
         "format-icons": ["󰂎", "󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"],
         "tooltip-format": "{timeTo}\n{capacity}% - {power}W"
+    },
+
+    "custom/orchestra": {
+        "exec": "/home/evan/orchestra/notification/waybar/scripts/tray.sh json",
+        "interval": 1,
+        "format": "{}",
+        "return-type": "json",
+        "on-click": "/home/evan/orchestra/notification/waybar/scripts/tray.sh json",
+        "tooltip": true,
+        "escape": true
     }
 }

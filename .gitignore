@@ -1,35 +1,26 @@
-# Build outputs
+# Backup directories
+VulcanOS-backups/
+
+# Orchestrator session files (keep plans, ignore sessions)
+.orchestrator/sessions/
+
+# Temporary files
+*.bak
+*.tmp
+*.swp
+*~
+
+# Build artifacts
 out/
-*.iso
-
-# Work directories
-/tmp/
 work/
-
-# Custom repository (built packages)
-customrepo/x86_64/*.pkg.tar.*
 customrepo/x86_64/*.db*
 customrepo/x86_64/*.files*
 
-# Pre-built packages cached in airootfs
-archiso/airootfs/root/packages/*.pkg.tar.*
+# OS files
+.DS_Store
+Thumbs.db
 
-# Editor/IDE
+# Editor files
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
-.DS_Store
-
-# Logs
-*.log
-
-# Temporary files
-*.tmp
-*.bak
-*.orig
-
-# System files
-.directory
-Thumbs.db
+*.code-workspace

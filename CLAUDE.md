@@ -79,7 +79,9 @@ VulcanOS/
 │   ├── wofi/.config/wofi/     # Launcher config (stow target: ~/.config/wofi)
 │   ├── swaync/.config/swaync/ # Notification center (stow target: ~/.config/swaync)
 │   ├── nvim/.config/nvim/     # Neovim config (stow target: ~/.config/nvim)
+│   ├── opencode/.config/opencode/ # OpenCode AI config (stow target: ~/.config/opencode)
 │   ├── starship/.config/      # Starship prompt (stow target: ~/.config/)
+│   ├── scripts/               # User scripts (symlink to ~/.local/bin)
 │   └── themes/                # Theme system files
 ├── scripts/                    # Build and utility scripts
 │   ├── build.sh               # Main build script
@@ -92,6 +94,7 @@ VulcanOS/
 ├── docs/                       # Documentation
 │   ├── INSTALL.md             # Installation guide
 │   ├── KEYBINDINGS.md         # Keyboard shortcuts reference
+│   ├── OPENCODE.md            # OpenCode AI assistant setup
 │   ├── T2-SUPPORT.md          # T2-specific documentation
 │   └── DEVELOPMENT.md         # Development environment guide
 ├── branding/                   # Custom branding assets
@@ -180,6 +183,7 @@ out/
 ### Development (~60 packages)
 - VCS: git, git-delta, github-cli, lazygit, stow
 - Editors: neovim, neovim-lspconfig, code (VS Code OSS)
+- AI: OpenCode (installed post-install via curl)
 - Web: nodejs, npm, nvm, pnpm, yarn, typescript-language-server
 - Systems: rustup, go, gcc, clang, cmake, meson, ninja, gdb, lldb
 - Python: python, pyenv, python-virtualenv, jupyterlab, python-lsp-server
@@ -438,6 +442,8 @@ CODENAME="Genesis"
 | Edit Hyprland config | `dotfiles/hypr/.config/hypr/*.conf` (live via stow) |
 | Edit Waybar config | `dotfiles/waybar/.config/waybar/` (live via stow) |
 | Edit Kitty config | `dotfiles/kitty/.config/kitty/kitty.conf` (live via stow) |
+| Edit OpenCode config | `dotfiles/opencode/.config/opencode/` (live via stow) |
+| User scripts | `dotfiles/scripts/` (stow to ~/.local/bin) |
 | Sync to ISO | Copy from `dotfiles/*/.config/` → `archiso/airootfs/etc/skel/.config/` |
 | System configs | `archiso/airootfs/etc/*` |
 | Custom scripts | `archiso/airootfs/usr/local/bin/` |

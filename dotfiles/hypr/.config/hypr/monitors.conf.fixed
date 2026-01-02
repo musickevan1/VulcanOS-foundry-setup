@@ -1,0 +1,22 @@
+# Fixed Monitor Configuration for 3-Monitor Setup
+# Based on actual monitor names detected on 2026-01-01
+#
+# Current Monitor Names:
+# - eDP-1: Laptop (3072x1920@60Hz, scale 2.0, position 0x0)
+# - DP-5: Sceptre M27 (1920x1080@120Hz, scale 1.2, position -1600x-450)
+# - DP-6: Float2 Pro (1920x1080@60Hz, scale 1.0, position 1536x0)
+#
+# Note: Monitor names can change between reboots. If tools don't detect
+# your monitors, check with: hyprctl monitors
+
+# Laptop (eDP-1) at bottom-right, starts at seam
+# Spans x=0 to x=1536, y=0 to y=960 (logical: 3072x1920 / 2.0)
+monitor=eDP-1,3072x1920@60.0,0x0,2.0
+
+# Float2 Pro (DP-6) at right, above laptop
+# Spans x=1536 to x=3456, y=-1080 to y=0 (logical: 1920x1080 / 1.0)
+monitor=DP-6,1920x1080@60.0,1536x-1080,1.0
+
+# Sceptre (DP-5) at left, centered on seam with 1.2 scale
+# Right edge at x=0 (seam), spans x=-1600 to x=0, y=-450 to y=450 (logical: 1600x900)
+monitor=DP-5,1920x1080@120.0,-1600x-450,1.2

@@ -120,13 +120,37 @@ $ICON_BACK  Back"
         "Bluetooth Manager")      blueman-manager & ;;
         "Audio Settings")         pavucontrol & ;;
         "Display Settings")
-            if command -v nwg-displays &> /dev/null; then
-                nwg-displays &
-            elif command -v wdisplays &> /dev/null; then
-                wdisplays &
-            else
-                notify "No display manager found. Install nwg-displays or wdisplays."
-            fi
+            info "Choose display configuration tool:"
+            echo ""
+            echo "  1. HyprMon (TUI) - Quick config, profiles, advanced settings"
+            echo "  2. nwg-displays (GUI) - Visual monitor arrangement"
+            echo "  3. Wallpaper Profiles - Per-monitor wallpaper management"
+            echo ""
+            read -p "Select [1-3]: " tool_choice
+
+            case "$tool_choice" in
+                1)
+                    if command -v hyprmon &> /dev/null; then
+                        kitty --title "hyprmon" -- hyprmon
+                    else
+                        notify "HyprMon not found. Install with: yay -S hyprmon-bin"
+                    fi
+                    ;;
+                2)
+                    if command -v nwg-displays &> /dev/null; then
+                        nwg-displays &
+                    else
+                        notify "nwg-displays not found. Install with: pacman -S nwg-displays"
+                    fi
+                    ;;
+                3)
+                    if command -v vulcan-wallpapers &> /dev/null; then
+                        run_in_terminal vulcan-wallpapers list
+                    else
+                        notify "vulcan-wallpapers not found. Ensure scripts are in PATH."
+                    fi
+                    ;;
+            esac
             ;;
         "Back")                   show_main_menu ;;
         *)                        exit 0 ;;

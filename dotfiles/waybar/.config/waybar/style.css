@@ -1,4 +1,4 @@
-/* Waybar Style - Vulcan Forge Theme */
+/* Waybar Style - Gruvbox Dark Theme */
 
 * {
     font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", monospace;
@@ -10,8 +10,8 @@
 }
 
 window#waybar {
-    background-color: #1c1917;
-    color: #fafaf9;
+    background-color: #282828;
+    color: #ebdbb2;
     transition-property: background-color;
     transition-duration: 0.5s;
 }
@@ -26,68 +26,68 @@ window#waybar.hidden {
 }
 
 #workspaces button {
-    background-color: #292524;
-    color: #78716c;
+    background-color: #3c3836;
+    color: #928374;
     padding: 0 8px;
     margin: 4px 2px;
     border-radius: 4px;
-    border: 1px solid #44403c;
+    border: 1px solid #504945;
     transition: all 0.3s ease;
 }
 
 #workspaces button:hover {
-    background-color: #f97316;
-    color: #1c1917;
-    border-color: #f97316;
+    background-color: #458588;
+    color: #282828;
+    border-color: #458588;
 }
 
 #workspaces button.active {
-    background-color: #f97316;
-    color: #1c1917;
-    border-color: #f97316;
+    background-color: #458588;
+    color: #282828;
+    border-color: #458588;
     font-weight: bold;
 }
 
 #workspaces button.urgent {
-    background-color: #ef4444;
-    color: #1c1917;
-    border-color: #ef4444;
+    background-color: #cc241d;
+    color: #282828;
+    border-color: #cc241d;
 }
 
 #custom-separator {
-    color: #44403c;
+    color: #504945;
     padding: 0 4px;
 }
 
 #window {
-    color: #a8a29e;
+    color: #d5c4a1;
     padding: 0 10px;
     margin: 4px 0;
 }
 
 /* Clock - Primary Accent */
 #clock {
-    background-color: #292524;
-    color: #f97316;
+    background-color: #3c3836;
+    color: #458588;
     padding: 0 12px;
     margin: 4px 0;
     border-radius: 4px;
-    border: 1px solid #44403c;
+    border: 1px solid #504945;
     font-weight: bold;
 }
 
 #clock:hover {
-    background-color: #f97316;
-    color: #1c1917;
-    border-color: #f97316;
+    background-color: #458588;
+    color: #282828;
+    border-color: #458588;
 }
 
 #tray {
-    background-color: #292524;
+    background-color: #3c3836;
     padding: 0 8px;
     margin: 4px 2px;
     border-radius: 4px;
-    border: 1px solid #44403c;
+    border: 1px solid #504945;
 }
 
 #tray > .passive {
@@ -96,130 +96,130 @@ window#waybar.hidden {
 
 #tray > .needs-attention {
     -gtk-icon-effect: highlight;
-    background-color: #ef4444;
+    background-color: #cc241d;
 }
 
 /* Alternating modules: ACCENT (orange) and ACCENT_ALT (yellow) */
 
 #bluetooth {
-    background-color: #292524;
-    color: #f97316;
+    background-color: #3c3836;
+    color: #458588;
     padding: 0 10px;
     margin: 4px 2px;
     border-radius: 4px;
-    border: 1px solid #44403c;
+    border: 1px solid #504945;
 }
 
 #bluetooth:hover {
-    background-color: #f97316;
-    color: #1c1917;
-    border-color: #f97316;
+    background-color: #458588;
+    color: #282828;
+    border-color: #458588;
 }
 
 #bluetooth.connected {
-    color: #22c55e;
+    color: #98971a;
 }
 
 #bluetooth.disabled {
-    color: #78716c;
+    color: #928374;
 }
 
 #network {
-    background-color: #292524;
-    color: #fbbf24;
+    background-color: #3c3836;
+    color: #b16286;
     padding: 0 10px;
     margin: 4px 2px;
     border-radius: 4px;
-    border: 1px solid #44403c;
+    border: 1px solid #504945;
 }
 
 #network:hover {
-    background-color: #fbbf24;
-    color: #1c1917;
-    border-color: #fbbf24;
+    background-color: #b16286;
+    color: #282828;
+    border-color: #b16286;
 }
 
 #network.disconnected {
-    color: #ef4444;
+    color: #cc241d;
 }
 
 #network.linked {
-    color: #f97316;
+    color: #458588;
 }
 
 #pulseaudio {
-    background-color: #292524;
-    color: #f97316;
+    background-color: #3c3836;
+    color: #458588;
     padding: 0 10px;
     margin: 4px 2px;
     border-radius: 4px;
-    border: 1px solid #44403c;
+    border: 1px solid #504945;
 }
 
 #pulseaudio:hover {
-    background-color: #f97316;
-    color: #1c1917;
-    border-color: #f97316;
+    background-color: #458588;
+    color: #282828;
+    border-color: #458588;
 }
 
 #pulseaudio.muted {
-    color: #78716c;
+    color: #928374;
 }
 
 #cpu {
-    background-color: #292524;
-    color: #fbbf24;
+    background-color: #3c3836;
+    color: #b16286;
     padding: 0 10px;
     margin: 4px 2px;
     border-radius: 4px;
-    border: 1px solid #44403c;
+    border: 1px solid #504945;
 }
 
 #cpu:hover {
-    background-color: #fbbf24;
-    color: #1c1917;
-    border-color: #fbbf24;
+    background-color: #b16286;
+    color: #282828;
+    border-color: #b16286;
 }
 
 #memory {
-    background-color: #292524;
-    color: #f97316;
+    background-color: #3c3836;
+    color: #458588;
     padding: 0 10px;
     margin: 4px 2px;
     border-radius: 4px;
-    border: 1px solid #44403c;
+    border: 1px solid #504945;
 }
 
 #memory:hover {
-    background-color: #f97316;
-    color: #1c1917;
-    border-color: #f97316;
+    background-color: #458588;
+    color: #282828;
+    border-color: #458588;
 }
 
 #battery {
-    background-color: #292524;
-    color: #fbbf24;
+    background-color: #3c3836;
+    color: #b16286;
     padding: 0 10px;
     margin: 4px 2px 4px 2px;
     border-radius: 4px;
-    border: 1px solid #44403c;
+    border: 1px solid #504945;
 }
 
 #battery:hover {
-    background-color: #fbbf24;
-    color: #1c1917;
-    border-color: #fbbf24;
+    background-color: #b16286;
+    color: #282828;
+    border-color: #b16286;
 }
 
 /* Battery stays yellow regardless of charging state */
 
 #battery.warning:not(.charging) {
-    color: #f97316;
+    color: #458588;
 }
 
 #battery.critical:not(.charging) {
-    background-color: #ef4444;
-    color: #1c1917;
+    background-color: #cc241d;
+    color: #282828;
     animation-name: blink;
     animation-duration: 0.5s;
     animation-timing-function: linear;
@@ -229,18 +229,18 @@ window#waybar.hidden {
 
 @keyframes blink {
     to {
-        background-color: #1c1917;
-        color: #ef4444;
+        background-color: #282828;
+        color: #cc241d;
     }
 }
 
 tooltip {
-    background-color: #1c1917;
-    border: 1px solid #44403c;
+    background-color: #282828;
+    border: 1px solid #504945;
     border-radius: 4px;
 }
 
 tooltip label {
-    color: #fafaf9;
+    color: #ebdbb2;
     padding: 4px;
 }
