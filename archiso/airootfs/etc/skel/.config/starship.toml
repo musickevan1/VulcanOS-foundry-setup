@@ -4,24 +4,24 @@
 # https://starship.rs/config/
 # =============================================================================
 
-# Prompt format - traditional Linux style with git info
+# Prompt format - two line style with VulcanOS colors
 format = """
-[\\[](fg:#f97316)\
+[\\[](208)\
 $username\
-[@](fg:#fafaf9)\
+[@](208)\
 $hostname\
-[ ](fg:#fafaf9)\
+[ ](white)\
 $directory\
-[\\]](fg:#f97316)\
+[\\]](208)\
 $git_branch\
-$git_status\
+$git_status
 $character"""
 
 # Right prompt for command duration (optional)
 right_format = """$cmd_duration"""
 
-# No newline between prompts
-add_newline = false
+# Add newline between prompts for readability
+add_newline = true
 
 # Command timeout
 command_timeout = 1000
@@ -32,40 +32,40 @@ command_timeout = 1000
 
 [username]
 show_always = true
-style_user = "fg:#fafaf9 bold"
-style_root = "fg:#ef4444 bold"
+style_user = "220"
+style_root = "bold red"
 format = '[$user]($style)'
 disabled = false
 
 [hostname]
 ssh_only = false
 ssh_symbol = " "
-style = "fg:#fbbf24 bold"
+style = "208"
 format = '[$ssh_symbol$hostname]($style)'
 disabled = false
 trim_at = "."
 
 [directory]
-style = "fg:#3b82f6 bold"
+style = "white"
 format = '[$path]($style)[$read_only]($read_only_style)'
 truncation_length = 3
 truncation_symbol = ".../"
 truncate_to_repo = true
 read_only = " "
-read_only_style = "fg:#ef4444"
+read_only_style = "red"
 home_symbol = "~"
 
 # Git branch - shown inline after directory
 [git_branch]
 symbol = " "
-style = "fg:#a855f7"
+style = "#a855f7"
 format = '[ $symbol$branch(:$remote_branch)]($style)'
 truncation_length = 20
 truncation_symbol = "..."
 
 # Git status - compact indicators
 [git_status]
-style = "fg:#fbbf24"
+style = "#fbbf24"
 format = '[$all_status$ahead_behind]($style)'
 conflicted = "=${count}"
 ahead = "${count}"
@@ -78,11 +78,11 @@ staged = "+${count}"
 renamed = "~${count}"
 deleted = "-${count}"
 
-# Character - the final $ or # for root
+# Character - white arrow, red on error
 [character]
-success_symbol = '[\\$](bold fg:#22c55e)'
-error_symbol = '[\\$](bold fg:#ef4444)'
-vimcmd_symbol = '[\\$](bold fg:#fbbf24)'
+success_symbol = '[❯](bold white)'
+error_symbol = '[❯](bold red)'
+vimcmd_symbol = '[❮](bold white)'
 
 # =============================================================================
 # RIGHT PROMPT

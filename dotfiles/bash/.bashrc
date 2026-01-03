@@ -1,33 +1,82 @@
 #!/bin/bash
+# =============================================================================
+# VulcanOS Bash Configuration
+# =============================================================================
 
 # If not running interactively, don't do anything
 [[ $- != *i* ]] && return
 
-# History settings
+# =============================================================================
+# BLE.SH INITIALIZATION (must be sourced early for syntax highlighting)
+# Install with: yay -S blesh
+# =============================================================================
+if [[ -f /usr/share/blesh/ble.sh ]]; then
+    source /usr/share/blesh/ble.sh --noattach
+fi
+
+# =============================================================================
+# HISTORY
+# =============================================================================
 HISTSIZE=10000
 HISTFILESIZE=20000
 HISTCONTROL=ignoreboth:erasedups
 shopt -s histappend
 
-# Shell options
+# =============================================================================
+# SHELL OPTIONS
+# =============================================================================
 shopt -s checkwinsize
 shopt -s cdspell
 shopt -s dirspell
 shopt -s autocd
+shopt -s globstar 2>/dev/null
 
-# PATH additions
+# =============================================================================
+# PATH ADDITIONS
+# =============================================================================
 export PATH="$HOME/.local/bin:$PATH"
 export PATH="$HOME/.cargo/bin:$PATH"
 export PATH="/usr/local/go/bin:$PATH"
 export PATH="$HOME/go/bin:$PATH"
 
-# Default applications
+# =============================================================================
+# DEFAULT APPLICATIONS
+# =============================================================================
 export EDITOR="nvim"
 export VISUAL="nvim"
-export TERMINAL="alacritty"
-export BROWSER="firefox"
+export TERMINAL="kitty"
+export BROWSER="chromium"
 
-# Modern CLI tool aliases
+# =============================================================================
+# VULCANOS TERMINAL GREETING
+# =============================================================================
+vulcan_greeting() {
+    # Only show once per session (not in subshells)
+    if [[ -z "$VULCAN_GREETED" ]]; then
+        export VULCAN_GREETED=1
+
+        # Colors
+        local O='\033[38;2;249;115;22m'  # Forge Orange
+        local G='\033[38;2;251;191;36m'  # Ember Gold
+        local R='\033[0m'                 # Reset
+
+        echo ""
+        echo -e "${O} ██╗   ██╗██╗   ██╗██╗      ██████╗ █████╗ ███╗   ██╗${G} ██████╗ ███████╗${R}"
+        echo -e "${O} ██║   ██║██║   ██║██║     ██╔════╝██╔══██╗████╗  ██║${G}██╔═══██╗██╔════╝${R}"
+        echo -e "${O} ██║   ██║██║   ██║██║     ██║     ███████║██╔██╗ ██║${G}██║   ██║███████╗${R}"
+        echo -e "${O} ╚██╗ ██╔╝██║   ██║██║     ██║     ██╔══██║██║╚██╗██║${G}██║   ██║╚════██║${R}"
+        echo -e "${O}  ╚████╔╝ ╚██████╔╝███████╗╚██████╗██║  ██║██║ ╚████║${G}╚██████╔╝███████║${R}"
+        echo -e "${O}   ╚═══╝   ╚═════╝ ╚══════╝ ╚═════╝╚═╝  ╚═╝╚═╝  ╚═══╝${G} ╚═════╝ ╚══════╝${R}"
+        echo ""
+    fi
+}
+
+# Show greeting (comment out to disable)
+vulcan_greeting
+
+# =============================================================================
+# MODERN CLI ALIASES
+# =============================================================================
 if command -v eza &> /dev/null; then
     alias ls='eza --icons --group-directories-first'
     alias ll='eza -l --icons --group-directories-first'
@@ -50,7 +99,9 @@ if command -v rg &> /dev/null; then
     alias grep='rg'
 fi
 
-# Useful aliases
+# =============================================================================
+# UTILITY ALIASES
+# =============================================================================
 alias ..='cd ..'
 alias ...='cd ../..'
 alias ....='cd ../../..'
@@ -74,25 +125,27 @@ alias gl='git pull'
 alias gd='git diff'
 alias glog='git log --oneline --graph --decorate'
 
-# Neovim
+# Editor aliases
 alias vim='nvim'
 alias vi='nvim'
 
-# fzf integration
+# =============================================================================
+# FZF INTEGRATION
+# =============================================================================
 if command -v fzf &> /dev/null; then
-    # Source fzf keybindings and completion
-    [[ -f /usr/share/fzf/key-bindings.bash ]] && source /usr/share/fzf/key-bindings.bash
-    [[ -f /usr/share/fzf/completion.bash ]] && source /usr/share/fzf/completion.bash
+    # Source fzf keybindings and completion (suppress ble.sh compatibility warnings)
+    [[ -f /usr/share/fzf/key-bindings.bash ]] && source /usr/share/fzf/key-bindings.bash 2>/dev/null
+    [[ -f /usr/share/fzf/completion.bash ]] && source /usr/share/fzf/completion.bash 2>/dev/null
 
-    # fzf default options
+    # FZF default options - VulcanOS Forge colors
     export FZF_DEFAULT_OPTS="
         --height 40%
         --layout=reverse
         --border
         --inline-info
-        --color=bg+:#33467c,bg:#1a1b26,spinner:#7dcfff,hl:#f7768e
-        --color=fg:#c0caf5,header:#f7768e,info:#e0af68,pointer:#7dcfff
-        --color=marker:#9ece6a,fg+:#c0caf5,prompt:#7aa2f7,hl+:#f7768e
+        --color=bg+:#292524,bg:#1c1917,spinner:#f97316,hl:#ef4444
+        --color=fg:#fafaf9,header:#ef4444,info:#fbbf24,pointer:#f97316
+        --color=marker:#22c55e,fg+:#fafaf9,prompt:#f97316,hl+:#ef4444
     "
 
     # Use fd for fzf if available
@@ -103,18 +156,153 @@ if command -v fzf &> /dev/null; then
     fi
 fi
 
-# zoxide initialization (smarter cd)
+# =============================================================================
+# ZOXIDE (Smart cd)
+# =============================================================================
 if command -v zoxide &> /dev/null; then
     eval "$(zoxide init bash)"
 fi
 
-# Starship prompt initialization
+# =============================================================================
+# STARSHIP PROMPT
+# =============================================================================
 if command -v starship &> /dev/null; then
     eval "$(starship init bash)"
 else
-    # Fallback prompt
+    # Fallback prompt (traditional style)
     PS1='[\u@\h \W]\$ '
 fi
 
-# Load local customizations if they exist
+# =============================================================================
+# BLE.SH MINIMAL THEME - Monochrome + Orange + Gold
+# VulcanOS colors: 208=orange, 220=gold, 255=white, 249=gray, 240=dim
+# =============================================================================
+if [[ ${BLE_VERSION-} ]]; then
+    # Theme function - called after ble.sh loads syntax module
+    function vulcanos-theme {
+        # Commands - Orange for recognized
+        ble-color-setface command_alias        fg=208
+        ble-color-setface command_builtin      fg=208
+        ble-color-setface command_builtin_dot  fg=208
+        ble-color-setface command_directory    fg=249
+        ble-color-setface command_file         fg=255
+        ble-color-setface command_function     fg=208
+        ble-color-setface command_jobs         fg=208
+        ble-color-setface command_keyword      fg=208
+
+        # Syntax - Orange commands, Gold strings/vars
+        ble-color-setface syntax_brace         fg=220
+        ble-color-setface syntax_command       fg=208
+        ble-color-setface syntax_comment       fg=240
+        ble-color-setface syntax_default       fg=255
+        ble-color-setface syntax_delimiter     fg=249
+        ble-color-setface syntax_document      fg=220
+        ble-color-setface syntax_document_begin fg=208
+        ble-color-setface syntax_error         fg=208,bold
+        ble-color-setface syntax_expr          fg=220
+        ble-color-setface syntax_function_name fg=208
+        ble-color-setface syntax_glob          fg=220
+        ble-color-setface syntax_history_expansion fg=208
+        ble-color-setface syntax_param_expansion fg=220
+        ble-color-setface syntax_quotation     fg=220
+        ble-color-setface syntax_quoted        fg=220
+        ble-color-setface syntax_tilde         fg=220
+        ble-color-setface syntax_varname       fg=220
+
+        # Filenames - Subtle grays
+        ble-color-setface filename_block       fg=249
+        ble-color-setface filename_character   fg=249
+        ble-color-setface filename_directory   fg=249
+        ble-color-setface filename_directory_sticky fg=249
+        ble-color-setface filename_executable  fg=255
+        ble-color-setface filename_link        fg=249,underline
+        ble-color-setface filename_ls_colors   fg=249
+        ble-color-setface filename_orphan      fg=240
+        ble-color-setface filename_other       fg=249
+        ble-color-setface filename_pipe        fg=249
+        ble-color-setface filename_setgid      fg=249
+        ble-color-setface filename_setuid      fg=249
+        ble-color-setface filename_socket      fg=249
+        ble-color-setface filename_warning     fg=208
+
+        # UI
+        ble-color-setface auto_complete        fg=240
+        ble-color-setface menu_filter_input    fg=208
+        ble-color-setface menu_filter_fixed    fg=249
+        ble-color-setface region_target        fg=black,bg=208
+    }
+
+    # Autocomplete settings
+    bleopt complete_auto_delay=50
+
+    # Attach ble.sh first
+    ble-attach
+
+    # Apply theme after attach (when all modules are loaded)
+    vulcanos-theme 2>/dev/null
+fi
+
+# =============================================================================
+# OPENCODE PERMISSION MODES
+# =============================================================================
+opencode() {
+    local MODE="default"
+    local ARGS=()
+
+    # Parse arguments
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --yolo)
+                MODE="yolo"
+                shift
+                ;;
+            --safe)
+                MODE="safe"
+                shift
+                ;;
+            *)
+                ARGS+=("$1")
+                shift
+                ;;
+        esac
+    done
+
+    # Set config based on mode
+    case "$MODE" in
+        yolo)
+            export OPENCODE_CONFIG="$HOME/.config/opencode/opencode-yolo.json"
+            echo "🚀 OpenCode in YOLO mode"
+            ;;
+        safe)
+            export OPENCODE_CONFIG="$HOME/.config/opencode/opencode-safe.json"
+            echo "🛡️  OpenCode in SAFE mode"
+            ;;
+        default)
+            # Use default config (no export)
+            ;;
+    esac
+
+    # Run opencode with remaining arguments
+    command opencode "${ARGS[@]}"
+}
+
+# =============================================================================
+# LOCAL CUSTOMIZATIONS
+# =============================================================================
 [[ -f ~/.bashrc.local ]] && source ~/.bashrc.local
+
+# pnpm
+export PNPM_HOME="/home/evan/.local/share/pnpm"
+case ":$PATH:" in
+  *":$PNPM_HOME:"*) ;;
+  *) export PATH="$PNPM_HOME:$PATH" ;;
+esac
+# pnpm end
+
+# =============================================================================
+# OPENCODE & MCP ENVIRONMENT VARIABLES
+# =============================================================================
+export BRAVE_API_KEY="REDACTED_BRAVE_KEY"
+export GITHUB_TOKEN="REDACTED_GITHUB_TOKEN"
+export CONTEXT7_API_KEY="REDACTED_CONTEXT7_KEY"
+export LINEAR_API_KEY=""
