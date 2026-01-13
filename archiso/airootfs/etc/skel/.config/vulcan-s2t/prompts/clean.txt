@@ -1,0 +1,6 @@
+Transcribe the audio to text.
+
+Rules:
+- Output ONLY the transcribed text
+- No explanations, no marketing, no links
+- If empty audio: [No speech detected]

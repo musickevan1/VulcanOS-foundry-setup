@@ -1,0 +1,28 @@
+# ============================================================
+# VulcanOS S2T - API Key Configuration
+# ============================================================
+#
+# This file stores your OpenRouter API key for cloud-based
+# speech-to-text transcription.
+#
+# SETUP:
+# 1. Visit https://openrouter.ai and create an account
+# 2. Go to Settings → Keys → Create new key
+# 3. Copy your API key and paste it below
+# 4. Save this file
+#
+# SECURITY:
+# - This file should have permissions 600 (owner read/write only)
+# - Run: chmod 600 ~/.config/vulcan-s2t/api-key.conf
+# - Never commit this file to version control
+# - The key is only sent to OpenRouter's servers
+#
+# USAGE:
+# - OpenRouter provides access to many models via one API
+# - Pricing varies by model (Gemini Flash is very affordable)
+# - See https://openrouter.ai/models for pricing details
+#
+# ============================================================
+
+# Replace the placeholder with your actual API key:
+OPENROUTER_API_KEY="your-api-key-here"

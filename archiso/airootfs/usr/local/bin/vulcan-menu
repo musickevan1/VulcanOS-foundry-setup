@@ -15,6 +15,7 @@ CONFIG_DIR="${HOME}/.config"
 # Icons (Nerd Font)
 ICON_SYSTEM="󰒋"
 ICON_STYLE="󰏘"
+ICON_QUICK="󱁤"
 ICON_INSTALL="󰏗"
 ICON_REMOVE="󰩺"
 ICON_SETUP="󰒓"
@@ -62,6 +63,7 @@ wofi_menu() {
 show_main_menu() {
     local options="$ICON_SYSTEM  System
 $ICON_STYLE  Style
+$ICON_QUICK  Quick Settings
 $ICON_INSTALL  Install
 $ICON_REMOVE  Remove
 $ICON_SETUP  Setup
@@ -76,15 +78,382 @@ $ICON_POWER  Power"
     action=$(echo "$choice" | sed 's/^[^ ]* *//' | tr '[:upper:]' '[:lower:]')
 
     case "$action" in
-        "system")     show_system_menu ;;
-        "style")      show_style_menu ;;
-        "install")    show_install_menu ;;
-        "remove")     show_remove_menu ;;
-        "setup")      show_setup_menu ;;
-        "update")     show_update_menu ;;
-        "t2 macbook") show_t2_menu ;;
-        "power")      exec vulcan-power ;;
-        *)            exit 0 ;;
+        "system")         show_system_menu ;;
+        "style")          show_style_menu ;;
+        "quick settings") show_quick_settings_menu ;;
+        "install")        show_install_menu ;;
+        "remove")         show_remove_menu ;;
+        "setup")          show_setup_menu ;;
+        "update")         show_update_menu ;;
+        "t2 macbook")     show_t2_menu ;;
+        "power")          exec vulcan-power ;;
+        *)                exit 0 ;;
+    esac
+}
+
+# =============================================================================
+# DISPLAY SETTINGS SUBMENU
+# =============================================================================
+
+show_display_settings_menu() {
+    local options="󰍹  HyprMon (TUI)
+󰍺  nwg-displays (GUI)
+󰸉  Wallpaper Profiles
+$ICON_BACK  Back"
+
+    local choice
+    choice=$(wofi_menu "Display Settings" "$options" 320 240)
+
+    local action
+    action=$(echo "$choice" | sed 's/^[^ ]* *//')
+
+    case "$action" in
+        "HyprMon (TUI)")
+            if command -v hyprmon &> /dev/null; then
+                $TERMINAL --title "hyprmon" -- hyprmon
+            else
+                notify "HyprMon not found. Install with: yay -S hyprmon-bin"
+            fi
+            ;;
+        "nwg-displays (GUI)")
+            if command -v nwg-displays &> /dev/null; then
+                nwg-displays &
+            else
+                notify "nwg-displays not found. Install with: pacman -S nwg-displays"
+            fi
+            ;;
+        "Wallpaper Profiles")
+            if command -v vulcan-wallpapers &> /dev/null; then
+                run_in_terminal vulcan-wallpapers list
+            else
+                notify "vulcan-wallpapers not found. Ensure scripts are in PATH."
+            fi
+            ;;
+        "Back")
+            show_system_menu
+            ;;
+        *)
+            exit 0
+            ;;
+    esac
+}
+
+# =============================================================================
+# QUICK SETTINGS SUBMENU
+# =============================================================================
+
+get_wifi_status() {
+    # Check if iwd is running
+    if ! systemctl is-active --quiet iwd; then
+        echo "N/A"
+        return
+    fi
+    
+    # Check if any adapter is powered on
+    # iwd doesn't have a global radio state, check device state instead
+    local device
+    device=$(iwctl device list 2>/dev/null | grep -E "wlan[0-9]|wlp" | awk '{print $4}' | head -1)
+    
+    if [[ "$device" == "on" ]] || iwctl station list 2>/dev/null | grep -q "connected\|disconnected"; then
+        echo "On"
+    else
+        echo "Off"
+    fi
+}
+
+get_bluetooth_status() {
+    if command -v bluetoothctl &> /dev/null; then
+        if bluetoothctl show 2>/dev/null | grep -q "Powered: yes"; then
+            echo "On"
+        else
+            echo "Off"
+        fi
+    else
+        echo "N/A"
+    fi
+}
+
+get_dnd_status() {
+    if command -v swaync-client &> /dev/null; then
+        if swaync-client -D 2>/dev/null | grep -q "true"; then
+            echo "On"
+        else
+            echo "Off"
+        fi
+    else
+        echo "N/A"
+    fi
+}
+
+get_autolock_status() {
+    if pgrep -x hypridle &> /dev/null; then
+        echo "Enabled"
+    else
+        echo "Disabled"
+    fi
+}
+
+get_volume() {
+    if command -v wpctl &> /dev/null; then
+        wpctl get-volume @DEFAULT_AUDIO_SINK@ | awk '{print int($2 * 100)}'
+    else
+        echo "N/A"
+    fi
+}
+
+get_brightness() {
+    if command -v brightnessctl &> /dev/null; then
+        brightnessctl -m | cut -d',' -f4 | tr -d '%'
+    else
+        echo "N/A"
+    fi
+}
+
+show_quick_settings_menu() {
+    local wifi_status
+    local bt_status
+    local dnd_status
+    local autolock_status
+    local volume
+    local brightness
+
+    wifi_status=$(get_wifi_status)
+    bt_status=$(get_bluetooth_status)
+    dnd_status=$(get_dnd_status)
+    autolock_status=$(get_autolock_status)
+    volume=$(get_volume)
+    brightness=$(get_brightness)
+
+    local options="󰖩  WiFi: $wifi_status
+󰂯  Bluetooth: $bt_status
+󰂚  Do Not Disturb: $dnd_status
+󰌵  Auto-Lock: $autolock_status
+󰍹  Brightness: ${brightness}%
+󰕾  Volume: ${volume}%
+󰀝  Keyboard Backlight
+$ICON_BACK  Back"
+
+    local choice
+    choice=$(wofi_menu "Quick Settings" "$options" 350 420)
+
+    local action
+    action=$(echo "$choice" | sed 's/^[^ ]* *//' | cut -d':' -f1)
+
+    case "$action" in
+        "WiFi")
+            if [[ "$wifi_status" == "N/A" ]]; then
+                notify "iwd service not running"
+                show_quick_settings_menu
+                return
+            fi
+            
+            # Get WiFi device name
+            local wifi_device
+            wifi_device=$(iwctl device list 2>/dev/null | grep -E "station" | awk '{print $2}' | head -1)
+            
+            if [[ -z "$wifi_device" ]]; then
+                notify "No WiFi device found"
+                show_quick_settings_menu
+                return
+            fi
+            
+            if [[ "$wifi_status" == "On" ]]; then
+                # Disconnect and power off
+                iwctl station "$wifi_device" disconnect 2>/dev/null
+                iwctl adapter phy0 set-property Powered off 2>/dev/null
+                notify "WiFi disabled"
+            else
+                # Power on
+                iwctl adapter phy0 set-property Powered on 2>/dev/null
+                notify "WiFi enabled (use iwctl to connect)"
+            fi
+            show_quick_settings_menu
+            ;;
+        "Bluetooth")
+            if [[ "$bt_status" == "On" ]]; then
+                bluetoothctl power off
+                notify "Bluetooth disabled"
+            else
+                bluetoothctl power on
+                notify "Bluetooth enabled"
+            fi
+            show_quick_settings_menu
+            ;;
+        "Do Not Disturb")
+            if [[ "$dnd_status" == "On" ]]; then
+                swaync-client -df
+                notify "Do Not Disturb disabled"
+            else
+                swaync-client -dn
+                notify "Do Not Disturb enabled"
+            fi
+            show_quick_settings_menu
+            ;;
+        "Auto-Lock")
+            if [[ "$autolock_status" == "Enabled" ]]; then
+                pkill hypridle
+                notify "Auto-lock disabled"
+            else
+                hypridle &
+                notify "Auto-lock enabled"
+            fi
+            show_quick_settings_menu
+            ;;
+        "Brightness")
+            show_brightness_menu
+            ;;
+        "Volume")
+            show_volume_menu
+            ;;
+        "Keyboard Backlight")
+            show_kbd_backlight_quick_menu
+            ;;
+        "Back")
+            show_main_menu
+            ;;
+        *)
+            exit 0
+            ;;
+    esac
+}
+
+show_brightness_menu() {
+    local current
+    current=$(get_brightness)
+
+    local options="󰃞  25%
+󰃟  50%
+󰃝  75%
+󰃠  100%
+$ICON_BACK  Back"
+
+    local choice
+    choice=$(wofi_menu "Screen Brightness (Current: ${current}%)" "$options" 280 280)
+
+    local action
+    action=$(echo "$choice" | sed 's/^[^ ]* *//')
+
+    case "$action" in
+        "25%")
+            brightnessctl set 25%
+            notify "Brightness: 25%"
+            show_quick_settings_menu
+            ;;
+        "50%")
+            brightnessctl set 50%
+            notify "Brightness: 50%"
+            show_quick_settings_menu
+            ;;
+        "75%")
+            brightnessctl set 75%
+            notify "Brightness: 75%"
+            show_quick_settings_menu
+            ;;
+        "100%")
+            brightnessctl set 100%
+            notify "Brightness: 100%"
+            show_quick_settings_menu
+            ;;
+        "Back")
+            show_quick_settings_menu
+            ;;
+        *)
+            exit 0
+            ;;
+    esac
+}
+
+show_volume_menu() {
+    local current
+    current=$(get_volume)
+
+    local options="󰕿  25%
+󰖀  50%
+󰕾  75%
+󰕾  100%
+$ICON_BACK  Back"
+
+    local choice
+    choice=$(wofi_menu "Volume (Current: ${current}%)" "$options" 280 280)
+
+    local action
+    action=$(echo "$choice" | sed 's/^[^ ]* *//')
+
+    case "$action" in
+        "25%")
+            wpctl set-volume @DEFAULT_AUDIO_SINK@ 25%
+            notify "Volume: 25%"
+            show_quick_settings_menu
+            ;;
+        "50%")
+            wpctl set-volume @DEFAULT_AUDIO_SINK@ 50%
+            notify "Volume: 50%"
+            show_quick_settings_menu
+            ;;
+        "75%")
+            wpctl set-volume @DEFAULT_AUDIO_SINK@ 75%
+            notify "Volume: 75%"
+            show_quick_settings_menu
+            ;;
+        "100%")
+            wpctl set-volume @DEFAULT_AUDIO_SINK@ 100%
+            notify "Volume: 100%"
+            show_quick_settings_menu
+            ;;
+        "Back")
+            show_quick_settings_menu
+            ;;
+        *)
+            exit 0
+            ;;
+    esac
+}
+
+show_kbd_backlight_quick_menu() {
+    local current_brightness
+    current_brightness=$(cat /sys/class/leds/*kbd_backlight/brightness 2>/dev/null || echo "N/A")
+    local max_brightness
+    max_brightness=$(cat /sys/class/leds/*kbd_backlight/max_brightness 2>/dev/null || echo "N/A")
+
+    local options="󰃞  0% (Off)
+󰃝  25%
+󰃟  50%
+󰃠  100%
+$ICON_BACK  Back"
+
+    local choice
+    choice=$(wofi_menu "Keyboard Backlight (${current_brightness}/${max_brightness})" "$options" 320 280)
+
+    local action
+    action=$(echo "$choice" | sed 's/^[^ ]* *//')
+
+    case "$action" in
+        "0% (Off)")
+            brightnessctl -d '*::kbd_backlight' set 0% 2>/dev/null
+            notify "Keyboard backlight off"
+            show_quick_settings_menu
+            ;;
+        "25%")
+            brightnessctl -d '*::kbd_backlight' set 25% 2>/dev/null
+            notify "Keyboard backlight: 25%"
+            show_quick_settings_menu
+            ;;
+        "50%")
+            brightnessctl -d '*::kbd_backlight' set 50% 2>/dev/null
+            notify "Keyboard backlight: 50%"
+            show_quick_settings_menu
+            ;;
+        "100%")
+            brightnessctl -d '*::kbd_backlight' set 100% 2>/dev/null
+            notify "Keyboard backlight: 100%"
+            show_quick_settings_menu
+            ;;
+        "Back")
+            show_quick_settings_menu
+            ;;
+        *)
+            exit 0
+            ;;
     esac
 }
 
@@ -116,41 +485,18 @@ $ICON_BACK  Back"
         "Process Manager (htop)") run_in_terminal htop ;;
         "System Logs")            run_in_terminal journalctl -f ;;
         "Hardware Info")          run_in_terminal_hold fastfetch ;;
-        "Network Status")         run_in_terminal nmtui ;;
+        "Network Status")
+            # VulcanOS uses iwd, not NetworkManager
+            if command -v iwctl &> /dev/null; then
+                run_in_terminal iwctl
+            else
+                notify "iwctl not found. Install iwd package."
+            fi
+            ;;
         "Bluetooth Manager")      blueman-manager & ;;
         "Audio Settings")         pavucontrol & ;;
         "Display Settings")
-            info "Choose display configuration tool:"
-            echo ""
-            echo "  1. HyprMon (TUI) - Quick config, profiles, advanced settings"
-            echo "  2. nwg-displays (GUI) - Visual monitor arrangement"
-            echo "  3. Wallpaper Profiles - Per-monitor wallpaper management"
-            echo ""
-            read -p "Select [1-3]: " tool_choice
-
-            case "$tool_choice" in
-                1)
-                    if command -v hyprmon &> /dev/null; then
-                        kitty --title "hyprmon" -- hyprmon
-                    else
-                        notify "HyprMon not found. Install with: yay -S hyprmon-bin"
-                    fi
-                    ;;
-                2)
-                    if command -v nwg-displays &> /dev/null; then
-                        nwg-displays &
-                    else
-                        notify "nwg-displays not found. Install with: pacman -S nwg-displays"
-                    fi
-                    ;;
-                3)
-                    if command -v vulcan-wallpapers &> /dev/null; then
-                        run_in_terminal vulcan-wallpapers list
-                    else
-                        notify "vulcan-wallpapers not found. Ensure scripts are in PATH."
-                    fi
-                    ;;
-            esac
+            show_display_settings_menu
             ;;
         "Back")                   show_main_menu ;;
         *)                        exit 0 ;;
@@ -162,7 +508,15 @@ $ICON_BACK  Back"
 # =============================================================================
 
 show_style_menu() {
-    local options="󰏘  Theme Selector
+    # Get current theme for display
+    local current_theme
+    if command -v vulcan-theme &> /dev/null; then
+        current_theme=$(vulcan-theme current 2>/dev/null | cut -d'(' -f1 | sed 's/Current theme: //' | sed 's/ *$//')
+    else
+        current_theme="Unknown"
+    fi
+
+    local options="󰏘  Theme: ${current_theme}
 󰸉  Wallpaper
 󰛖  GTK Settings
 󰆍  Font Manager
@@ -172,11 +526,11 @@ $ICON_BACK  Back"
     choice=$(wofi_menu "Style" "$options")
 
     local action
-    action=$(echo "$choice" | sed 's/^[^ ]* *//')
+    action=$(echo "$choice" | sed 's/^[^ ]* *//' | cut -d':' -f1)
 
     case "$action" in
-        "Theme Selector")
-            vulcan-theme menu
+        "Theme")
+            show_theme_selector_menu
             ;;
         "Wallpaper")
             show_wallpaper_menu
@@ -204,43 +558,114 @@ $ICON_BACK  Back"
     esac
 }
 
-show_wallpaper_menu() {
-    local wallpaper_dir="${HOME}/Pictures/Wallpapers"
+show_theme_selector_menu() {
+    if ! command -v vulcan-theme &> /dev/null; then
+        notify "vulcan-theme not found"
+        show_style_menu
+        return
+    fi
 
+    # Get current theme
+    local current_theme_id
+    current_theme_id=$(vulcan-theme current 2>/dev/null | grep -oP '\(\K[^)]+' || echo "")
+
+    # Build theme list
+    local theme_list
+    theme_list=$(vulcan-theme list-ids 2>/dev/null)
+
+    if [[ -z "$theme_list" ]]; then
+        notify "No themes available"
+        show_style_menu
+        return
+    fi
+
+    # Build menu with current theme marked
+    local menu_options=""
+    while IFS=':' read -r theme_id theme_name; do
+        if [[ "$theme_id" == "$current_theme_id" ]]; then
+            menu_options+="󰄬 ${theme_name} (Current)\n"
+        else
+            menu_options+="  ${theme_name}\n"
+        fi
+    done <<< "$theme_list"
+
+    menu_options+="$ICON_BACK  Back\n"
+
+    # Show menu
+    local choice
+    choice=$(echo -e "$menu_options" | wofi --dmenu \
+        --prompt "Select Theme" \
+        --cache-file /dev/null \
+        --width 350 \
+        --height 450 \
+        --location center \
+        --hide-scroll \
+        --no-actions 2>/dev/null)
+
+    # Handle selection
+    if [[ -z "$choice" ]] || [[ "$choice" == *"Back"* ]]; then
+        show_style_menu
+        return
+    fi
+
+    # Extract theme name (remove icon and "(Current)" suffix)
+    local selected_theme_name
+    selected_theme_name=$(echo "$choice" | sed 's/^[󰄬 ]*//' | sed 's/ (Current)$//')
+
+    # Find theme ID from name
+    local selected_theme_id=""
+    while IFS=':' read -r theme_id theme_name; do
+        if [[ "$theme_name" == "$selected_theme_name" ]]; then
+            selected_theme_id="$theme_id"
+            break
+        fi
+    done <<< "$theme_list"
+
+    if [[ -n "$selected_theme_id" ]]; then
+        # Apply theme
+        notify "Applying theme: $selected_theme_name"
+        vulcan-theme set "$selected_theme_id" &
+        
+        # Return to style menu after a moment
+        sleep 0.5
+        show_style_menu
+    else
+        show_style_menu
+    fi
+}
+
+show_wallpaper_menu() {
     local options="󰥶  Browse Wallpapers
 󰷊  Random Wallpaper
+󰑘  Rotate Next
 $ICON_BACK  Back"
 
     local choice
-    choice=$(wofi_menu "Wallpaper" "$options" 300 200)
+    choice=$(wofi_menu "Wallpaper" "$options" 300 240)
 
     local action
     action=$(echo "$choice" | sed 's/^[^ ]* *//')
 
     case "$action" in
         "Browse Wallpapers")
-            if [[ -d "$wallpaper_dir" ]]; then
-                local wallpaper
-                wallpaper=$(find "$wallpaper_dir" -type f \( -name "*.jpg" -o -name "*.png" -o -name "*.svg" \) | \
-                    xargs -I {} basename {} | \
-                    wofi --dmenu --prompt "Select Wallpaper" --cache-file /dev/null 2>/dev/null)
-
-                if [[ -n "$wallpaper" ]]; then
-                    set_wallpaper "${wallpaper_dir}/${wallpaper}"
-                fi
+            if command -v vulcan-wallpaper-picker &> /dev/null; then
+                vulcan-wallpaper-picker &
             else
-                notify "Wallpaper directory not found: $wallpaper_dir"
+                notify "vulcan-wallpaper-picker not found"
             fi
             ;;
         "Random Wallpaper")
-            if [[ -d "$wallpaper_dir" ]]; then
-                local wallpaper
-                wallpaper=$(find "$wallpaper_dir" -type f \( -name "*.jpg" -o -name "*.png" -o -name "*.svg" \) | shuf -n 1)
-                if [[ -n "$wallpaper" ]]; then
-                    set_wallpaper "$wallpaper"
-                fi
+            if command -v vulcan-wallpaper &> /dev/null; then
+                vulcan-wallpaper random
             else
-                notify "Wallpaper directory not found: $wallpaper_dir"
+                notify "vulcan-wallpaper not found"
+            fi
+            ;;
+        "Rotate Next")
+            if command -v vulcan-wallpaper &> /dev/null; then
+                vulcan-wallpaper rotate
+            else
+                notify "vulcan-wallpaper not found"
             fi
             ;;
         "Back")
@@ -252,29 +677,7 @@ $ICON_BACK  Back"
     esac
 }
 
-set_wallpaper() {
-    local wallpaper="$1"
 
-    if [[ ! -f "$wallpaper" ]]; then
-        notify "Wallpaper not found: $wallpaper"
-        return 1
-    fi
-
-    # Update hyprpaper config
-    local hyprpaper_conf="${CONFIG_DIR}/hypr/hyprpaper.conf"
-    cat > "$hyprpaper_conf" << EOF
-preload = ${wallpaper}
-wallpaper = ,${wallpaper}
-splash = false
-EOF
-
-    # Reload hyprpaper
-    pkill hyprpaper 2>/dev/null || true
-    sleep 0.2
-    hyprctl dispatch exec hyprpaper &> /dev/null || true
-
-    notify "Wallpaper set: $(basename "$wallpaper")"
-}
 
 # =============================================================================
 # INSTALL SUBMENU
@@ -486,7 +889,12 @@ $ICON_BACK  Back"
             run_in_terminal $EDITOR "${CONFIG_DIR}/hypr/autostart.conf"
             ;;
         "Network")
-            run_in_terminal nmtui
+            # VulcanOS uses iwd
+            if command -v iwctl &> /dev/null; then
+                run_in_terminal iwctl
+            else
+                notify "iwctl not found. Install iwd package."
+            fi
             ;;
         "Security")
             show_security_menu
@@ -513,9 +921,133 @@ $ICON_BACK  Back"
     local choice
     choice=$(wofi_menu "Default Applications" "$options" 350 280)
 
-    # TODO: Implement default app selection via xdg-mime
-    notify "Default app configuration coming soon"
-    show_setup_menu
+    local action
+    action=$(echo "$choice" | sed 's/^[^ ]* *//')
+
+    case "$action" in
+        "Default Terminal")
+            set_default_terminal
+            ;;
+        "Default Browser")
+            set_default_browser
+            ;;
+        "Default Editor")
+            set_default_editor
+            ;;
+        "Default File Manager")
+            set_default_file_manager
+            ;;
+        "Back")
+            show_setup_menu
+            ;;
+        *)
+            exit 0
+            ;;
+    esac
+}
+
+set_default_terminal() {
+    local terminals="kitty
+alacritty
+foot
+wezterm
+gnome-terminal"
+
+    local choice
+    choice=$(echo -e "$terminals" | wofi --dmenu --prompt "Select Default Terminal" --cache-file /dev/null 2>/dev/null)
+
+    if [[ -n "$choice" ]]; then
+        # Update environment variable
+        export TERMINAL="$choice"
+        # Save to shell config
+        if [[ -f "$HOME/.bashrc" ]]; then
+            if grep -q "^export TERMINAL=" "$HOME/.bashrc"; then
+                sed -i "s|^export TERMINAL=.*|export TERMINAL=\"$choice\"|" "$HOME/.bashrc"
+            else
+                echo "export TERMINAL=\"$choice\"" >> "$HOME/.bashrc"
+            fi
+        fi
+        notify "Default terminal set to: $choice"
+    fi
+    show_defaults_menu
+}
+
+set_default_browser() {
+    local browsers=""
+    
+    # Detect installed browsers
+    command -v firefox &>/dev/null && browsers+="firefox\n"
+    command -v chromium &>/dev/null && browsers+="chromium\n"
+    command -v brave &>/dev/null && browsers+="brave\n"
+    command -v google-chrome &>/dev/null && browsers+="google-chrome\n"
+    command -v zen-browser &>/dev/null && browsers+="zen-browser\n"
+
+    if [[ -z "$browsers" ]]; then
+        notify "No browsers found"
+        show_defaults_menu
+        return
+    fi
+
+    local choice
+    choice=$(echo -e "$browsers" | wofi --dmenu --prompt "Select Default Browser" --cache-file /dev/null 2>/dev/null)
+
+    if [[ -n "$choice" ]]; then
+        xdg-settings set default-web-browser "${choice}.desktop" 2>/dev/null || notify "Failed to set default browser"
+        notify "Default browser set to: $choice"
+    fi
+    show_defaults_menu
+}
+
+set_default_editor() {
+    local editors="nvim
+vim
+nano
+code
+gedit"
+
+    local choice
+    choice=$(echo -e "$editors" | wofi --dmenu --prompt "Select Default Editor" --cache-file /dev/null 2>/dev/null)
+
+    if [[ -n "$choice" ]]; then
+        # Update environment variable
+        export EDITOR="$choice"
+        # Save to shell config
+        if [[ -f "$HOME/.bashrc" ]]; then
+            if grep -q "^export EDITOR=" "$HOME/.bashrc"; then
+                sed -i "s|^export EDITOR=.*|export EDITOR=\"$choice\"|" "$HOME/.bashrc"
+            else
+                echo "export EDITOR=\"$choice\"" >> "$HOME/.bashrc"
+            fi
+        fi
+        notify "Default editor set to: $choice"
+    fi
+    show_defaults_menu
+}
+
+set_default_file_manager() {
+    local file_managers=""
+    
+    # Detect installed file managers
+    command -v thunar &>/dev/null && file_managers+="thunar\n"
+    command -v dolphin &>/dev/null && file_managers+="dolphin\n"
+    command -v nautilus &>/dev/null && file_managers+="nautilus\n"
+    command -v nemo &>/dev/null && file_managers+="nemo\n"
+    command -v pcmanfm &>/dev/null && file_managers+="pcmanfm\n"
+
+    if [[ -z "$file_managers" ]]; then
+        notify "No file managers found"
+        show_defaults_menu
+        return
+    fi
+
+    local choice
+    choice=$(echo -e "$file_managers" | wofi --dmenu --prompt "Select Default File Manager" --cache-file /dev/null 2>/dev/null)
+
+    if [[ -n "$choice" ]]; then
+        xdg-mime default "${choice}.desktop" inode/directory 2>/dev/null || notify "Failed to set default file manager"
+        notify "Default file manager set to: $choice"
+    fi
+    show_defaults_menu
 }
 
 show_security_menu() {
@@ -647,9 +1179,92 @@ $ICON_BACK  Back"
     local choice
     choice=$(wofi_menu "Restore Defaults" "$options" 350 240)
 
-    # TODO: Implement restore from /etc/skel or backup
-    notify "Restore functionality coming soon"
-    show_update_menu
+    local action
+    action=$(echo "$choice" | sed 's/^[^ ]* *//')
+
+    case "$action" in
+        "Restore Hyprland Config")
+            if confirm_restore "Hyprland"; then
+                restore_hyprland_config
+            fi
+            show_restore_menu
+            ;;
+        "Restore Waybar Config")
+            if confirm_restore "Waybar"; then
+                restore_waybar_config
+            fi
+            show_restore_menu
+            ;;
+        "Restore All Configs")
+            if confirm_restore "All Configs"; then
+                restore_all_configs
+            fi
+            show_restore_menu
+            ;;
+        "Back")
+            show_update_menu
+            ;;
+        *)
+            exit 0
+            ;;
+    esac
+}
+
+confirm_restore() {
+    local item="$1"
+    local choice
+    choice=$(echo -e "Yes, restore\nNo, cancel" | wofi --dmenu \
+        --prompt "Restore $item to defaults?" \
+        --cache-file /dev/null \
+        --width 300 \
+        --height 100 \
+        --location center 2>/dev/null)
+    
+    [[ "$choice" == "Yes, restore" ]]
+}
+
+restore_hyprland_config() {
+    # Backup current config
+    local backup_dir="$HOME/.config/hypr-backup-$(date +%Y%m%d-%H%M%S)"
+    mkdir -p "$backup_dir"
+    cp -r "$HOME/.config/hypr" "$backup_dir/" 2>/dev/null || true
+    
+    # Check for default configs in VulcanOS repo
+    local vulcan_repo="$HOME/VulcanOS"
+    if [[ -d "$vulcan_repo/dotfiles/hypr/.config/hypr" ]]; then
+        cp -r "$vulcan_repo/dotfiles/hypr/.config/hypr/"* "$HOME/.config/hypr/" 2>/dev/null
+        notify "Hyprland config restored. Backup saved to: $(basename "$backup_dir")"
+        hyprctl reload 2>/dev/null || true
+    else
+        notify "Default config not found in VulcanOS repo"
+    fi
+}
+
+restore_waybar_config() {
+    # Backup current config
+    local backup_dir="$HOME/.config/waybar-backup-$(date +%Y%m%d-%H%M%S)"
+    mkdir -p "$backup_dir"
+    cp -r "$HOME/.config/waybar" "$backup_dir/" 2>/dev/null || true
+    
+    # Check for default configs in VulcanOS repo
+    local vulcan_repo="$HOME/VulcanOS"
+    if [[ -d "$vulcan_repo/dotfiles/waybar/.config/waybar" ]]; then
+        cp -r "$vulcan_repo/dotfiles/waybar/.config/waybar/"* "$HOME/.config/waybar/" 2>/dev/null
+        notify "Waybar config restored. Backup saved to: $(basename "$backup_dir")"
+        pkill -9 waybar 2>/dev/null || true
+        sleep 0.3
+        hyprctl dispatch exec waybar &>/dev/null || true
+    else
+        notify "Default config not found in VulcanOS repo"
+    fi
+}
+
+restore_all_configs() {
+    restore_hyprland_config
+    restore_waybar_config
+    
+    # Add more config restorations as needed
+    notify "All configs restored to defaults"
 }
 
 # =============================================================================
@@ -794,6 +1409,7 @@ show_help() {
     echo "  (none)    Show main menu"
     echo "  system    System tools and monitoring"
     echo "  style     Themes and appearance"
+    echo "  quick     Quick settings toggles"
     echo "  install   Package installation"
     echo "  remove    Package removal and cleanup"
     echo "  setup     System configuration"
@@ -810,6 +1426,7 @@ main() {
         "")         show_main_menu ;;
         system)     show_system_menu ;;
         style)      show_style_menu ;;
+        quick)      show_quick_settings_menu ;;
         install)    show_install_menu ;;
         remove)     show_remove_menu ;;
         setup)      show_setup_menu ;;

@@ -39,6 +39,94 @@ GNU Stow creates symlinks by mirroring directory structure. When you run `stow h
 - Copy files TO archiso: `cp dotfiles/hypr/.config/hypr/* archiso/.../etc/skel/.config/hypr/`
 - Add new config files to the stow directories
 
+## Claude Code Behavior Guidelines
+
+### Proactive Clarification
+
+**Always ask clarifying questions before implementing non-trivial features.** Use the `AskUserQuestion` tool to:
+
+1. **Clarify ambiguous requirements** - If a request could be interpreted multiple ways, ask which approach is preferred
+2. **Validate assumptions** - Before making architectural decisions, confirm they align with user intent
+3. **Offer meaningful choices** - When multiple valid approaches exist, present options with trade-offs
+
+### Planning Phase Requirements
+
+During plan mode, you MUST:
+- Ask questions early to understand scope and constraints
+- Never assume user intent on design decisions
+- Present implementation options when trade-offs exist
+- Confirm understanding before finalizing the plan
+
+### What NOT to assume:
+- Which files should be modified vs. created
+- Whether changes should affect dotfiles, archiso, or both
+- Performance vs. simplicity trade-offs
+- Breaking changes vs. backwards compatibility
+
+### Example clarifying questions:
+- "Should this change apply to the live dotfiles, the ISO skeleton, or both?"
+- "Do you want a simple implementation or should I add configuration options?"
+- "This could be done with X (simpler) or Y (more flexible) - which approach?"
+
+## MCP Servers, Plugins & Skills
+
+### MCP Servers (`.mcp.json`)
+
+| Server | Command | Purpose |
+|--------|---------|---------|
+| `vulcan-todo` | `vulcan-todo --mcp` | Task management with sprints, projects, and priorities. Use for tracking work items. |
+| `docker-gateway` | `docker-mcp-gateway run` | Access to containerized MCP services, documentation fetching, and dynamic tool loading |
+
+**vulcan-todo tools:**
+- `mcp__vulcan-todo__create_task` - Create tasks with priority, project, tags
+- `mcp__vulcan-todo__list_tasks` - List/filter tasks by status, project, priority
+- `mcp__vulcan-todo__get_next_task` - Get highest priority pending task
+- `mcp__vulcan-todo__complete_task` - Mark task done
+- `mcp__vulcan-todo__start_task` - Mark task in-progress
+- `mcp__vulcan-todo__create_sprint` / `get_sprint_tasks` - Sprint management
+- `mcp__vulcan-todo__get_context` - Get current work state (in-progress + high-priority tasks)
+
+**docker-gateway tools:**
+- `mcp__docker-gateway__fetch_generic_documentation` - Fetch docs from any GitHub repo
+- `mcp__docker-gateway__search_generic_documentation` - Search docs semantically
+- `mcp__docker-gateway__mcp-find` / `mcp-add` - Discover and enable additional MCP servers
+
+### VulcanOS Plugin (`.claude/plugins/vulcanos/`)
+
+Custom agents for VulcanOS development workflows:
+
+| Agent | Invoke | Purpose |
+|-------|--------|---------|
+| `vulcan-build` | `@vulcan-build` | Full-access implementation agent (Bash, Edit, Write, etc.) |
+| `vulcan-plan` | `@vulcan-plan` | Read-only analysis/planning agent (Read, Glob, Grep only) |
+
+**Workflow pattern:**
+1. Use `@vulcan-plan` to analyze and create implementation plan
+2. Use `@vulcan-build` to execute the plan
+3. This separation prevents accidental changes during analysis
+
+### Key Skills (Slash Commands)
+
+| Skill | Command | Purpose |
+|-------|---------|---------|
+| Git commit | `/commit` | Create git commit with proper formatting |
+| PR workflow | `/commit-push-pr` | Commit, push, and create PR in one command |
+| Code review | `/review-pr` | Comprehensive PR review |
+| Feature dev | `/feature-dev` | Guided feature development |
+| Frontend | `/frontend-design` | Create high-quality frontend interfaces |
+| Hooks | `/hookify` | Create hooks to prevent unwanted behaviors |
+
+### When to Use What
+
+| Situation | Tool/Agent |
+|-----------|------------|
+| Track work items and progress | `vulcan-todo` MCP tools |
+| Research before implementing | `@vulcan-plan` agent |
+| Implement features | `@vulcan-build` agent or direct Claude |
+| Fetch external documentation | `docker-gateway` tools |
+| Create commits/PRs | `/commit`, `/commit-push-pr` skills |
+| Review code changes | `/review-pr` skill |
+
 ## Project Overview
 
 VulcanOS is a custom Arch Linux-based distribution built using archiso, targeting developers who need:
@@ -339,13 +427,17 @@ These must be added to GRUB configuration.
 3. Configure GTK/Qt themes via respective configs
 4. Update wallpapers in `branding/wallpapers/`
 
-### Configuring Speech-to-Text (S2T)
+### Configuring Speech-to-Text (hyprwhspr)
 
-1. Start S2T system: `vulcan-s2t start`
-2. Open settings menu: `vulcan-s2t settings` or `Super + Shift + ``
-3. Adjust model, hotkey, language, audio device
-4. See `docs/S2T.md` for full user guide
-5. See `docs/S2T-INSTALL.md` for installation details
+VulcanOS uses **hyprwhspr** for local speech-to-text transcription.
+
+1. **Start service:** `~/.local/bin/hyprwhspr systemd start` (runs automatically on login)
+2. **Record:** Hold `Super + ;` to record, release to transcribe
+3. **Status:** Check Waybar for microphone status icon
+4. **Config:** Edit `~/.config/hyprwhspr/config.json`
+5. **Logs:** `journalctl --user -u hyprwhspr.service -f`
+
+**Hotkey:** Hold `Super + ;` to record, release to transcribe text into the active application.
 
 ## Development Workflow
 
@@ -454,9 +546,7 @@ CODENAME="Genesis"
 | Edit Kitty config | `dotfiles/kitty/.config/kitty/kitty.conf` (live via stow) |
 | Edit OpenCode config | `dotfiles/opencode/.config/opencode/` (live via stow) |
 | User scripts | `dotfiles/scripts/` (stow to ~/.local/bin) |
-| S2T user guide | `docs/S2T.md` |
-| S2T installation | `docs/S2T-INSTALL.md` |
-| S2T config | `dotfiles/vulcan-s2t/.config/vulcan-s2t/*.default` (stow to ~/.config/vulcan-s2t/) |
+| Speech-to-text | `~/.config/hyprwhspr/config.json` |
 | Sync to ISO | Copy from `dotfiles/*/.config/` → `archiso/airootfs/etc/skel/.config/` |
 | System configs | `archiso/airootfs/etc/*` |
 | Custom scripts | `archiso/airootfs/usr/local/bin/` |

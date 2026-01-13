@@ -24,3 +24,16 @@ Thumbs.db
 .vscode/
 .idea/
 *.code-workspace
+
+# Rust build artifacts
+target/
+vulcan-vault/target/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# User stow symlinks (not part of repo)
+/.config
+/.local

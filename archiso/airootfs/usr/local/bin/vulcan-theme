@@ -18,6 +18,7 @@ mkdir -p "${VULCAN_CONFIG}"
 
 # Available themes
 THEMES=(
+    "vulcan-forge:Vulcan Forge:Warm forge-inspired colors with orange and gold accents"
     "tokyonight:Tokyo Night:Soft dark theme with vibrant colors"
     "catppuccin-mocha:Catppuccin Mocha:Soothing pastel theme"
     "dracula:Dracula:Dark theme with purple accents"
@@ -27,29 +28,29 @@ THEMES=(
     "rosepine:Rose Pine:All natural pine, faux fur and a bit of soho vibes"
 )
 
-# Color output helpers
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
-BLUE='\033[0;34m'
-PURPLE='\033[0;35m'
-CYAN='\033[0;36m'
-NC='\033[0m' # No Color
+# Color output helpers (using _CLR prefix to avoid conflicts with theme variables)
+_CLR_RED='\033[0;31m'
+_CLR_GREEN='\033[0;32m'
+_CLR_YELLOW='\033[0;33m'
+_CLR_BLUE='\033[0;34m'
+_CLR_PURPLE='\033[0;35m'
+_CLR_CYAN='\033[0;36m'
+_CLR_NC='\033[0m' # No Color
 
 print_info() {
-    echo -e "${BLUE}[INFO]${NC} $1"
+    echo -e "${_CLR_BLUE}[INFO]${_CLR_NC} $1"
 }
 
 print_success() {
-    echo -e "${GREEN}[SUCCESS]${NC} $1"
+    echo -e "${_CLR_GREEN}[SUCCESS]${_CLR_NC} $1"
 }
 
 print_error() {
-    echo -e "${RED}[ERROR]${NC} $1"
+    echo -e "${_CLR_RED}[ERROR]${_CLR_NC} $1"
 }
 
 print_warning() {
-    echo -e "${YELLOW}[WARNING]${NC} $1"
+    echo -e "${_CLR_YELLOW}[WARNING]${_CLR_NC} $1"
 }
 
 # Get current theme
@@ -64,7 +65,7 @@ get_current_theme() {
 # List available themes
 list_themes() {
     echo ""
-    echo -e "${PURPLE}Available Themes${NC}"
+    echo -e "${_CLR_PURPLE}Available Themes${_CLR_NC}"
     echo "─────────────────────────────────────────────"
 
     current=$(get_current_theme)
@@ -72,11 +73,11 @@ list_themes() {
     for theme_entry in "${THEMES[@]}"; do
         IFS=':' read -r id name desc <<< "${theme_entry}"
         if [[ "${id}" == "${current}" ]]; then
-            echo -e "  ${GREEN}●${NC} ${name} (${id}) ${GREEN}[current]${NC}"
+            echo -e "  ${_CLR_GREEN}●${_CLR_NC} ${name} (${id}) ${_CLR_GREEN}[current]${_CLR_NC}"
         else
             echo -e "  ○ ${name} (${id})"
         fi
-        echo -e "    ${CYAN}${desc}${NC}"
+        echo -e "    ${_CLR_CYAN}${desc}${_CLR_NC}"
     done
     echo ""
 }
@@ -113,8 +114,23 @@ process_template() {
     local template="$1"
     local output="$2"
 
-    # Use envsubst to replace all environment variables
-    envsubst < "${template}" > "${output}"
+    # Ensure output directory exists
+    mkdir -p "$(dirname "${output}")"
+
+    # Only substitute theme-specific variables (not starship's $user, $path, etc.)
+    local vars='$THEME_NAME $THEME_ID $BG_PRIMARY $BG_SECONDARY $BG_TERTIARY $BG_SURFACE'
+    vars+=' $FG_PRIMARY $FG_SECONDARY $FG_MUTED $ACCENT $ACCENT_ALT'
+    vars+=' $RED $GREEN $YELLOW $BLUE $PURPLE $CYAN $ORANGE $PINK'
+    vars+=' $BRIGHT_RED $BRIGHT_GREEN $BRIGHT_YELLOW $BRIGHT_BLUE $BRIGHT_PURPLE $BRIGHT_CYAN'
+    vars+=' $BORDER_ACTIVE $BORDER_INACTIVE $SELECTION $CURSOR'
+    vars+=' $GRADIENT_START $GRADIENT_END'
+    vars+=' $GTK_THEME $ICON_THEME $CURSOR_THEME $KVANTUM_THEME'
+    vars+=' $NVIM_COLORSCHEME $THEME_WALLPAPER'
+    # _RAW variants (hex without # for Hyprland rgba())
+    vars+=' $GRADIENT_START_RAW $GRADIENT_END_RAW $BORDER_INACTIVE_RAW $BG_SURFACE_RAW'
+    vars+=' $ACCENT_RAW $RED_RAW $FG_PRIMARY_RAW $BG_PRIMARY_RAW $BG_SECONDARY_RAW $GREEN_RAW'
+
+    envsubst "${vars}" < "${template}" > "${output}"
 }
 
 # Apply theme to all components
@@ -143,6 +159,18 @@ apply_theme() {
 
     # shellcheck source=/dev/null
     source "${color_file}"
+
+    # Create RAW versions (without #) for Hyprland rgba() format
+    export GRADIENT_START_RAW="${GRADIENT_START//#/}"
+    export GRADIENT_END_RAW="${GRADIENT_END//#/}"
+    export BORDER_INACTIVE_RAW="${BORDER_INACTIVE//#/}"
+    export BG_SURFACE_RAW="${BG_SURFACE//#/}"
+    export ACCENT_RAW="${ACCENT//#/}"
+    export RED_RAW="${RED//#/}"
+    export FG_PRIMARY_RAW="${FG_PRIMARY//#/}"
+    export BG_PRIMARY_RAW="${BG_PRIMARY//#/}"
+    export BG_SECONDARY_RAW="${BG_SECONDARY//#/}"
+    export GREEN_RAW="${GREEN//#/}"
 
     # Export all variables for envsubst
     export THEME_NAME THEME_ID
@@ -211,16 +239,16 @@ apply_theme() {
     # Apply GTK theme
     print_info "  Applying GTK theme..."
     if command -v gsettings &> /dev/null; then
-        gsettings set org.gnome.desktop.interface gtk-theme "${GTK_THEME}" 2>/dev/null || true
-        gsettings set org.gnome.desktop.interface icon-theme "${ICON_THEME}" 2>/dev/null || true
-        gsettings set org.gnome.desktop.interface cursor-theme "${CURSOR_THEME}" 2>/dev/null || true
-        gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark' 2>/dev/null || true
+        timeout 2 gsettings set org.gnome.desktop.interface gtk-theme "${GTK_THEME}" 2>/dev/null || true
+        timeout 2 gsettings set org.gnome.desktop.interface icon-theme "${ICON_THEME}" 2>/dev/null || true
+        timeout 2 gsettings set org.gnome.desktop.interface cursor-theme "${CURSOR_THEME}" 2>/dev/null || true
+        timeout 2 gsettings set org.gnome.desktop.interface color-scheme 'prefer-dark' 2>/dev/null || true
     fi
 
     # Apply Kvantum theme
     print_info "  Applying Kvantum theme..."
     if command -v kvantummanager &> /dev/null; then
-        kvantummanager --set "${KVANTUM_THEME}" 2>/dev/null || true
+        timeout 2 kvantummanager --set "${KVANTUM_THEME}" 2>/dev/null || true
     fi
 
     # Update Neovim colorscheme
@@ -230,26 +258,45 @@ apply_theme() {
     echo "-- Auto-generated by vulcan-theme" > "${nvim_colors_file}"
     echo "return \"${NVIM_COLORSCHEME}\"" >> "${nvim_colors_file}"
 
+    # Set wallpaper if theme has one
+    if [[ -n "${THEME_WALLPAPER:-}" ]]; then
+        local wallpaper_path="${HOME}/Pictures/Wallpapers/${THEME_WALLPAPER}"
+        if [[ -f "${wallpaper_path}" ]]; then
+            print_info "  Setting wallpaper..."
+            # Update hyprpaper config
+            local hyprpaper_conf="${CONFIG_DIR}/hypr/hyprpaper.conf"
+            if [[ -f "${hyprpaper_conf}" ]]; then
+                cat > "${hyprpaper_conf}" << EOF
+preload = ${wallpaper_path}
+wallpaper = ,${wallpaper_path}
+splash = false
+EOF
+            fi
+            # Reload hyprpaper
+            pkill hyprpaper 2>/dev/null || true
+            sleep 0.2
+            hyprctl dispatch exec hyprpaper &> /dev/null || true
+        fi
+    fi
+
     # Reload services
     print_info "Reloading services..."
 
     # Reload Hyprland
     if command -v hyprctl &> /dev/null && pgrep -x Hyprland &> /dev/null; then
-        hyprctl reload &> /dev/null || true
+        timeout 2 hyprctl reload &> /dev/null || true
     fi
 
-    # Restart Waybar
-    if pgrep -x waybar &> /dev/null; then
-        pkill waybar 2>/dev/null || true
-        sleep 0.5
-        waybar &> /dev/null &
-        disown
-    fi
+    # Restart Waybar (use hyprctl to launch in user session context)
+    pkill -9 waybar 2>/dev/null || true
+    sleep 0.5
+    hyprctl dispatch exec waybar &> /dev/null
+    sleep 0.3
 
     # Reload SwayNC
     if command -v swaync-client &> /dev/null && pgrep -x swaync &> /dev/null; then
-        swaync-client -R &> /dev/null || true
-        swaync-client -rs &> /dev/null || true
+        timeout 2 swaync-client -R &> /dev/null || true
+        timeout 2 swaync-client -rs &> /dev/null || true
     fi
 
     # Save current theme
@@ -259,7 +306,7 @@ apply_theme() {
 
     print_success "Theme '${theme_name}' applied successfully!"
     echo ""
-    echo -e "${YELLOW}Note:${NC} Some applications may need to be restarted to see changes:"
+    echo -e "${_CLR_YELLOW}Note:${_CLR_NC} Some applications may need to be restarted to see changes:"
     echo "  - Terminal emulators (Alacritty, Kitty)"
     echo "  - Neovim (run :source \$MYVIMRC or restart)"
     echo ""
@@ -349,6 +396,13 @@ main() {
     case "${command}" in
         list)
             list_themes
+            ;;
+        list-ids)
+            # Output theme IDs and names in parseable format (for vulcan-menu integration)
+            for theme_entry in "${THEMES[@]}"; do
+                IFS=':' read -r id name desc <<< "${theme_entry}"
+                echo "${id}:${name}"
+            done
             ;;
         current)
             current=$(get_current_theme)

@@ -1,0 +1,441 @@
+#!/usr/bin/env bash
+# ============================================================================
+# VulcanOS Speech-to-Text (Simplified)
+# Hold Super+; to record, release to transcribe to clipboard
+# ============================================================================
+#
+# Usage:
+#   vulcan-s2t start    Start recording
+#   vulcan-s2t stop     Stop recording and transcribe
+#   vulcan-s2t status   Show current status
+#   vulcan-s2t test     Test API connection
+#   vulcan-s2t help     Show help
+
+# Don't use set -e (causes silent exits on validation failures)
+set -uo pipefail
+
+# ============================================================================
+# PATHS
+# ============================================================================
+
+CONFIG_DIR="$HOME/.config/vulcan-s2t"
+DATA_DIR="$HOME/.local/share/vulcan-s2t"
+SETTINGS_FILE="$CONFIG_DIR/settings.conf"
+API_KEY_FILE="$CONFIG_DIR/api-key.conf"
+RECORDING_PID_FILE="$DATA_DIR/recording.pid"
+STATUS_FILE="$DATA_DIR/status"
+MODE_FILE="$DATA_DIR/mode"
+RECORD_START_FILE="$DATA_DIR/record_start"
+LOG_FILE="$DATA_DIR/s2t.log"
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# ============================================================================
+# DEFAULTS
+# ============================================================================
+
+S2T_MODEL="google/gemini-3-flash-preview"
+S2T_AUDIO_DEVICE="default"
+S2T_SAMPLE_RATE="16000"
+S2T_NOTIFICATIONS="true"
+S2T_MIN_DURATION="0.5"
+S2T_MIN_FILE_SIZE="1000"
+S2T_MODE="clean"
+
+# ============================================================================
+# INITIALIZATION
+# ============================================================================
+
+init() {
+    mkdir -p "$CONFIG_DIR" "$DATA_DIR"
+    
+    # Load settings if exists
+    if [[ -f "$SETTINGS_FILE" ]]; then
+        # shellcheck source=/dev/null
+        source "$SETTINGS_FILE"
+    fi
+}
+
+# ============================================================================
+# UTILITIES
+# ============================================================================
+
+log() {
+    local message="$1"
+    local level="${2:-INFO}"
+    local timestamp
+    timestamp=$(date '+%Y-%m-%d %H:%M:%S')
+    echo "[$timestamp] [$level] $message" >> "$LOG_FILE"
+}
+
+notify() {
+    local message="$1"
+    local urgency="${2:-normal}"
+    
+    if [[ "$S2T_NOTIFICATIONS" == "true" ]]; then
+        notify-send -u "$urgency" -t 2000 -i "audio-input-microphone" "S2T" "$message" 2>/dev/null || true
+    fi
+}
+
+set_status() {
+    echo "$1" > "$STATUS_FILE"
+    # Signal Waybar to refresh (RTMIN+8)
+    pkill -RTMIN+8 waybar 2>/dev/null || true
+}
+
+get_status() {
+    if [[ -f "$STATUS_FILE" ]]; then
+        cat "$STATUS_FILE"
+    else
+        echo "idle"
+    fi
+}
+
+is_recording() {
+    [[ -f "$RECORDING_PID_FILE" ]] && kill -0 "$(cat "$RECORDING_PID_FILE")" 2>/dev/null
+}
+
+# ============================================================================
+# RECORDING
+# ============================================================================
+
+get_default_mode() {
+    if [[ -f "$MODE_FILE" ]]; then
+        cat "$MODE_FILE"
+    else
+        echo "$S2T_MODE"
+    fi
+}
+
+set_default_mode() {
+    local mode="$1"
+    echo "$mode" > "$MODE_FILE"
+}
+
+cmd_start() {
+    init
+    local mode="${1:-$(get_default_mode)}"
+    
+    # Validate mode
+    case "$mode" in
+        exact|clean|agent|opencode|vulcan-task|exact-code) ;;
+        *) 
+            log "Invalid mode: $mode, defaulting to clean" "WARN"
+            mode="clean"
+            ;;
+    esac
+    
+    # Save mode for stop command to use
+    echo "$mode" > "$MODE_FILE"
+    
+    # If already recording, treat as toggle (stop instead)
+    if is_recording; then
+        log "Already recording, treating start as stop (toggle)" "INFO"
+        cmd_stop
+        return $?
+    fi
+    
+    # Create temp directory for this recording
+    local temp_dir
+    temp_dir=$(mktemp -d "$DATA_DIR/rec.XXXXXX")
+    local audio_file="$temp_dir/recording.wav"
+    
+    # Save recording start time
+    date +%s.%N > "$RECORD_START_FILE"
+    
+    # Update status
+    set_status "recording"
+    log "Starting recording"
+    
+    # Start recording with parecord (PipeWire/PulseAudio)
+    if command -v parecord &>/dev/null; then
+        parecord --format=s16le --rate="$S2T_SAMPLE_RATE" --channels=1 \
+            --device="$S2T_AUDIO_DEVICE" "$audio_file" 2>/dev/null &
+    else
+        log "parecord not found" "ERROR"
+        notify "Error: parecord not found" "critical"
+        set_status "error"
+        rm -rf "$temp_dir"
+        return 1
+    fi
+    
+    local pid=$!
+    echo "$pid" > "$RECORDING_PID_FILE"
+    echo "$audio_file" > "$DATA_DIR/audio_file"
+    
+    log "Recording started (PID: $pid)"
+    
+    # Auto-stop after 60 seconds as safety net
+    (
+        sleep 60
+        if [[ -f "$RECORDING_PID_FILE" ]] && kill -0 "$(cat "$RECORDING_PID_FILE")" 2>/dev/null; then
+            log "Auto-stopping recording after 60s timeout" "WARN"
+            "$0" stop
+        fi
+    ) &>/dev/null &
+}
+
+cmd_stop() {
+    init
+    
+    # Check if recording
+    if ! is_recording; then
+        log "Not recording, ignoring stop command" "WARN"
+        return 0
+    fi
+    
+    # Stop recording process
+    local pid
+    pid=$(cat "$RECORDING_PID_FILE" 2>/dev/null)
+    if [[ -n "$pid" ]]; then
+        log "Stopping recording (PID: $pid)"
+        kill "$pid" 2>/dev/null || true
+        wait "$pid" 2>/dev/null || true
+    fi
+    rm -f "$RECORDING_PID_FILE"
+    
+    # Get audio file path
+    local audio_file
+    audio_file=$(cat "$DATA_DIR/audio_file" 2>/dev/null)
+    
+    if [[ -z "$audio_file" ]] || [[ ! -f "$audio_file" ]]; then
+        log "No audio file found" "ERROR"
+        notify "Error: No audio file" "critical"
+        set_status "error"
+        cleanup_temp
+        return 1
+    fi
+    
+    # Validate audio
+    local validation
+    validation=$(validate_audio "$audio_file")
+    
+    if [[ "$validation" != "valid" ]]; then
+        log "Audio validation failed: $validation" "WARN"
+        case "$validation" in
+            too_short) notify "Recording too short" "low" ;;
+            too_small) notify "No audio detected" "low" ;;
+            *) notify "Invalid recording" "low" ;;
+        esac
+        set_status "idle"
+        cleanup_temp
+        return 0
+    fi
+    
+    # Transcribe
+    set_status "processing"
+    
+    # Get mode for this recording
+    local mode
+    mode=$(cat "$MODE_FILE" 2>/dev/null || echo "clean")
+    log "Transcribing audio with mode: $mode..."
+    
+    local result
+    if result=$("$SCRIPT_DIR/vulcan-s2t-cloud" "$audio_file" --mode "$mode" 2>&1); then
+        log "Transcription successful"
+        set_status "success"
+        notify "Copied to clipboard!"
+        
+        # Brief success display, then idle
+        (sleep 2 && echo "idle" > "$STATUS_FILE" && pkill -RTMIN+8 waybar 2>/dev/null) &
+    else
+        log "Transcription failed: $result" "ERROR"
+        set_status "error"
+        notify "Transcription failed" "critical"
+    fi
+    
+    cleanup_temp
+}
+
+validate_audio() {
+    local audio_file="$1"
+    
+    # Check file exists
+    if [[ ! -f "$audio_file" ]]; then
+        echo "no_file"
+        return 0
+    fi
+    
+    # Check file size
+    local file_size
+    file_size=$(stat -c%s "$audio_file" 2>/dev/null || echo "0")
+    
+    if [[ "$file_size" -lt "$S2T_MIN_FILE_SIZE" ]]; then
+        log "Audio file too small: ${file_size} bytes" "WARN"
+        echo "too_small"
+        return 0
+    fi
+    
+    # Check duration
+    if [[ -f "$RECORD_START_FILE" ]]; then
+        local start_time end_time duration
+        start_time=$(cat "$RECORD_START_FILE")
+        end_time=$(date +%s.%N)
+        duration=$(echo "$end_time - $start_time" | bc 2>/dev/null || echo "0")
+        
+        local is_too_short
+        is_too_short=$(echo "$duration < $S2T_MIN_DURATION" | bc -l 2>/dev/null || echo "0")
+        if [[ "$is_too_short" == "1" ]]; then
+            log "Recording too short: ${duration}s" "WARN"
+            echo "too_short"
+            return 0
+        fi
+    fi
+    
+    echo "valid"
+    return 0
+}
+
+cleanup_temp() {
+    # Clean up temp files
+    local audio_file
+    audio_file=$(cat "$DATA_DIR/audio_file" 2>/dev/null)
+    if [[ -n "$audio_file" ]]; then
+        local temp_dir
+        temp_dir=$(dirname "$audio_file")
+        rm -rf "$temp_dir"
+    fi
+    rm -f "$DATA_DIR/audio_file" "$RECORD_START_FILE"
+}
+
+# ============================================================================
+# INFO COMMANDS
+# ============================================================================
+
+cmd_status() {
+    init
+    
+    local status
+    status=$(get_status)
+    
+    echo "Status: $status"
+    echo "Model: $S2T_MODEL"
+    echo "Device: $S2T_AUDIO_DEVICE"
+    
+    if [[ -f "$API_KEY_FILE" ]] && ! grep -q "your-api-key-here" "$API_KEY_FILE" 2>/dev/null; then
+        echo "API Key: Configured"
+    else
+        echo "API Key: NOT CONFIGURED"
+    fi
+}
+
+cmd_test() {
+    init
+    
+    echo "Testing S2T connection..."
+    
+    # Check API key
+    if [[ ! -f "$API_KEY_FILE" ]]; then
+        echo "ERROR: API key file not found"
+        echo "Create: $API_KEY_FILE"
+        return 1
+    fi
+    
+    if grep -q "your-api-key-here" "$API_KEY_FILE" 2>/dev/null; then
+        echo "ERROR: API key not configured"
+        echo "Edit: $API_KEY_FILE"
+        return 1
+    fi
+    
+    # Test API
+    if "$SCRIPT_DIR/vulcan-s2t-cloud" --test 2>/dev/null; then
+        echo "SUCCESS: API connection working"
+        notify "API connection OK!"
+        return 0
+    else
+        echo "ERROR: API connection failed"
+        notify "API connection failed" "critical"
+        return 1
+    fi
+}
+
+cmd_help() {
+    cat << 'EOF'
+VulcanOS Speech-to-Text
+
+Usage: vulcan-s2t <command>
+
+Commands:
+  start [mode]  Start recording audio with optional mode
+  stop           Stop recording and transcribe to clipboard
+  status         Show current status and configuration
+  test           Test API connection
+  mode [mode]    Set or get default transcription mode
+  modes          List available transcription modes
+  help           Show this help
+
+Hotkey:
+  Super+;   Hold to record, release to transcribe
+
+Transcription Modes:
+  exact         Verbatim transcription (word-for-word)
+  clean         Polished, corrected text (default)
+  agent         Voice to AI prompt formatting
+  opencode      Voice to OpenCode with VulcanOS context
+  vulcan-task   Voice to vulcan-todo task creation
+  exact-code    Verbatim code dictation with technical terms
+
+Configuration:
+  Settings: ~/.config/vulcan-s2t/settings.conf
+  API Key:  ~/.config/vulcan-s2t/api-key.conf
+  Logs:     ~/.local/share/vulcan-s2t/s2t.log
+EOF
+}
+
+cmd_modes() {
+    echo "Available transcription modes:"
+    echo "  exact       - Verbatim transcription (word-for-word)"
+    echo "  clean       - Polished, corrected text (default)"
+    echo "  agent       - Voice to AI prompt formatting"
+    echo "  opencode    - Voice to OpenCode with VulcanOS context"
+    echo "  vulcan-task - Voice to vulcan-todo task creation"
+    echo "  exact-code  - Verbatim code dictation with technical terms"
+}
+
+cmd_mode() {
+    if [[ -n "${2:-}" ]]; then
+        set_default_mode "$2"
+        echo "Default mode set to: $2"
+    else
+        echo "Default mode: $(get_default_mode)"
+    fi
+}
+
+# ============================================================================
+# MAIN
+# ============================================================================
+
+main() {
+    local command="${1:-help}"
+    
+    case "$command" in
+        start)
+            cmd_start "${2:-}"
+            ;;
+        stop)
+            cmd_stop
+            ;;
+        status)
+            cmd_status
+            ;;
+        test)
+            cmd_test
+            ;;
+        mode)
+            cmd_mode "$@"
+            ;;
+        modes)
+            cmd_modes
+            ;;
+        help|--help|-h)
+            cmd_help
+            ;;
+        *)
+            echo "Unknown command: $command"
+            echo "Use 'vulcan-s2t help' for usage"
+            exit 1
+            ;;
+    esac
+}
+
+main "$@"

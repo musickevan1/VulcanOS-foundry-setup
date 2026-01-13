@@ -7,10 +7,14 @@ return {
     event = "VeryLazy",
     opts = {
       options = {
-        theme = "tokyonight",
+        theme = "auto", -- Will use our custom colorscheme
         globalstatus = true,
         component_separators = { left = "", right = "" },
         section_separators = { left = "", right = "" },
+        disabled_filetypes = {
+          statusline = { "alpha" },
+          winbar = { "alpha" },
+        },
       },
       sections = {
         lualine_a = { "mode" },
@@ -105,40 +109,14 @@ return {
     },
   },
 
-  -- Dashboard
+  -- Dashboard - Uses VulcanOS custom dashboard via vulcan module
   {
     "goolord/alpha-nvim",
     event = "VimEnter",
     dependencies = { "nvim-tree/nvim-web-devicons" },
     config = function()
-      local alpha = require("alpha")
-      local dashboard = require("alpha.themes.dashboard")
-
-      dashboard.section.header.val = {
-        "                                                     ",
-        "  ███╗   ██╗███████╗ ██████╗ ██╗   ██╗██╗███╗   ███╗ ",
-        "  ████╗  ██║██╔════╝██╔═══██╗██║   ██║██║████╗ ████║ ",
-        "  ██╔██╗ ██║█████╗  ██║   ██║██║   ██║██║██╔████╔██║ ",
-        "  ██║╚██╗██║██╔══╝  ██║   ██║╚██╗ ██╔╝██║██║╚██╔╝██║ ",
-        "  ██║ ╚████║███████╗╚██████╔╝ ╚████╔╝ ██║██║ ╚═╝ ██║ ",
-        "  ╚═╝  ╚═══╝╚══════╝ ╚═════╝   ╚═══╝  ╚═╝╚═╝     ╚═╝ ",
-        "                                                     ",
-        "              VulcanOS Development Environment       ",
-        "                                                     ",
-      }
-
-      dashboard.section.buttons.val = {
-        dashboard.button("f", "  Find file", ":Telescope find_files<CR>"),
-        dashboard.button("r", "  Recent files", ":Telescope oldfiles<CR>"),
-        dashboard.button("g", "  Find text", ":Telescope live_grep<CR>"),
-        dashboard.button("c", "  Configuration", ":e ~/.config/nvim/init.lua<CR>"),
-        dashboard.button("l", "󰒲  Lazy", ":Lazy<CR>"),
-        dashboard.button("q", "  Quit", ":qa<CR>"),
-      }
-
-      dashboard.section.footer.val = "VulcanOS - Development First"
-
-      alpha.setup(dashboard.config)
+      -- The dashboard is configured by vulcan/dashboard.lua
+      -- This just ensures alpha-nvim is loaded
     end,
   },
 }

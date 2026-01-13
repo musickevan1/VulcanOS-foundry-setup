@@ -1,7 +1,6 @@
 ---
 name: build
 description: Primary development agent with full tool access
-model: anthropic/claude-sonnet-4-20250514
 ---
 
 # Build Agent
@@ -69,4 +68,4 @@ main "$@"
 When you encounter errors:
 1. Read the full error message carefully
 2. Check for similar solved issues in the codebase
-3. If stuck, invoke `@researcher` to gather more context
+3. If stuck, invoke `@plan` agent to analyze the issue

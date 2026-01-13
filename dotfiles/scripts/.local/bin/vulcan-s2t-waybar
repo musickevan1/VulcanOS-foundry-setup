@@ -1,0 +1,152 @@
+#!/usr/bin/env bash
+# ============================================================================
+# VulcanOS Speech-to-Text Waybar Status (Simplified)
+# Outputs JSON for Waybar custom module with real-time status and timer
+# ============================================================================
+#
+# Usage:
+#   vulcan-s2t-waybar          Single output
+#   vulcan-s2t-waybar --watch  Continuous output for Waybar exec
+
+set -uo pipefail
+
+# Paths
+DATA_DIR="$HOME/.local/share/vulcan-s2t"
+CONFIG_DIR="$HOME/.config/vulcan-s2t"
+STATUS_FILE="$DATA_DIR/status"
+API_KEY_FILE="$CONFIG_DIR/api-key.conf"
+RECORD_START_FILE="$DATA_DIR/record_start"
+
+# ============================================================================
+# STATUS FUNCTIONS
+# ============================================================================
+
+get_status() {
+    if [[ -f "$STATUS_FILE" ]]; then
+        cat "$STATUS_FILE"
+        return
+    fi
+    
+    # Check if configured
+    if [[ ! -f "$API_KEY_FILE" ]]; then
+        echo "unconfigured"
+        return
+    fi
+    
+    if grep -q "your-api-key-here" "$API_KEY_FILE" 2>/dev/null; then
+        echo "unconfigured"
+        return
+    fi
+    
+    echo "idle"
+}
+
+get_recording_duration() {
+    if [[ -f "$RECORD_START_FILE" ]]; then
+        local start_time now elapsed
+        start_time=$(cat "$RECORD_START_FILE" 2>/dev/null || echo "0")
+        now=$(date +%s.%N)
+        elapsed=$(awk "BEGIN {printf \"%.1f\", $now - $start_time}")
+        echo "${elapsed}s"
+    else
+        echo "0.0s"
+    fi
+}
+
+# ============================================================================
+# JSON OUTPUT
+# ============================================================================
+
+output_json() {
+    local status text tooltip icon_class duration
+    
+    status=$(get_status)
+    
+    case "$status" in
+        idle)
+            text=""
+            tooltip="S2T Ready\\nHold Super+; to record"
+            icon_class="idle"
+            ;;
+        recording)
+            duration=$(get_recording_duration)
+            text="REC $duration"
+            tooltip="Recording... $duration\\nRelease to transcribe"
+            icon_class="recording"
+            ;;
+        processing)
+            text="..."
+            tooltip="Transcribing...\\nPlease wait"
+            icon_class="processing"
+            ;;
+        success)
+            text="OK"
+            tooltip="Copied to clipboard!"
+            icon_class="success"
+            ;;
+        error)
+            text="ERR"
+            tooltip="Transcription failed\\nCheck ~/.local/share/vulcan-s2t/s2t.log"
+            icon_class="error"
+            ;;
+        unconfigured)
+            text="Setup"
+            tooltip="API key not configured\\nEdit ~/.config/vulcan-s2t/api-key.conf"
+            icon_class="unconfigured"
+            ;;
+        *)
+            text=""
+            tooltip="S2T: $status"
+            icon_class="idle"
+            ;;
+    esac
+    
+    printf '{"text": "%s", "tooltip": "%s", "class": "%s", "alt": "%s"}\n' \
+        "$text" "$tooltip" "$icon_class" "$icon_class"
+}
+
+# ============================================================================
+# WATCH MODE
+# ============================================================================
+
+watch_mode() {
+    local last_output=""
+    
+    while true; do
+        local status
+        status=$(get_status)
+        
+        # During recording, update frequently for timer
+        if [[ "$status" == "recording" ]]; then
+            output_json
+            sleep 0.1
+        else
+            local current_output
+            current_output=$(output_json)
+            
+            # Only output on change
+            if [[ "$current_output" != "$last_output" ]]; then
+                echo "$current_output"
+                last_output="$current_output"
+            fi
+            
+            sleep 0.5
+        fi
+    done
+}
+
+# ============================================================================
+# MAIN
+# ============================================================================
+
+main() {
+    mkdir -p "$DATA_DIR"
+    
+    if [[ "${1:-}" == "--watch" ]]; then
+        watch_mode
+    else
+        output_json
+    fi
+}
+
+main "$@"

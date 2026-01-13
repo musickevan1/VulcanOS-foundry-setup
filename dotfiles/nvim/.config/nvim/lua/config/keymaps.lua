@@ -47,3 +47,24 @@ keymap("t", "<C-h>", "<C-\\><C-N><C-w>h", opts)
 keymap("t", "<C-j>", "<C-\\><C-N><C-w>j", opts)
 keymap("t", "<C-k>", "<C-\\><C-N><C-w>k", opts)
 keymap("t", "<C-l>", "<C-\\><C-N><C-w>l", opts)
+
+-- ============================================================================
+-- Markdown Keybindings (loaded from vulcan/markdown.lua)
+-- These are set up by the vulcan module, but we can also add custom ones here
+-- ============================================================================
+
+-- Quick checkbox toggle for TODO lists
+keymap("n", "<leader>tc", function()
+  local markdown = require("vulcan.markdown")
+  markdown.toggle_checkbox()
+end, { desc = "Toggle checkbox" })
+
+-- Show checkbox count
+keymap("n", "<leader>tk", function()
+  local markdown = require("vulcan.markdown")
+  local counts = markdown.count_checkboxes()
+  vim.notify(
+    string.format("Checkboxes: %d/%d (%d%%)", counts.completed, counts.total, counts.percentage),
+    vim.log.levels.INFO
+  )
+end, { desc = "Show checkbox count" })

@@ -1,0 +1,46 @@
+#!/bin/bash
+# restore-monitor-config - Emergency restore for monitor configuration
+# Restores the desktop profile (most common home setup)
+#
+# Usage: restore-monitor-config [profile-name]
+# Default: desktop profile
+# 
+# Keybinding: Super + Shift + M
+
+PROFILE_DIR="$HOME/.config/hyprmon-desc/profiles"
+MONITORS_CONF="$HOME/.config/hypr/monitors.conf"
+DEFAULT_PROFILE="desktop"
+
+# Determine which profile to restore
+PROFILE="${1:-$DEFAULT_PROFILE}"
+PROFILE_FILE="$PROFILE_DIR/${PROFILE}.conf"
+
+if [ ! -f "$PROFILE_FILE" ]; then
+    notify-send -u critical "Monitor Restore Error" "Profile not found: $PROFILE\n\nFalling back to desktop profile"
+    PROFILE="desktop"
+    PROFILE_FILE="$PROFILE_DIR/desktop.conf"
+fi
+
+if [ ! -f "$PROFILE_FILE" ]; then
+    notify-send -u critical "Monitor Restore Failed" "Desktop profile not found!\n\nRun: hyprmon-desc --help"
+    echo "Error: Cannot find profile file: $PROFILE_FILE" >&2
+    exit 1
+fi
+
+# Backup current (broken) config
+if [ -f "$MONITORS_CONF" ]; then
+    cp "$MONITORS_CONF" "${MONITORS_CONF}.broken-$(date +%Y%m%d-%H%M%S)"
+fi
+
+# Restore profile
+cp "$PROFILE_FILE" "$MONITORS_CONF"
+hyprctl reload >/dev/null 2>&1
+
+# Success notification
+notify-send -u normal "Monitors Restored" "Profile: $PROFILE\n\nConfiguration has been restored."
+
+echo "✓ Monitor configuration restored to: $PROFILE"
+echo "  If this isn't the right setup, use:"
+echo "  - Super + F1  (desktop - 3 monitors)"
+echo "  - Super + F2  (campus - 2 monitors)"
+echo "  - Super + F3  (laptop - 1 monitor)"
