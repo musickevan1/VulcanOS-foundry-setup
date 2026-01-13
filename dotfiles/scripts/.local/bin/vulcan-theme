@@ -397,6 +397,13 @@ main() {
         list)
             list_themes
             ;;
+        list-ids)
+            # Output theme IDs and names in parseable format (for vulcan-menu integration)
+            for theme_entry in "${THEMES[@]}"; do
+                IFS=':' read -r id name desc <<< "${theme_entry}"
+                echo "${id}:${name}"
+            done
+            ;;
         current)
             current=$(get_current_theme)
             name=$(get_theme_name "${current}")

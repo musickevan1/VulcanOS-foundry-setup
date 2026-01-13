@@ -1,0 +1,6 @@
+Transcribe the audio to text exactly as spoken.
+
+Rules:
+- Include every word including fillers (um, uh, like)
+- Output ONLY the transcribed text
+- No explanations or marketing

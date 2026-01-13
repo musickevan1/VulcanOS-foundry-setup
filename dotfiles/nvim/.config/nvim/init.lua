@@ -12,3 +12,6 @@ require("config.lazy")
 require("config.options")
 require("config.keymaps")
 require("config.autocmds")
+
+-- Load VulcanOS customizations (Phase 1)
+require("vulcan")

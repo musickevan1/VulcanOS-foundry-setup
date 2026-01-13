@@ -1,0 +1,31 @@
+#!/bin/bash
+# Simple kitty zoom wrapper for window title indicator
+# Usage: kitty-zoom [in|out|reset]
+# This must be run FROM INSIDE a kitty window
+
+ZOOM_STATE="${HOME}/.cache/kitty-zoom-state"
+mkdir -p "$(dirname "$ZOOM_STATE")"
+
+case "$1" in
+    in|+)
+        echo "+" > "$ZOOM_STATE"
+        ;;
+    out|-)
+        echo "-" > "$ZOOM_STATE"
+        ;;
+    reset|"")
+        rm -f "$ZOOM_STATE"
+        ;;
+    *)
+        echo "Usage: $0 [in|out|reset]" >&2
+        exit 1
+        ;;
+esac
+
+# Update window title with zoom indicator
+if [[ -f "$ZOOM_STATE" ]]; then
+    ZOOM=$(cat "$ZOOM_STATE")
+    echo -ne "\033]0;kitty zoom: [$ZOOM]\007"
+else
+    echo -ne "\033]0;kitty\007"
+fi

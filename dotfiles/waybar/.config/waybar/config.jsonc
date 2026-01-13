@@ -11,7 +11,7 @@
         "custom/separator",
         "hyprland/window",
         "custom/separator",
-        "custom/s2t"
+        "custom/hyprwhspr"
     ],
 
     "modules-center": [
@@ -25,8 +25,7 @@
         "pulseaudio",
         "cpu",
         "memory",
-        "battery",
-        "custom/orchestra"
+        "battery"
     ],
 
     "hyprland/workspaces": {
@@ -58,19 +57,13 @@
         "tooltip": false
     },
 
-    "custom/s2t": {
-        "exec": "~/.local/bin/vulcan-s2t-waybar",
-        "interval": 2,
+    "custom/hyprwhspr": {
+        "format": "{}",
+        "exec": "/home/evan/hyprwhspr/config/hyprland/hyprwhspr-tray.sh status",
+        "interval": 1,
         "return-type": "json",
-        "format": "{icon}",
-        "format-icons": {
-            "idle": "<span foreground='#928374'>󰍜</span>",
-            "ready": "<span foreground='#a3be8c'>󰍜</span>",
-            "recording": "<span foreground='#fb4934'>󰍁</span>"
-        },
-        "tooltip": true,
-        "on-click": "vulcan-s2t settings",
-        "on-click-right": "vulcan-s2t toggle"
+        "exec-on-event": true,
+        "tooltip": true
     },
 
     "hyprland/window": {
@@ -188,15 +181,5 @@
         "format-alt": "{icon} {time}",
         "format-icons": ["󰂎", "󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"],
         "tooltip-format": "{timeTo}\n{capacity}% - {power}W"
-    },
-
-    "custom/orchestra": {
-        "exec": "/home/evan/orchestra/notification/waybar/scripts/tray.sh json",
-        "interval": 1,
-        "format": "{}",
-        "return-type": "json",
-        "on-click": "/home/evan/orchestra/notification/waybar/scripts/tray.sh json",
-        "tooltip": true,
-        "escape": true
     }
 }

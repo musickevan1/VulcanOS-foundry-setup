@@ -1,0 +1,182 @@
+#!/bin/bash
+# VulcanOS Visual Wallpaper Picker
+# Provides thumbnail-based wallpaper selection with caching
+# Usage: vulcan-wallpaper-picker
+
+set -euo pipefail
+
+# Configuration
+WALLPAPER_DIR="${HOME}/Pictures/Wallpapers"
+THUMBNAIL_DIR="${HOME}/.cache/vulcan/wallpaper-thumbnails"
+THUMBNAIL_SIZE="256x256"
+SELECTED_FILE="/tmp/vulcan-wallpaper-selected"
+
+# Ensure directories exist
+mkdir -p "${WALLPAPER_DIR}"
+mkdir -p "${THUMBNAIL_DIR}"
+
+notify() {
+    if command -v notify-send &> /dev/null; then
+        notify-send "Wallpaper Picker" "$1" -i preferences-desktop-wallpaper -t 2000
+    fi
+}
+
+# Generate thumbnails for wallpapers
+generate_thumbnails() {
+    local wallpapers
+    wallpapers=$(find "${WALLPAPER_DIR}" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.webp" \) 2>/dev/null)
+
+    if [[ -z "$wallpapers" ]]; then
+        notify "No wallpapers found in ${WALLPAPER_DIR}"
+        return 1
+    fi
+
+    local count=0
+    local total
+    total=$(echo "$wallpapers" | wc -l)
+
+    echo "$wallpapers" | while IFS= read -r wallpaper; do
+        [[ -z "$wallpaper" ]] && continue
+        
+        local filename
+        filename=$(basename "$wallpaper")
+        local thumbnail="${THUMBNAIL_DIR}/${filename}.thumb.jpg"
+
+        # Generate thumbnail if it doesn't exist or source is newer
+        if [[ ! -f "$thumbnail" ]] || [[ "$wallpaper" -nt "$thumbnail" ]]; then
+            if command -v convert &> /dev/null; then
+                # ImageMagick
+                convert "$wallpaper" -thumbnail "${THUMBNAIL_SIZE}^" -gravity center -extent "${THUMBNAIL_SIZE}" "$thumbnail" 2>/dev/null || true
+            elif command -v magick &> /dev/null; then
+                # ImageMagick 7+
+                magick "$wallpaper" -thumbnail "${THUMBNAIL_SIZE}^" -gravity center -extent "${THUMBNAIL_SIZE}" "$thumbnail" 2>/dev/null || true
+            fi
+        fi
+        
+        count=$((count + 1))
+    done
+
+    return 0
+}
+
+# Launch sxiv for selection
+launch_sxiv() {
+    if ! command -v sxiv &> /dev/null; then
+        notify "sxiv not installed. Install with: sudo pacman -S sxiv"
+        return 1
+    fi
+
+    # Clean up any previous selection
+    rm -f "${SELECTED_FILE}"
+
+    # Get wallpapers list
+    local wallpapers
+    wallpapers=$(find "${WALLPAPER_DIR}" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.webp" \) 2>/dev/null | sort)
+
+    if [[ -z "$wallpapers" ]]; then
+        notify "No wallpapers found in ${WALLPAPER_DIR}"
+        return 1
+    fi
+
+    # Create temporary script for sxiv key handler
+    local key_handler="/tmp/vulcan-sxiv-handler-$$"
+    cat > "${key_handler}" << 'EOF'
+#!/bin/bash
+# sxiv key handler - saves selection on Return/Enter
+while read -r file; do
+    case "$1" in
+        "Return")
+            echo "$file" > /tmp/vulcan-wallpaper-selected
+            ;;
+    esac
+done
+EOF
+    chmod +x "${key_handler}"
+
+    # Launch sxiv in thumbnail mode
+    echo "$wallpapers" | sxiv -t -i -o 2>/dev/null
+
+    # Get selected wallpaper (sxiv outputs to stdout)
+    local selected
+    if [[ -f "${SELECTED_FILE}" ]]; then
+        selected=$(cat "${SELECTED_FILE}")
+        rm -f "${SELECTED_FILE}"
+    else
+        # sxiv outputs selection to stdout, capture last line
+        selected=$(echo "$wallpapers" | sxiv -t -i -o 2>/dev/null | tail -n 1)
+    fi
+
+    # Clean up
+    rm -f "${key_handler}"
+
+    # Set wallpaper if one was selected
+    if [[ -n "$selected" ]] && [[ -f "$selected" ]]; then
+        if command -v vulcan-wallpaper &> /dev/null; then
+            vulcan-wallpaper set "$selected"
+        else
+            # Fallback to direct swww
+            if command -v swww &> /dev/null; then
+                if ! pgrep -x swww-daemon &> /dev/null; then
+                    swww-daemon &> /dev/null &
+                    sleep 0.5
+                fi
+                swww img "$selected" --transition-type any --transition-duration 0.3
+                notify "$(basename "$selected")"
+            else
+                notify "Neither vulcan-wallpaper nor swww found"
+                return 1
+            fi
+        fi
+    fi
+
+    return 0
+}
+
+# Fallback to wofi text menu if sxiv not available
+launch_wofi_fallback() {
+    local wallpapers
+    wallpapers=$(find "${WALLPAPER_DIR}" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" -o -iname "*.webp" \) 2>/dev/null)
+
+    if [[ -z "$wallpapers" ]]; then
+        notify "No wallpapers found in ${WALLPAPER_DIR}"
+        return 1
+    fi
+
+    # Show filename list in wofi
+    local selected
+    selected=$(echo "$wallpapers" | xargs -I {} basename {} | wofi --dmenu --prompt "Select Wallpaper" --cache-file /dev/null --height 400 2>/dev/null)
+
+    if [[ -n "$selected" ]]; then
+        local full_path="${WALLPAPER_DIR}/${selected}"
+        if [[ -f "$full_path" ]]; then
+            if command -v vulcan-wallpaper &> /dev/null; then
+                vulcan-wallpaper set "$full_path"
+            fi
+        fi
+    fi
+
+    return 0
+}
+
+# Main entry point
+main() {
+    if [[ ! -d "${WALLPAPER_DIR}" ]]; then
+        notify "Wallpaper directory not found: ${WALLPAPER_DIR}"
+        exit 1
+    fi
+
+    # Check for sxiv
+    if command -v sxiv &> /dev/null; then
+        # Generate/update thumbnails in background
+        notify "Loading wallpapers..."
+        generate_thumbnails &
+        
+        # Launch sxiv
+        launch_sxiv
+    else
+        # Fallback to wofi
+        launch_wofi_fallback
+    fi
+}
+
+main "$@"

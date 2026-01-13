@@ -1,0 +1,14 @@
+{
+  "enabledPlugins": {
+    ".claude/plugins/vulcanos": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git:*)",
+      "Bash(hyprctl:*)",
+      "Bash(shellcheck:*)",
+      "Bash(stow:*)",
+      "Read(*)"
+    ]
+  }
+}

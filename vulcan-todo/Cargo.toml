@@ -1,0 +1,50 @@
+[package]
+name = "vulcan-todo"
+version = "0.1.0"
+edition = "2021"
+description = "VulcanOS Task Manager - TUI and MCP server for task management"
+authors = ["VulcanOS"]
+
+[features]
+default = ["tui"]
+tui = ["dep:ratatui", "dep:crossterm", "dep:notify"]
+
+[dependencies]
+# CLI parsing
+clap = { version = "4.4", features = ["derive"] }
+
+# Data serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+uuid = { version = "1.6", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# Error handling
+anyhow = "1.0"
+
+# File handling
+fs4 = "0.8"
+
+# Directory paths
+dirs = "5"
+
+# TUI dependencies (optional feature)
+ratatui = { version = "0.26", optional = true }
+crossterm = { version = "0.28", optional = true }
+
+# File watching for real-time TUI sync
+notify = { version = "6.1", optional = true }
+
+# Async for MCP server
+tokio = { version = "1", features = ["full"] }
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# D-Bus for session detection (VulcanOS compatibility)
+zbus = "4"
+
+[dev-dependencies]
+tempfile = "3.24"
+assert_fs = "1.1"

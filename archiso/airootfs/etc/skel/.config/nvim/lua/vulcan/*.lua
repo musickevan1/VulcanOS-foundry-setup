@@ -1,0 +1,1 @@
+/home/evan/VulcanOS/dotfiles/nvim/.config/nvim/lua/vulcan/*.lua

@@ -1,0 +1,430 @@
+#!/usr/bin/env python3
+"""
+VulcanOS Speech-to-Text Cloud Client
+Sends audio to OpenRouter for transcription with mode-specific models and fallback support.
+
+Usage:
+    vulcan-s2t-cloud <audio_file> [--mode <mode>]    Transcribe with specific mode
+    vulcan-s2t-cloud <audio_file>                  Transcribe with default mode
+    vulcan-s2t-cloud --test                          Test API connection
+
+Modes:
+    exact, clean, agent, opencode, vulcan-task, exact-code
+"""
+
+import argparse
+import base64
+import json
+import subprocess
+import sys
+import time
+from pathlib import Path
+from typing import Tuple, Optional
+
+# ============================================================================
+# CONFIGURATION
+# ============================================================================
+
+CONFIG_DIR = Path.home() / ".config" / "vulcan-s2t"
+DATA_DIR = Path.home() / ".local" / "share" / "vulcan-s2t"
+SETTINGS_FILE = CONFIG_DIR / "settings.conf"
+API_KEY_FILE = CONFIG_DIR / "api-key.conf"
+LOG_FILE = DATA_DIR / "s2t.log"
+PROMPTS_DIR = CONFIG_DIR / "prompts"
+
+# Defaults
+DEFAULT_MODEL = "google/gemini-2.5-flash"
+DEFAULT_API_BASE = "https://openrouter.ai/api/v1"
+DEFAULT_MIN_FILE_SIZE = 1000
+
+# Default prompt (used if mode-specific prompt not found)
+DEFAULT_TRANSCRIPTION_PROMPT = """Transcribe this audio clearly and accurately:
+- Fix grammar and punctuation
+- Remove filler words (um, uh, like, you know)
+- Keep the original meaning and tone intact
+- Output only the transcription, nothing else."""
+
+# Mode to prompt file mapping
+MODE_TO_PROMPT = {
+    "exact": "exact.txt",
+    "clean": "clean.txt",
+    "agent": "agent.txt",
+    "opencode": "opencode.txt",
+    "vulcan-task": "vulcan-task.txt",
+    "exact-code": "exact-code.txt",
+}
+
+# Mode to config key mapping (for model selection)
+MODE_TO_CONFIG_KEY = {
+    "exact": "S2T_MODEL_EXACT",
+    "clean": "S2T_MODEL_CLEAN",
+    "agent": "S2T_MODEL_AGENT",
+    "opencode": "S2T_MODEL_OPENCODE",
+    "vulcan-task": "S2T_MODEL_VULCAN_TASK",
+    "exact-code": "S2T_MODEL_EXACT",
+}
+
+
+# ============================================================================
+# CONFIG LOADING
+# ============================================================================
+
+def load_config() -> dict:
+    """Load configuration from files."""
+    config = {
+        "api_key": None,
+        "model": DEFAULT_MODEL,
+        "fallback_model": "google/gemini-3-flash-preview",
+        "enable_fallback": "true",
+        "api_base": DEFAULT_API_BASE,
+        "min_file_size": DEFAULT_MIN_FILE_SIZE,
+        "mode_models": {},  # Will be populated with mode-specific models
+    }
+    
+    # Load settings
+    if SETTINGS_FILE.exists():
+        try:
+            with open(SETTINGS_FILE) as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith("#"):
+                        continue
+                    if "=" in line:
+                        key, value = line.split("=", 1)
+                        key = key.strip()
+                        value = value.strip().strip('"').strip("'")
+                        
+                        # Basic settings
+                        if key == "S2T_MODEL":
+                            config["model"] = value
+                        elif key == "S2T_FALLBACK_MODEL":
+                            config["fallback_model"] = value
+                        elif key == "S2T_ENABLE_FALLBACK":
+                            config["enable_fallback"] = value.lower() in ("true", "1", "yes")
+                        elif key == "S2T_API_BASE":
+                            config["api_base"] = value
+                        elif key == "S2T_MIN_FILE_SIZE":
+                            config["min_file_size"] = int(value)
+                        # Mode-specific models
+                        elif key.startswith("S2T_MODEL_"):
+                            mode_name = key.replace("S2T_MODEL_", "").lower()
+                            config["mode_models"][mode_name] = value
+        except Exception as e:
+            log(f"Error loading settings: {e}", "WARN")
+    
+    # Load API key
+    if API_KEY_FILE.exists():
+        try:
+            with open(API_KEY_FILE) as f:
+                for line in f:
+                    line = line.strip()
+                    if line.startswith("OPENROUTER_API_KEY="):
+                        key = line.split("=", 1)[1].strip().strip('"').strip("'")
+                        if key and key != "your-api-key-here":
+                            config["api_key"] = key
+                        break
+        except Exception as e:
+            log(f"Error loading API key: {e}", "WARN")
+    
+    return config
+
+
+def get_model_for_mode(config: dict, mode: str) -> str:
+    """Get the appropriate model for a given mode."""
+    mode_key = MODE_TO_CONFIG_KEY.get(mode, "")
+    
+    # First, check if mode-specific model is configured
+    if mode_key and mode_key in config["mode_models"]:
+        return config["mode_models"][mode_key]
+    
+    # Otherwise, use the default model
+    return config["model"]
+
+
+def load_prompt(mode: str) -> str:
+    """Load prompt file for the given mode."""
+    prompt_file = MODE_TO_PROMPT.get(mode)
+    
+    if not prompt_file:
+        log(f"Unknown mode: {mode}, using default prompt", "WARN")
+        return DEFAULT_TRANSCRIPTION_PROMPT
+    
+    prompt_path = PROMPTS_DIR / prompt_file
+    
+    if prompt_path.exists():
+        try:
+            with open(prompt_path) as f:
+                return f.read().strip()
+        except Exception as e:
+            log(f"Error loading prompt file {prompt_file}: {e}", "WARN")
+    else:
+        log(f"Prompt file not found: {prompt_path}, using default", "WARN")
+    
+    return DEFAULT_TRANSCRIPTION_PROMPT
+
+
+def log(message: str, level: str = "INFO"):
+    """Log a message to the log file."""
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    log_line = f"[{timestamp}] [{level}] {message}\n"
+    
+    LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with open(LOG_FILE, "a") as f:
+            f.write(log_line)
+    except Exception:
+        pass
+    
+    if level in ("ERROR", "WARN"):
+        print(f"[{level}] {message}", file=sys.stderr)
+
+
+# ============================================================================
+# AUDIO HANDLING
+# ============================================================================
+
+def validate_audio(audio_path: str, min_size: int) -> Tuple[bool, str]:
+    """Validate audio file before sending to API."""
+    path = Path(audio_path)
+    
+    if not path.exists():
+        return False, "Audio file not found"
+    
+    file_size = path.stat().st_size
+    if file_size < min_size:
+        return False, f"Audio too small ({file_size} bytes)"
+    
+    return True, "valid"
+
+
+def encode_audio(audio_path: str) -> str:
+    """Encode audio file to base64."""
+    with open(audio_path, "rb") as f:
+        return base64.b64encode(f.read()).decode("utf-8")
+
+
+# ============================================================================
+# OPENROUTER API
+# ============================================================================
+
+def call_openrouter(audio_b64: str, config: dict, model: str, prompt: str, 
+                   is_fallback: bool = False) -> Tuple[bool, str, Optional[str]]:
+    """
+    Call OpenRouter API for transcription.
+    
+    Returns:
+        (success, content, used_model)
+    """
+    import urllib.request
+    import urllib.error
+    
+    if not config["api_key"]:
+        return False, "API key not configured", model
+    
+    url = f"{config['api_base']}/chat/completions"
+    
+    payload = {
+        "model": model,
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": prompt},
+                    {
+                        "type": "input_audio",
+                        "input_audio": {
+                            "data": audio_b64,
+                            "format": "wav"
+                        }
+                    }
+                ]
+            }
+        ]
+    }
+    
+    headers = {
+        "Authorization": f"Bearer {config['api_key']}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://vulcanos.dev",
+        "X-Title": "VulcanOS S2T"
+    }
+    
+    if is_fallback:
+        log(f"Attempting fallback model: {model}", "INFO")
+    
+    try:
+        data = json.dumps(payload).encode("utf-8")
+        req = urllib.request.Request(url, data=data, headers=headers, method="POST")
+        
+        with urllib.request.urlopen(req, timeout=60) as response:
+            result = json.loads(response.read().decode("utf-8"))
+            
+            if "choices" in result and len(result["choices"]) > 0:
+                content = result["choices"][0]["message"]["content"]
+                return True, content.strip(), model
+            else:
+                return False, "Empty response from API", model
+    
+    except urllib.error.HTTPError as e:
+        error_body = e.read().decode("utf-8") if e.fp else ""
+        try:
+            error_data = json.loads(error_body)
+            error_msg = error_data.get("error", {}).get("message", str(e))
+        except json.JSONDecodeError:
+            error_msg = str(e)
+        log(f"API error with {model} ({e.code}): {error_msg}", "ERROR")
+        return False, f"API error: {error_msg}", model
+    
+    except urllib.error.URLError as e:
+        log(f"Network error: {e.reason}", "ERROR")
+        return False, f"Network error: {e.reason}", model
+    
+    except Exception as e:
+        log(f"Unexpected error: {e}", "ERROR")
+        return False, f"Error: {str(e)}", model
+
+
+def transcribe(audio_path: str, config: dict, mode: str = "clean") -> Tuple[bool, str]:
+    """Transcribe audio file using OpenRouter with fallback support."""
+    # Get model and prompt for mode
+    model = get_model_for_mode(config, mode)
+    prompt = load_prompt(mode)
+    
+    log(f"Transcribing with mode: {mode}, model: {model}", "INFO")
+    
+    # Validate
+    is_valid, msg = validate_audio(audio_path, config["min_file_size"])
+    if not is_valid:
+        return False, msg
+    
+    # Encode
+    try:
+        audio_b64 = encode_audio(audio_path)
+        log(f"Encoded audio: {len(audio_b64)} bytes")
+    except Exception as e:
+        return False, f"Failed to encode audio: {e}"
+    
+    # Call API with primary model
+    success, result, used_model = call_openrouter(audio_b64, config, model, prompt)
+    
+    # Try fallback if enabled and primary failed
+    if not success and config["enable_fallback"]:
+        fallback_model = config["fallback_model"]
+        if fallback_model and fallback_model != model:
+            log(f"Primary model {model} failed, trying fallback: {fallback_model}", "WARN")
+            success, result, used_model = call_openrouter(
+                audio_b64, config, fallback_model, prompt, is_fallback=True
+            )
+            if success:
+                log(f"Fallback to {fallback_model} succeeded", "INFO")
+    
+    if success:
+        log(f"Transcription successful using model: {used_model}", "INFO")
+        return True, result
+    else:
+        return False, result
+
+
+# ============================================================================
+# OUTPUT
+# ============================================================================
+
+def copy_to_clipboard(text: str) -> bool:
+    """Copy text to clipboard using wl-copy."""
+    try:
+        subprocess.run(
+            ["wl-copy", text],
+            check=True,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
+        return True
+    except subprocess.CalledProcessError as e:
+        log(f"wl-copy failed: {e}", "ERROR")
+        return False
+    except FileNotFoundError:
+        log("wl-copy not found", "ERROR")
+        return False
+
+
+# ============================================================================
+# MAIN
+# ============================================================================
+
+def test_connection(config: dict) -> bool:
+    """Test API connection."""
+    import urllib.request
+    
+    if not config["api_key"]:
+        print("ERROR: API key not configured")
+        return False
+    
+    try:
+        req = urllib.request.Request(
+            f"{config['api_base']}/models",
+            headers={"Authorization": f"Bearer {config['api_key']}"}
+        )
+        with urllib.request.urlopen(req, timeout=10):
+            return True
+    except Exception as e:
+        print(f"Connection failed: {e}")
+        return False
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="VulcanOS Speech-to-Text",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  vulcan-s2t-cloud recording.wav
+  vulcan-s2t-cloud recording.wav --mode exact
+  vulcan-s2t-cloud recording.wav --mode opencode
+  vulcan-s2t-cloud --test
+        """
+    )
+    parser.add_argument("audio_file", nargs="?", help="Audio file to transcribe")
+    parser.add_argument("--test", action="store_true", help="Test API connection")
+    parser.add_argument(
+        "--mode", "-m", 
+        choices=list(MODE_TO_PROMPT.keys()),
+        default="clean",
+        help="Transcription mode (default: clean)"
+    )
+    args = parser.parse_args()
+    
+    config = load_config()
+    
+    # Test mode
+    if args.test:
+        sys.exit(0 if test_connection(config) else 1)
+    
+    # Transcribe mode
+    if not args.audio_file:
+        parser.print_help()
+        sys.exit(1)
+    
+    audio_path = Path(args.audio_file)
+    if not audio_path.exists():
+        print(f"ERROR: File not found: {audio_path}", file=sys.stderr)
+        sys.exit(1)
+    
+    # Transcribe
+    success, result = transcribe(str(audio_path), config, args.mode)
+    
+    if success:
+        # Copy to clipboard
+        if copy_to_clipboard(result):
+            log("Transcription copied to clipboard")
+            print(result)  # Also print for debugging
+            sys.exit(0)
+        else:
+            print("ERROR: Failed to copy to clipboard", file=sys.stderr)
+            sys.exit(1)
+    else:
+        print(f"ERROR: {result}", file=sys.stderr)
+        sys.exit(1)
+
+
+if __name__ == "__main__":
+    main()

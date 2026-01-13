@@ -1,6 +1,6 @@
 {
   "$schema": "https://opencode.ai/config.json",
-  "model": "anthropic/claude-sonnet-4-20250514",
+  "model": "zai/glm-4.7",
   "share": "manual",
   "autoupdate": "notify",
   "instructions": [
@@ -26,11 +26,9 @@
   },
   "agent": {
     "build": {
-      "model": "anthropic/claude-sonnet-4-20250514",
       "prompt": "agent/build.md"
     },
     "plan": {
-      "model": "anthropic/claude-sonnet-4-20250514",
       "prompt": "agent/plan.md",
       "tools": {
         "edit": false,
@@ -40,9 +38,17 @@
     }
   },
   "mcp": {
-    "docker": {
+    "docker-gateway": {
       "type": "local",
       "command": ["docker-mcp-gateway", "run"]
+    },
+    "vulcan-todo": {
+      "type": "local",
+      "command": ["vulcan-todo", "--mcp"]
+    },
+    "vulcan-vault": {
+      "type": "local",
+      "command": ["vulcan-vault", "--mcp"]
     }
   },
   "lsp": {

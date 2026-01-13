@@ -65,45 +65,8 @@ window#waybar.hidden {
     margin: 4px 0;
 }
 
-#custom-s2t {
-    margin-right: 8px;
-}
-
-#custom-s2t.idle {
-    opacity: 0.6;
-}
-
-#custom-s2t.ready {
-    animation: pulse 2s ease-in-out infinite;
-}
-
-#custom-s2t.recording {
-    animation: pulse-recording 1s ease-in-out infinite;
-}
-
-@keyframes pulse {
-    0% {
-        opacity: 0.8;
-    }
-    50% {
-        opacity: 1;
-    }
-    100% {
-        opacity: 0.8;
-    }
-}
-
-@keyframes pulse-recording {
-    0% {
-        opacity: 1;
-    }
-    50% {
-        opacity: 0.7;
-    }
-    100% {
-        opacity: 1;
-    }
-}
+/* hyprwhspr - Speech-to-text module */
+@import "/home/evan/hyprwhspr/config/waybar/hyprwhspr-style.css";
 
 /* Clock - Primary Accent */
 #clock {

@@ -1,0 +1,6 @@
+{
+  "vulcan-vault": {
+    "command": "vulcan-vault",
+    "args": ["--mcp"]
+  }
+}

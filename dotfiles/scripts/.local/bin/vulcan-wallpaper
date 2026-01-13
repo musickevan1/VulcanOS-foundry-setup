@@ -1,14 +1,19 @@
 #!/bin/bash
 # VulcanOS Wallpaper Manager
 # Usage: vulcan-wallpaper [command]
-# Commands: rotate, random, set <path>, list
+# Commands: rotate, random, set <path>, list, clear, help
+# Uses: swww (Simple Wallpaper Wayland)
 
 set -e
 
 WALLPAPER_DIR="${HOME}/Pictures/Wallpapers"
 CONFIG_DIR="${HOME}/.config"
-HYPRPAPER_CONF="${CONFIG_DIR}/hypr/hyprpaper.conf"
 STATE_FILE="${CONFIG_DIR}/vulcan/wallpaper-index"
+
+# Transition settings (faster response)
+TRANSITION_DURATION=0.3
+TRANSITION_FPS=60
+TRANSITION_STEP=90
 
 # Ensure directories exist
 mkdir -p "${CONFIG_DIR}/vulcan"
@@ -40,24 +45,31 @@ set_wallpaper() {
         exit 1
     fi
 
-    # Update hyprpaper config
-    cat > "$HYPRPAPER_CONF" << EOF
-preload = ${wallpaper}
-wallpaper = ,${wallpaper}
-splash = false
-EOF
+    # Check if swww-daemon is running
+    if ! pgrep -x swww-daemon &> /dev/null; then
+        echo "Starting swww-daemon..."
+        swww-daemon &> /dev/null &
+        sleep 0.5
+    fi
 
-    # Reload hyprpaper
-    pkill hyprpaper 2>/dev/null || true
-    sleep 0.2
-    hyprctl dispatch exec hyprpaper &> /dev/null || true
+    # Set wallpaper with swww
+    swww img "$wallpaper" \
+        --transition-type any \
+        --transition-step $TRANSITION_STEP \
+        --transition-fps $TRANSITION_FPS \
+        --transition-duration $TRANSITION_DURATION \
+        --no-resize \
+        2>&1
 
     notify "$(basename "$wallpaper")"
 }
 
 rotate_wallpaper() {
-    local wallpapers
-    mapfile -t wallpapers < <(get_wallpapers)
+    # Get wallpapers into array
+    local wallpapers=()
+    while IFS= read -r wp; do
+        [[ -n "$wp" ]] && wallpapers+=("$wp")
+    done < <(get_wallpapers)
 
     if [[ ${#wallpapers[@]} -eq 0 ]]; then
         notify "No wallpapers found in $WALLPAPER_DIR"
@@ -75,8 +87,11 @@ rotate_wallpaper() {
 }
 
 random_wallpaper() {
-    local wallpapers
-    mapfile -t wallpapers < <(get_wallpapers)
+    # Get wallpapers into array
+    local wallpapers=()
+    while IFS= read -r wp; do
+        [[ -n "$wp" ]] && wallpapers+=("$wp")
+    done < <(get_wallpapers)
 
     if [[ ${#wallpapers[@]} -eq 0 ]]; then
         notify "No wallpapers found in $WALLPAPER_DIR"
@@ -97,6 +112,17 @@ list_wallpapers() {
     done
 }
 
+clear_wallpaper() {
+    # Check if swww-daemon is running
+    if ! pgrep -x swww-daemon &> /dev/null; then
+        echo "swww-daemon is not running"
+        exit 1
+    fi
+
+    swww clear
+    notify "Wallpaper cleared"
+}
+
 show_help() {
     echo "VulcanOS Wallpaper Manager"
     echo ""
@@ -107,6 +133,7 @@ show_help() {
     echo "  random    Set a random wallpaper"
     echo "  set PATH  Set specific wallpaper"
     echo "  list      List available wallpapers"
+    echo "  clear     Clear wallpaper (black background)"
     echo "  help      Show this help"
     echo ""
     echo "Wallpapers should be placed in: $WALLPAPER_DIR"
@@ -131,6 +158,9 @@ main() {
             ;;
         list)
             list_wallpapers
+            ;;
+        clear)
+            clear_wallpaper
             ;;
         help|--help|-h)
             show_help

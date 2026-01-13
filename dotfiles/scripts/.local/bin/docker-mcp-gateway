@@ -1,7 +1,7 @@
 #!/bin/bash
 # Docker MCP Gateway Wrapper for OpenCode
 # Ensures Docker is running before starting the gateway
-# OpenCode requires exclusive stdio connection to the gateway
+# Runs MCP gateway in stdio mode for direct OpenCode connection
 
 LOG_FILE="/tmp/docker-mcp-gateway.log"
 
@@ -68,11 +68,13 @@ start_gateway() {
         exit 1
     fi
     
-    log "Starting MCP Gateway (stdio mode for OpenCode)..."
+    log "Starting MCP Gateway (stdio mode with static servers)..."
     
-    # Run the gateway - this replaces the current process
-    # OpenCode will communicate via stdio
-    exec docker mcp gateway run
+    # Run the gateway in stdio mode with static/long-lived mode
+    # This pre-starts servers instead of starting them on-demand, reducing connection time
+    # OpenCode will communicate directly via stdin/stdout
+    # Use Docker MCP secrets file instead of Docker Desktop secrets API
+    exec docker mcp gateway run --secrets "$HOME/.docker/mcp/secrets.env" --static --long-lived
 }
 
 # Handle different invocation modes

@@ -1,0 +1,6 @@
+Convert the spoken audio into a clear AI prompt for coding tasks.
+
+Rules:
+- Output ONLY the refined prompt text
+- No explanations or marketing
+- Focus on technical details and file paths mentioned

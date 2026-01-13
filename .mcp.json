@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "vulcan-vault": {
+      "command": "/home/evan/.local/bin/vulcan-vault",
+      "args": ["--mcp"]
+    },
+    "vulcan-todo": {
+      "command": "/home/evan/.local/bin/vulcan-todo",
+      "args": ["--mcp"]
+    },
+    "docker-gateway": {
+      "command": "/home/evan/.local/bin/docker-mcp-gateway",
+      "args": ["run"]
+    }
+  }
+}

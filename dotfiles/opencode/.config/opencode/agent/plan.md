@@ -1,7 +1,6 @@
 ---
 name: plan
 description: Analysis and planning agent without edit permissions
-model: anthropic/claude-sonnet-4-20250514
 ---
 
 # Plan Agent
