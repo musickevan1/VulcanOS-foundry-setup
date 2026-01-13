@@ -1,0 +1,59 @@
+[package]
+name = "vulcan-vault"
+version = "0.1.0"
+edition = "2021"
+description = "VulcanOS Knowledge Vault - Obsidian-based RAG storage for AI agents"
+authors = ["VulcanOS"]
+
+[features]
+default = []
+
+[dependencies]
+# CLI parsing
+clap = { version = "4.4", features = ["derive"] }
+
+# Data serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+uuid = { version = "1.6", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+toml = "0.8"
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# SQLite with vector extension
+rusqlite = { version = "0.31", features = ["bundled"] }
+sqlite-vec = "0.1"
+zerocopy = { version = "0.7", features = ["derive"] }
+
+# Directory paths
+dirs = "5"
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# HTTP client for Ollama/cloud embeddings
+reqwest = { version = "0.12", features = ["json"] }
+
+# Markdown parsing
+pulldown-cmark = "0.10"
+
+# YAML frontmatter extraction
+gray_matter = "0.2"
+
+# Glob patterns for file discovery
+glob = "0.3"
+
+# Logging
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# Regex for link extraction
+regex = "1.10"
+
+[dev-dependencies]
+tempfile = "3.10"
+assert_fs = "1.1"

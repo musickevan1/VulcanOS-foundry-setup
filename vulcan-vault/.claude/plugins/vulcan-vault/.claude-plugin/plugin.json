@@ -1,0 +1,5 @@
+{
+  "name": "vulcan-vault",
+  "version": "1.0.0",
+  "description": "Knowledge vault integration with RAG search and agent memory"
+}
