@@ -183,10 +183,7 @@ VulcanOS/
 │   ├── INSTALL.md             # Installation guide
 │   ├── KEYBINDINGS.md         # Keyboard shortcuts reference
 │   ├── OPENCODE.md            # OpenCode AI assistant setup
-│   ├── S2T.md                # Speech-to-Text user guide
-│   ├── S2T-INSTALL.md        # Speech-to-Text installation guide
-│   ├── T2-SUPPORT.md          # T2-specific documentation
-│   └── DEVELOPMENT.md         # Development environment guide
+│   └── (other technical docs)  # Various technical guides
 ├── branding/                   # Custom branding assets
 │   ├── logos/
 │   ├── wallpapers/
@@ -269,6 +266,11 @@ out/
 - PipeWire stack: pipewire, wireplumber, pipewire-pulse, pipewire-alsa
 - Controls: pamixer, pavucontrol
 - Recording: obs-studio
+
+### Speech-to-Text (~5 packages)
+- Engine: hyprwhspr (Whisper/Parakeet models)
+- Input: ydotool (for text injection)
+- Dependencies: python-requests, ffmpeg, wtype, wl-clipboard
 
 ### Development (~60 packages)
 - VCS: git, git-delta, github-cli, lazygit, stow
@@ -427,17 +429,27 @@ These must be added to GRUB configuration.
 3. Configure GTK/Qt themes via respective configs
 4. Update wallpapers in `branding/wallpapers/`
 
-### Configuring Speech-to-Text (hyprwhspr)
+### Speech-to-Text (hyprwhspr)
 
-VulcanOS uses **hyprwhspr** for local speech-to-text transcription.
+VulcanOS includes **hyprwhspr** for local, private speech-to-text transcription powered by Whisper.
 
-1. **Start service:** `~/.local/bin/hyprwhspr systemd start` (runs automatically on login)
+**Pre-configured features:**
+- Systemd service auto-starts on login
+- Wayland environment variables properly configured
+- Memory limit (2GB) to prevent OOM crashes
+- Hotkey: `Super + ;` (hold to record, release to transcribe)
+
+**Usage:**
+1. **First use:** Run `hyprwhspr setup` after installation to download models
 2. **Record:** Hold `Super + ;` to record, release to transcribe
-3. **Status:** Check Waybar for microphone status icon
-4. **Config:** Edit `~/.config/hyprwhspr/config.json`
+3. **Config:** Edit `~/.config/hyprwhspr/config.json` to change models, language, etc.
+4. **Service control:**
+   - Enable: `systemctl --user enable hyprwhspr.service`
+   - Start: `systemctl --user start hyprwhspr.service`
+   - Status: `systemctl --user status hyprwhspr.service`
 5. **Logs:** `journalctl --user -u hyprwhspr.service -f`
 
-**Hotkey:** Hold `Super + ;` to record, release to transcribe text into the active application.
+The default configuration uses the "tiny" Whisper model for fast, accurate transcription on any hardware.
 
 ## Development Workflow
 

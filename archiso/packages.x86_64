@@ -170,10 +170,14 @@ noto-fonts
 noto-fonts-emoji
 
 # ----------------------------------------------------------------------------
-# SPEECH-TO-TEXT (Cloud-based via OpenRouter)
+# SPEECH-TO-TEXT (hyprwhspr - Local Whisper-based)
 # ----------------------------------------------------------------------------
+# hyprwhspr: Native local speech-to-text with Whisper/Parakeet models
+hyprwhspr
+
 # Core dependencies (Python, audio, text output)
 python-requests
 ffmpeg
 wtype
 wl-clipboard
+ydotool
