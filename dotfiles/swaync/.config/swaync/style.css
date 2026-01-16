@@ -144,7 +144,33 @@
 }
 
 .control-center-list-placeholder {
-    opacity: 0.5;
+    margin: 24px;
+}
+
+/* Hide ALL children except the label */
+.control-center-list-placeholder > *:not(label) {
+    -gtk-icon-size: 0;
+    min-width: 0;
+    min-height: 0;
+    max-width: 0;
+    max-height: 0;
+    opacity: 0;
+}
+
+/* Also target .empty-list-label's sibling elements */
+.control-center-list-placeholder image {
+    -gtk-icon-size: 0;
+    opacity: 0;
+    min-width: 0;
+    min-height: 0;
+}
+
+/* Style the "No Notifications" text */
+.control-center-list-placeholder label,
+.control-center-list-placeholder .empty-list-label {
+    font-size: 14px;
+    color: #928374;
+    opacity: 0.7;
 }
 
 .floating-notifications {
@@ -152,7 +178,7 @@
 }
 
 .blank-window {
-    background: alpha(#282828, 0.3);
+    background: transparent;
 }
 
 .widget-title {

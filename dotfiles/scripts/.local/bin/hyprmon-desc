@@ -28,8 +28,26 @@ apply_profile() {
     
     # Apply profile
     cp "$profile_file" "$MONITORS_CONF"
+
+    # Brief delay to let monitors initialize before reload
+    # Prevents waybar positioning race condition
+    sleep 1.5
     hyprctl reload >/dev/null 2>&1
-    
+
+    # Configure workspace bindings based on detected monitors
+    # This binds workspace ranges to each monitor and updates waybar
+    sleep 0.5
+    configure-workspaces 2>/dev/null
+
+    # Reload Hyprland again to apply workspace rules
+    hyprctl reload >/dev/null 2>&1
+
+    # Restart waybar to pick up new monitor configuration
+    # Waybar needs restart (not just reload) to detect monitor changes
+    killall waybar 2>/dev/null
+    sleep 0.3
+    waybar &>/dev/null &
+
     # Success notification
     local monitor_count=$(grep -c '^monitor = desc:' "$profile_file")
     notify-send -u normal "Monitor Profile Applied" "Profile: $profile_name\nMonitors: $monitor_count active"

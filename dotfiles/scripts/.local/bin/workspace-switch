@@ -1,0 +1,46 @@
+#!/bin/bash
+# workspace-switch - Switch to workspace relative to current monitor
+# Usage: workspace-switch <1-5> [move]
+#   workspace-switch 3       - Switch to workspace 3 on current monitor
+#   workspace-switch 3 move  - Move active window to workspace 3 on current monitor
+#
+# Maps relative workspace (1-5) to absolute workspace based on focused monitor:
+#   Monitor 0 (leftmost): workspaces 1-5
+#   Monitor 1: workspaces 6-10
+#   Monitor 2: workspaces 11-15
+
+RELATIVE_WS="$1"
+ACTION="${2:-switch}"  # "switch" or "move"
+
+if [[ -z "$RELATIVE_WS" || "$RELATIVE_WS" -lt 1 || "$RELATIVE_WS" -gt 5 ]]; then
+    echo "Usage: workspace-switch <1-5> [move]" >&2
+    exit 1
+fi
+
+# Get focused monitor index (monitors sorted by x position)
+get_monitor_index() {
+    local focused_name
+    focused_name=$(hyprctl monitors -j | jq -r '.[] | select(.focused) | .name')
+
+    # Get all monitors sorted by x position and find index of focused one
+    hyprctl monitors -j | jq -r --arg fname "$focused_name" '
+        sort_by(.x) | to_entries[] | select(.value.name == $fname) | .key
+    '
+}
+
+MONITOR_INDEX=$(get_monitor_index)
+
+if [[ -z "$MONITOR_INDEX" ]]; then
+    echo "Error: Could not determine focused monitor" >&2
+    exit 1
+fi
+
+# Calculate absolute workspace: (monitor_index * 5) + relative_ws
+ABSOLUTE_WS=$(( (MONITOR_INDEX * 5) + RELATIVE_WS ))
+
+# Perform action
+if [[ "$ACTION" == "move" ]]; then
+    hyprctl dispatch movetoworkspace "$ABSOLUTE_WS"
+else
+    hyprctl dispatch workspace "$ABSOLUTE_WS"
+fi

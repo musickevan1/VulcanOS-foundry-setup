@@ -5,6 +5,7 @@
   "layer": "overlay",
   "control-center-layer": "top",
   "layer-shell": true,
+  "layer-shell-cover-screen": false,
   "cssPriority": "application",
   "control-center-margin-top": 10,
   "control-center-margin-bottom": 10,
@@ -18,16 +19,31 @@
   "timeout": 6,
   "timeout-low": 4,
   "timeout-critical": 0,
-  "fit-to-screen": true,
+  "fit-to-screen": false,
   "control-center-width": 350,
+  "control-center-height": -1,
   "notification-window-width": 350,
+  "notification-window-height": 200,
   "keyboard-shortcuts": true,
   "image-visibility": "when-available",
   "transition-time": 200,
   "hide-on-clear": false,
   "hide-on-action": true,
   "script-fail-notify": true,
-  "scripts": {},
+  "scripts": {
+    "sound-opencode": {
+      "exec": "vulcan-notify-sound opencode /usr/share/sounds/freedesktop/stereo/complete.oga",
+      "app-name": "OpenCode"
+    },
+    "sound-mail": {
+      "exec": "vulcan-notify-sound mail /usr/share/sounds/freedesktop/stereo/message-new-instant.oga",
+      "app-name": "Mail"
+    },
+    "sound-s2t": {
+      "exec": "vulcan-notify-sound s2t /usr/share/sounds/freedesktop/stereo/message.oga",
+      "app-name": "S2T"
+    }
+  },
   "notification-visibility": {},
   "widgets": [
     "inhibitors",

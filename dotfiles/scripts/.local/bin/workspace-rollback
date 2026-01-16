@@ -1,0 +1,75 @@
+#!/bin/bash
+# workspace-rollback - Restore original workspace keybindings
+# Reverts to absolute workspace numbers (1-10) instead of relative per-monitor
+
+BACKUP=$(ls -t ~/.config/hypr/bindings.conf.backup-* 2>/dev/null | head -1)
+
+if [[ -z "$BACKUP" ]]; then
+    echo "Error: No backup found" >&2
+    exit 1
+fi
+
+echo "Found backup: $BACKUP"
+echo ""
+echo "This will:"
+echo "  1. Restore original bindings.conf"
+echo "  2. Remove workspaces.conf (monitor-specific workspace rules)"
+echo "  3. Reset waybar persistent-workspaces to '*': 5"
+echo "  4. Reload Hyprland and restart waybar"
+echo ""
+read -p "Proceed? [y/N] " confirm
+
+if [[ "$confirm" != "y" && "$confirm" != "Y" ]]; then
+    echo "Cancelled."
+    exit 0
+fi
+
+# Restore bindings
+cp "$BACKUP" ~/.config/hypr/bindings.conf
+echo "✓ Restored bindings.conf"
+
+# Remove workspace rules
+rm -f ~/.config/hypr/workspaces.conf
+echo "✓ Removed workspaces.conf"
+
+# Reset waybar persistent-workspaces
+python3 << 'PYEOF'
+import re
+import json
+
+config_path = "/home/evan/.config/waybar/config.jsonc"
+
+with open(config_path, 'r') as f:
+    content = f.read()
+
+# Reset persistent-workspaces to "*": 5
+pattern = r'("persistent-workspaces"\s*:\s*)\{[^}]*\}'
+replacement = r'\g<1>{"*": 5}'
+content = re.sub(pattern, replacement, content)
+
+# Reset format-icons to original
+old_icons = r'"format-icons":\s*\{[^}]+\}'
+new_icons = '''"format-icons": {
+            "1": "󰎤", "2": "󰎧", "3": "󰎪", "4": "󰎭", "5": "󰎱",
+            "6": "󰎳", "7": "󰎶", "8": "󰎹", "9": "󰎼", "10": "󰽽",
+            "active": "󰮯",
+            "default": "󰊠"
+        }'''
+content = re.sub(old_icons, new_icons, content, flags=re.DOTALL)
+
+with open(config_path, 'w') as f:
+    f.write(content)
+
+print("✓ Reset waybar config")
+PYEOF
+
+# Reload
+hyprctl reload
+killall waybar 2>/dev/null
+sleep 0.3
+waybar &>/dev/null &
+
+echo ""
+echo "✓ Rollback complete!"
+echo "  Workspaces are now absolute (1-10)"
+echo "  Super+1-5 = workspaces 1-5 globally"
