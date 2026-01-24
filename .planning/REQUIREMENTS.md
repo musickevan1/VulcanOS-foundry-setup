@@ -96,47 +96,54 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| APP-01 | TBD | Pending |
-| APP-02 | TBD | Pending |
-| APP-03 | TBD | Pending |
-| APP-04 | TBD | Pending |
-| APP-05 | TBD | Pending |
-| APP-06 | TBD | Pending |
-| APP-07 | TBD | Pending |
-| APP-08 | TBD | Pending |
-| BIND-01 | TBD | Pending |
-| BIND-02 | TBD | Pending |
-| BIND-03 | TBD | Pending |
-| BIND-04 | TBD | Pending |
-| BIND-05 | TBD | Pending |
-| BIND-06 | TBD | Pending |
-| INFRA-01 | TBD | Pending |
-| INFRA-02 | TBD | Pending |
-| INFRA-03 | TBD | Pending |
-| INFRA-04 | TBD | Pending |
-| INFRA-05 | TBD | Pending |
-| INFRA-06 | TBD | Pending |
-| INFRA-07 | TBD | Pending |
-| INFRA-08 | TBD | Pending |
-| PRESET-01 | TBD | Pending |
-| PRESET-02 | TBD | Pending |
-| PRESET-03 | TBD | Pending |
-| PRESET-04 | TBD | Pending |
-| PRESET-05 | TBD | Pending |
-| PRESET-06 | TBD | Pending |
-| THIRD-01 | TBD | Pending |
-| THIRD-02 | TBD | Pending |
-| THIRD-03 | TBD | Pending |
-| THIRD-04 | TBD | Pending |
-| DESK-01 | TBD | Pending |
-| DESK-02 | TBD | Pending |
-| DESK-03 | TBD | Pending |
+| APP-01 | Phase 7 | Pending |
+| APP-02 | Phase 7 | Pending |
+| APP-03 | Phase 7 | Pending |
+| APP-04 | Phase 8 | Pending |
+| APP-05 | Phase 7 | Pending |
+| APP-06 | Phase 7 | Pending |
+| APP-07 | Phase 7 | Pending |
+| APP-08 | Phase 7 | Pending |
+| BIND-01 | Phase 8 | Pending |
+| BIND-02 | Phase 8 | Pending |
+| BIND-03 | Phase 8 | Pending |
+| BIND-04 | Phase 8 | Pending |
+| BIND-05 | Phase 8 | Pending |
+| BIND-06 | Phase 8 | Pending |
+| INFRA-01 | Phase 9 | Pending |
+| INFRA-02 | Phase 9 | Pending |
+| INFRA-03 | Phase 9 | Pending |
+| INFRA-04 | Phase 9 | Pending |
+| INFRA-05 | Phase 9 | Pending |
+| INFRA-06 | Phase 9 | Pending |
+| INFRA-07 | Phase 9 | Pending |
+| INFRA-08 | Phase 6 | Pending |
+| PRESET-01 | Phase 10 | Pending |
+| PRESET-02 | Phase 10 | Pending |
+| PRESET-03 | Phase 10 | Pending |
+| PRESET-04 | Phase 10 | Pending |
+| PRESET-05 | Phase 10 | Pending |
+| PRESET-06 | Phase 10 | Pending |
+| THIRD-01 | Phase 10 | Pending |
+| THIRD-02 | Phase 10 | Pending |
+| THIRD-03 | Phase 10 | Pending |
+| THIRD-04 | Phase 10 | Pending |
+| DESK-01 | Phase 10 | Pending |
+| DESK-02 | Phase 10 | Pending |
+| DESK-03 | Phase 10 | Pending |
 
 **Coverage:**
 - v2.0 requirements: 33 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 33
+- Mapped to phases: 33 (100% coverage ✓)
+- Unmapped: 0
+
+**Phase breakdown:**
+- Phase 6 (Foundation Architecture): 1 requirement (INFRA-08)
+- Phase 7 (Component Integration): 7 requirements (APP-01, APP-02, APP-03, APP-05, APP-06, APP-07, APP-08)
+- Phase 8 (Theme-Wallpaper Binding): 7 requirements (APP-04, BIND-01, BIND-02, BIND-03, BIND-04, BIND-05, BIND-06)
+- Phase 9 (Theming Infrastructure): 7 requirements (INFRA-01 through INFRA-07)
+- Phase 10 (Preset Themes & Desktop Integration): 11 requirements (PRESET-01 through PRESET-06, THIRD-01 through THIRD-04, DESK-01 through DESK-03)
 
 ---
 *Requirements defined: 2026-01-24*
-*Last updated: 2026-01-24 after initial definition*
+*Last updated: 2026-01-24 after roadmap creation*
