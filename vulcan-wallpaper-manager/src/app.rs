@@ -9,6 +9,7 @@ use crate::services::{hyprctl, hyprpaper, thumbnail};
 use crate::components::monitor_layout::{MonitorLayoutModel, MonitorLayoutInput, MonitorLayoutOutput};
 use crate::components::wallpaper_picker::{WallpaperPickerModel, WallpaperPickerInput, WallpaperPickerOutput};
 use crate::components::profile_manager::{ProfileManagerModel, ProfileManagerInput, ProfileManagerOutput};
+use crate::components::split_dialog::{SplitDialogModel, SplitDialogOutput};
 
 #[derive(Debug)]
 pub enum AppMsg {
@@ -21,6 +22,11 @@ pub enum AppMsg {
     ProfileApply(HashMap<String, PathBuf>),
     ProfileSaved(String),
     ProfileError(String),
+    // Split dialog messages
+    ShowSplitDialog,
+    SplitGenerated(HashMap<String, PathBuf>),
+    SplitCancelled,
+    SplitError(String),
 }
 
 pub struct App {
@@ -31,6 +37,8 @@ pub struct App {
     monitor_layout: Controller<MonitorLayoutModel>,
     wallpaper_picker: Controller<WallpaperPickerModel>,
     profile_manager: Controller<ProfileManagerModel>,
+    split_dialog: Option<Controller<SplitDialogModel>>,
+    split_dialog_window: Option<gtk::Window>,
 }
 
 #[relm4::component(pub)]
@@ -60,6 +68,12 @@ impl SimpleComponent for App {
                         set_icon_name: "folder-open-symbolic",
                         set_tooltip_text: Some("Open wallpaper folder"),
                         connect_clicked => AppMsg::OpenDirectory,
+                    },
+
+                    pack_start = &gtk::Button {
+                        set_icon_name: "insert-image-symbolic",
+                        set_tooltip_text: Some("Import panoramic image"),
+                        connect_clicked => AppMsg::ShowSplitDialog,
                     },
 
                     pack_start = &gtk::Separator {
@@ -191,6 +205,8 @@ impl SimpleComponent for App {
             monitor_layout,
             wallpaper_picker,
             profile_manager,
+            split_dialog: None,
+            split_dialog_window: None,
         };
 
         let widgets = view_output!();
@@ -198,7 +214,7 @@ impl SimpleComponent for App {
         ComponentParts { model, widgets }
     }
 
-    fn update(&mut self, msg: Self::Input, _sender: ComponentSender<Self>) {
+    fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
         match msg {
             AppMsg::MonitorSelected(name) => {
                 self.selected_monitor = Some(name.clone());
@@ -262,6 +278,70 @@ impl SimpleComponent for App {
 
             AppMsg::ProfileError(error) => {
                 eprintln!("Profile error: {}", error);
+            }
+
+            AppMsg::ShowSplitDialog => {
+                // Create split dialog component with current monitors
+                let split_dialog = SplitDialogModel::builder()
+                    .launch(self.monitors.clone())
+                    .forward(sender.input_sender(), |msg| {
+                        match msg {
+                            SplitDialogOutput::Generated(wallpapers) => AppMsg::SplitGenerated(wallpapers),
+                            SplitDialogOutput::Cancelled => AppMsg::SplitCancelled,
+                            SplitDialogOutput::Error(e) => AppMsg::SplitError(e),
+                        }
+                    });
+
+                // Create a popup window to host the dialog
+                let window = gtk::Window::builder()
+                    .title("Import Panoramic Wallpaper")
+                    .modal(true)
+                    .default_width(450)
+                    .default_height(300)
+                    .child(split_dialog.widget())
+                    .build();
+
+                window.present();
+
+                // Store references so we can close the window later
+                self.split_dialog = Some(split_dialog);
+                self.split_dialog_window = Some(window);
+            }
+
+            AppMsg::SplitGenerated(wallpapers) => {
+                println!("Generated {} wallpapers from panoramic", wallpapers.len());
+
+                // Apply all generated wallpapers
+                for (monitor, path) in &wallpapers {
+                    if let Err(e) = hyprpaper::apply_wallpaper(monitor, path) {
+                        eprintln!("Failed to apply to {}: {}", monitor, e);
+                    }
+                }
+                self.monitor_wallpapers.extend(wallpapers.clone());
+
+                // Notify profile manager of the new wallpapers
+                self.profile_manager.emit(ProfileManagerInput::UpdateWallpapers(
+                    self.monitor_wallpapers.clone()
+                ));
+
+                // Close the dialog window
+                if let Some(window) = self.split_dialog_window.take() {
+                    window.close();
+                }
+                self.split_dialog = None;
+            }
+
+            AppMsg::SplitCancelled => {
+                // Close the dialog window
+                if let Some(window) = self.split_dialog_window.take() {
+                    window.close();
+                }
+                self.split_dialog = None;
+            }
+
+            AppMsg::SplitError(error) => {
+                eprintln!("Split error: {}", error);
+                // Keep dialog open so user can try again or cancel
             }
         }
     }
