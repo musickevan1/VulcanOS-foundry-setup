@@ -10,28 +10,28 @@ See: .planning/PROJECT.md (updated 2026-01-23)
 ## Current Position
 
 Phase: 1 of 4 (T2 Kernel Protection)
-Plan: 1 of ? in current phase
+Plan: 2 of ? in current phase
 Status: In progress
-Last activity: 2026-01-24 — Completed 01-02-PLAN.md (verification and fallback infrastructure)
+Last activity: 2026-01-24 — Completed 01-01-PLAN.md (kernel protection hooks)
 
-Progress: [█░░░░░░░░░] ~5% (1 plan complete)
+Progress: [██░░░░░░░░] ~10% (2 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 1
-- Average duration: 3.9 minutes
-- Total execution time: 0.06 hours
+- Total plans completed: 2
+- Average duration: 4.3 minutes
+- Total execution time: 0.14 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 01-t2-kernel-protection | 1 | 3m 52s | 3m 52s |
+| 01-t2-kernel-protection | 2 | 8m 39s | 4m 19s |
 
 **Recent Trend:**
-- Last 5 plans: 01-02 (3m 52s)
-- Trend: Not enough data yet
+- Last 5 plans: 01-01 (4m 47s), 01-02 (3m 52s)
+- Trend: Consistent pace (~4 min/plan)
 
 *Updated after each plan completion*
 
@@ -51,6 +51,10 @@ Recent decisions affecting current work:
 - Two fallback kernel versions with auto-rotation (balance history vs /boot space)
 - GRUB custom.cfg auto-sourced by 41_custom (no grub-mkconfig needed)
 - Critical notifications persist until dismissed (boot failures need attention)
+- Protection hook (10-) runs before warning hook (20-) for proper ordering
+- Smart /boot detection (check fstab, fallback to write test) handles multiple configs
+- Fallback warning non-blocking (first install has no fallback)
+- Desktop notification from root via loginctl session detection
 
 ### Pending Todos
 
@@ -62,9 +66,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-01-24T04:27:23Z (plan 01-02 execution)
-Stopped at: Completed 01-02-PLAN.md (verification and fallback infrastructure)
+Last session: 2026-01-24T04:28:16Z (plan 01-01 execution)
+Stopped at: Completed 01-01-PLAN.md (kernel protection hooks)
 Resume file: None
 
 ---
-*Next step: Continue with plan 01-03 (abort hooks) or other phase 1 plans*
+*Next step: Continue with remaining phase 1 plans or proceed to phase 2*
