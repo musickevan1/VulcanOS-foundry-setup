@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 2: Core Backup Engine** - Manual snapshot and restore capabilities via Timeshift
 - [ ] **Phase 3: Desktop Integration** - Menu system and status display for backup operations
 - [ ] **Phase 4: Automation & Validation** - Scheduled backups and pre-update protection
-- [ ] **Phase 5: VulcanOS Wallpaper Manager** - GTK4/Adwaita GUI for multi-monitor wallpaper management
+- [x] **Phase 5: VulcanOS Wallpaper Manager** - GTK4/Adwaita GUI for multi-monitor wallpaper management
 
 ## Phase Details
 
@@ -103,14 +103,14 @@ Plans:
 **Plans**: 8 plans in 6 waves
 
 Plans:
-- [ ] 05-01-PLAN.md — Project scaffold and core infrastructure (Cargo, models, hyprctl service)
-- [ ] 05-02-PLAN.md — Main app window and monitor layout visualization
-- [ ] 05-03-PLAN.md — Wallpaper picker with thumbnail grid and caching
-- [ ] 05-04-PLAN.md — Component integration and hyprpaper IPC
-- [ ] 05-05-PLAN.md — Profile management (save/load/sync)
-- [ ] 05-06-PLAN.md — Adaptive wallpaper generation (panoramic splitting)
-- [ ] 05-07-PLAN.md — Desktop integration (menu, .desktop file, archiso sync)
-- [ ] 05-08-PLAN.md — Human verification checkpoint
+- [x] 05-01-PLAN.md — Project scaffold and core infrastructure (Cargo, models, hyprctl service)
+- [x] 05-02-PLAN.md — Main app window and monitor layout visualization
+- [x] 05-03-PLAN.md — Wallpaper picker with thumbnail grid and caching
+- [x] 05-04-PLAN.md — Component integration and swww IPC
+- [x] 05-05-PLAN.md — Profile management (save/load/sync)
+- [x] 05-06-PLAN.md — Adaptive wallpaper generation (panoramic splitting)
+- [x] 05-07-PLAN.md — Desktop integration (menu, .desktop file, archiso sync)
+- [x] 05-08-PLAN.md — Human verification checkpoint
 
 ## Progress
 
@@ -123,8 +123,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 | 2. Core Backup Engine | 0/? | Not started | - |
 | 3. Desktop Integration | 0/? | Not started | - |
 | 4. Automation & Validation | 0/? | Not started | - |
-| 5. VulcanOS Wallpaper Manager | 0/8 | Planned | - |
+| 5. VulcanOS Wallpaper Manager | 8/8 | ✓ Complete | 2026-01-24 |
 
 ---
 *Roadmap created: 2026-01-23*
-*Last updated: 2026-01-24 after Phase 5 planning*
+*Last updated: 2026-01-24 after Phase 5 execution*
