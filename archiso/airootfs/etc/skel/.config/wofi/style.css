@@ -1,4 +1,4 @@
-/* Wofi Style - Gruvbox Dark Theme */
+/* Wofi Style - Vulcan Forge Theme */
 
 * {
     font-family: "JetBrainsMono Nerd Font", monospace;
@@ -7,22 +7,22 @@
 
 window {
     margin: 0px;
-    border: 2px solid #458588;
+    border: 2px solid #f97316;
     border-radius: 10px;
-    background-color: #282828;
+    background-color: #1c1917;
 }
 
 #input {
     margin: 10px;
     border: none;
     border-radius: 8px;
-    color: #ebdbb2;
-    background-color: #3c3836;
+    color: #fafaf9;
+    background-color: #292524;
     padding: 10px;
 }
 
 #input:focus {
-    border: 2px solid #458588;
+    border: 2px solid #f97316;
 }
 
 #inner-box {
@@ -45,7 +45,7 @@ window {
 #text {
     margin: 5px;
     border: none;
-    color: #ebdbb2;
+    color: #fafaf9;
 }
 
 #entry {
@@ -56,12 +56,12 @@ window {
 }
 
 #entry:selected {
-    background-color: #504945;
+    background-color: #44403c;
     border: none;
 }
 
 #entry:hover {
-    background-color: #504945;
+    background-color: #44403c;
 }
 
 #img {

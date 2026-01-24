@@ -1,4 +1,4 @@
-/* SwayNC Style - Gruvbox Dark Theme */
+/* SwayNC Style - Vulcan Forge Theme */
 
 * {
     font-family: "JetBrainsMono Nerd Font", monospace;
@@ -11,15 +11,15 @@
 
 .notification-row:focus,
 .notification-row:hover {
-    background: #3c3836;
+    background: #292524;
 }
 
 .notification {
     border-radius: 10px;
     margin: 6px 12px;
     padding: 0;
-    background: #282828;
-    border: 1px solid #504945;
+    background: #1c1917;
+    border: 1px solid #44403c;
 }
 
 .notification-content {
@@ -28,8 +28,8 @@
 }
 
 .close-button {
-    background: #cc241d;
-    color: #282828;
+    background: #ef4444;
+    color: #1c1917;
     text-shadow: none;
     padding: 0;
     border-radius: 100%;
@@ -42,7 +42,7 @@
 }
 
 .close-button:hover {
-    background: #fb4934;
+    background: #f87171;
 }
 
 .notification-default-action,
@@ -51,12 +51,12 @@
     margin: 0;
     background: transparent;
     border: none;
-    color: #ebdbb2;
+    color: #fafaf9;
 }
 
 .notification-default-action:hover,
 .notification-action:hover {
-    background: #3c3836;
+    background: #292524;
     border-radius: 6px;
 }
 
@@ -77,33 +77,33 @@
 }
 
 .inline-reply-entry {
-    background: #3c3836;
-    color: #ebdbb2;
-    caret-color: #ebdbb2;
-    border: 1px solid #504945;
+    background: #292524;
+    color: #fafaf9;
+    caret-color: #fafaf9;
+    border: 1px solid #44403c;
     border-radius: 6px;
     padding: 6px;
 }
 
 .inline-reply-entry:focus {
-    border-color: #458588;
+    border-color: #f97316;
 }
 
 .inline-reply-button {
     margin-left: 4px;
-    background: #458588;
-    color: #282828;
+    background: #f97316;
+    color: #1c1917;
     border-radius: 6px;
     border: none;
     padding: 6px 12px;
 }
 
 .inline-reply-button:disabled {
-    background: #504945;
+    background: #44403c;
 }
 
 .inline-reply-button:hover {
-    background: #b16286;
+    background: #fbbf24;
 }
 
 .image {
@@ -115,14 +115,14 @@
     font-size: 14px;
     font-weight: bold;
     background: transparent;
-    color: #ebdbb2;
+    color: #fafaf9;
 }
 
 .time {
     font-size: 12px;
     font-weight: bold;
     background: transparent;
-    color: #928374;
+    color: #78716c;
     margin-right: 24px;
 }
 
@@ -130,12 +130,12 @@
     font-size: 13px;
     font-weight: normal;
     background: transparent;
-    color: #d5c4a1;
+    color: #a8a29e;
 }
 
 .control-center {
-    background: #282828;
-    border: 1px solid #504945;
+    background: #1c1917;
+    border: 1px solid #44403c;
     border-radius: 10px;
 }
 
@@ -144,33 +144,7 @@
 }
 
 .control-center-list-placeholder {
-    margin: 24px;
-}
-
-/* Hide ALL children except the label */
-.control-center-list-placeholder > *:not(label) {
-    -gtk-icon-size: 0;
-    min-width: 0;
-    min-height: 0;
-    max-width: 0;
-    max-height: 0;
-    opacity: 0;
-}
-
-/* Also target .empty-list-label's sibling elements */
-.control-center-list-placeholder image {
-    -gtk-icon-size: 0;
-    opacity: 0;
-    min-width: 0;
-    min-height: 0;
-}
-
-/* Style the "No Notifications" text */
-.control-center-list-placeholder label,
-.control-center-list-placeholder .empty-list-label {
-    font-size: 14px;
-    color: #928374;
-    opacity: 0.7;
+    opacity: 0.5;
 }
 
 .floating-notifications {
@@ -178,51 +152,51 @@
 }
 
 .blank-window {
-    background: transparent;
+    background: alpha(#1c1917, 0.3);
 }
 
 .widget-title {
     margin: 8px;
     font-size: 14px;
     font-weight: bold;
-    color: #ebdbb2;
+    color: #fafaf9;
 }
 
 .widget-title > button {
     font-size: 12px;
-    color: #ebdbb2;
+    color: #fafaf9;
     text-shadow: none;
-    background: #3c3836;
-    border: 1px solid #504945;
+    background: #292524;
+    border: 1px solid #44403c;
     border-radius: 6px;
     padding: 4px 8px;
 }
 
 .widget-title > button:hover {
-    background: #504945;
-    border-color: #458588;
+    background: #44403c;
+    border-color: #f97316;
 }
 
 .widget-dnd {
     margin: 8px;
     font-size: 14px;
-    color: #ebdbb2;
+    color: #fafaf9;
 }
 
 .widget-dnd > switch {
     font-size: 14px;
     border-radius: 6px;
-    background: #3c3836;
-    border: 1px solid #504945;
+    background: #292524;
+    border: 1px solid #44403c;
 }
 
 .widget-dnd > switch:checked {
-    background: #458588;
-    border-color: #458588;
+    background: #f97316;
+    border-color: #f97316;
 }
 
 .widget-dnd > switch slider {
-    background: #ebdbb2;
+    background: #fafaf9;
     border-radius: 6px;
 }
 
@@ -232,11 +206,11 @@
 
 .widget-label > label {
     font-size: 14px;
-    color: #ebdbb2;
+    color: #fafaf9;
 }
 
 .widget-mpris {
-    background: #3c3836;
+    background: #292524;
     padding: 8px;
     margin: 8px;
     border-radius: 10px;
@@ -250,12 +224,12 @@
 .widget-mpris-title {
     font-weight: bold;
     font-size: 14px;
-    color: #ebdbb2;
+    color: #fafaf9;
 }
 
 .widget-mpris-subtitle {
     font-size: 12px;
-    color: #d5c4a1;
+    color: #a8a29e;
 }
 
 .widget-buttons-grid {
@@ -263,21 +237,21 @@
     padding: 4px;
     margin: 8px;
     border-radius: 10px;
-    background: #3c3836;
+    background: #292524;
 }
 
 .widget-buttons-grid > flowbox > flowboxchild > button {
     margin: 4px;
-    background: #504945;
+    background: #44403c;
     border-radius: 6px;
-    color: #ebdbb2;
+    color: #fafaf9;
     border: none;
     padding: 8px;
 }
 
 .widget-buttons-grid > flowbox > flowboxchild > button:hover {
-    background: #458588;
-    color: #282828;
+    background: #f97316;
+    color: #1c1917;
 }
 
 .widget-menubar > box > .menu-button-bar > button {
@@ -291,7 +265,7 @@
 }
 
 .widget-volume {
-    background: #3c3836;
+    background: #292524;
     padding: 8px;
     margin: 8px;
     border-radius: 10px;
@@ -303,14 +277,14 @@
 }
 
 .per-app-volume {
-    background: #504945;
+    background: #44403c;
     padding: 4px 8px 8px 8px;
     margin: 4px 8px;
     border-radius: 10px;
 }
 
 .widget-backlight {
-    background: #3c3836;
+    background: #292524;
     padding: 8px;
     margin: 8px;
     border-radius: 10px;
@@ -319,19 +293,19 @@
 .widget-inhibitors {
     margin: 8px;
     font-size: 14px;
-    color: #ebdbb2;
+    color: #fafaf9;
 }
 
 .widget-inhibitors > button {
     font-size: 12px;
-    color: #ebdbb2;
+    color: #fafaf9;
     text-shadow: none;
-    background: #3c3836;
-    border: 1px solid #504945;
+    background: #292524;
+    border: 1px solid #44403c;
     border-radius: 6px;
     padding: 4px 8px;
 }
 
 .widget-inhibitors > button:hover {
-    background: #504945;
+    background: #44403c;
 }
