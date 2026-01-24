@@ -1,18 +1,29 @@
-# VulcanOS Foundation
+# VulcanOS
 
 ## What This Is
 
-A personal system management layer for a 2019 T2 MacBook Pro running Arch Linux with Hyprland. VulcanOS provides comprehensive backup/sync, T2 kernel protection, and organized tooling for a single-user development workstation. Future versions may target other systems, but this milestone is specifically for one machine.
+A development-focused, opinionated Arch Linux distribution for T2 MacBook Pro hardware with Hyprland compositor. VulcanOS provides system protection, organized tooling, and a cohesive visual experience for a single-user development workstation.
 
 ## Core Value
 
-**Never lose work or boot capability.** Pre-update snapshots and kernel pinning ensure the system is always recoverable, while automated sync keeps configs and data backed up.
+**Cohesive, recoverable, keyboard-driven.** The system should feel unified (one visual identity), be always recoverable (snapshots + kernel protection), and stay out of the way (minimal, fast, keyboard-first).
+
+## Current Milestone: v2.0 Vulcan Appearance Manager
+
+**Goal:** Unified theme and wallpaper management with preset theme bundles and consistent theming across all VulcanOS tools.
+
+**Target features:**
+- Combined Theme + Wallpaper Manager GUI (replaces both existing apps)
+- 8-10 preset themes with suggested wallpapers
+- Shared theming infrastructure (propagates to waybar, wofi, swaync, hyprlock, terminals)
+- Third-party app theming discovery (VS Code, nvim, etc.)
+- Wallpaper library synced with dotfiles/backup system
 
 ## Requirements
 
 ### Validated
 
-Existing capabilities from current codebase:
+Existing capabilities from previous milestone:
 
 - ✓ Arch Linux ISO build system (archiso profile) — existing
 - ✓ GNU Stow dotfile management structure — existing
@@ -23,79 +34,86 @@ Existing capabilities from current codebase:
 - ✓ Desktop integration scripts (vulcan-menu, themes, etc.) — existing
 - ✓ T2 MacBook Pro hardware support (linux-t2 kernel) — existing
 - ✓ Speech-to-text via hyprwhspr — existing
+- ✓ vulcan-theme-manager (standalone theme editor) — v1.0
+- ✓ vulcan-wallpaper-manager (per-monitor wallpaper GUI) — v1.0
+- ✓ vulcan-theme CLI (applies themes to desktop tools) — v1.0
+- ✓ 8 built-in color themes — v1.0
 
 ### Active
 
-New requirements for this milestone:
+New requirements for v2.0 milestone:
 
-**Sync/Backup System:**
-- [ ] Dotfiles sync to Git repository (version controlled)
-- [ ] Package list export and sync to Git (reproducible installs)
-- [ ] Personal data backup to local external drive
-- [ ] Full system snapshots via Timeshift rsync mode
-- [ ] Sensitive file exclusion patterns (.env, SSH keys, GPG)
-- [ ] Sync status display (last sync time, snapshot count)
+**Unified Appearance Manager:**
+- [ ] Single GTK4/Relm4 app replacing theme-manager and wallpaper-manager
+- [ ] Theme browser with color preview and wallpaper suggestion
+- [ ] Per-monitor wallpaper assignment (migrated from wallpaper-manager)
+- [ ] Profile save/load for wallpaper configurations
+- [ ] Theme-wallpaper binding (each theme suggests a default wallpaper)
+- [ ] User can override theme's suggested wallpaper
 
-**T2 Kernel Protection:**
-- [ ] Pre-update snapshots before pacman operations
-- [ ] linux-t2 kernel version pinning
-- [ ] Easy rollback mechanism after failed updates
-- [ ] Pacman hook integration for automatic protection
+**Preset Themes with Wallpapers:**
+- [ ] 8-10 polished preset themes with distinct personalities
+- [ ] Each theme includes matching wallpaper(s) in wallpaper library
+- [ ] Well-known themes use existing community wallpapers
+- [ ] Custom VulcanOS themes have AI-generated wallpapers (pre-made)
+- [ ] Wallpaper library stored in dotfiles, synced with backup
 
-**Menu Integration:**
-- [ ] Sync/backup submenu in vulcan-menu
-- [ ] Quick actions: Sync Now, Create Snapshot, Restore
-- [ ] Status display in submenu (last sync, snapshot count)
-- [ ] Waybar icon linking to vulcan-menu (top left)
+**Theming Infrastructure:**
+- [ ] Audit existing tools for Vulcan brand color consistency
+- [ ] Shared CSS/variables imported by all VulcanOS tools
+- [ ] Theme changes propagate to: waybar, wofi, swaync, hyprlock
+- [ ] Terminal theming (kitty, alacritty) synced with theme
+- [ ] Vulcan Rust apps use consistent theming
 
-**Codebase Organization:**
-- [ ] Consolidate scattered scripts into organized structure
-- [ ] Clear directory layout for vulcan-* tools
-- [ ] Establish patterns for new tool development
-- [ ] Documentation for tool locations and purposes
+**Third-party App Discovery:**
+- [ ] List installed apps that support theming
+- [ ] Link to theme marketplaces/resources for each app
+- [ ] No automatic theme installation (discovery only)
 
 ### Out of Scope
 
-- Multi-machine sync — this is for one specific T2 MacBook Pro
-- Cloud backup destinations — local external drive only for now
-- Btrfs migration — staying on ext4, using rsync-based snapshots
-- Universal installer — no support for non-T2 hardware this milestone
-- Encrypted backup vaults — excluding sensitive files instead
+- Automatic third-party theme installation — discovery links only, user installs manually
+- AI wallpaper generation on-demand — pre-made wallpapers bundled with themes
+- Cloud sync for themes/wallpapers — local dotfiles + git sync only
+- Non-T2 hardware support — this milestone is personal workstation only
 
 ## Context
 
-**Hardware:** 2019 MacBook Pro 16" with T2 chip. Requires linux-t2 kernel from arch-mact2 repo. Kernel updates are risky because wrong kernel = unbootable system.
+**Hardware:** 2019 MacBook Pro 16" with T2 chip. Requires linux-t2 kernel from arch-mact2 repo.
 
-**Filesystem:** Root on ext4 (no btrfs snapshots available). Must use rsync-based backup tools like Timeshift.
+**Existing apps to merge:**
+- `vulcan-theme-manager/` — GTK4/Relm4, ~2048 lines, handles 50+ color variables
+- `vulcan-wallpaper-manager/` — GTK4/Relm4, ~2000+ lines, per-monitor wallpapers with swww
 
-**Existing tools:**
-- `vulcan-menu` — main system menu (wofi-based)
-- `vulcan-todo` / `vulcan-vault` — Rust MCP servers for AI integration
-- Various `vulcan-*` scripts scattered in dotfiles and archiso
+**Theming infrastructure:**
+- `vulcan-theme` CLI script — applies themes via envsubst templates
+- `branding/vulcan-palette.css` — CSS custom properties for brand colors
+- Template files in `dotfiles/themes/templates/` for each app
 
 **Current pain points:**
-- Scripts spread across `dotfiles/scripts/`, `archiso/airootfs/usr/local/bin/`, and other locations
-- No automated backup — manual git commits for dotfiles
-- Kernel updates have broken the system before (lost mount)
-- No clear structure for adding new system tools
+- Two separate apps for related functionality
+- Theme changes don't automatically suggest matching wallpapers
+- Inconsistent color usage across some tools
+- No unified "appearance" concept
 
 ## Constraints
 
-- **Hardware:** T2 MacBook Pro 2019 only — no other machines targeted
-- **Filesystem:** ext4 root — must use rsync-based snapshots, not btrfs
-- **Kernel:** linux-t2 from arch-mact2 — cannot use mainline kernel
-- **Storage:** External SSD for backups — no cloud dependencies
-- **Security:** Exclude sensitive files — no encryption layer this milestone
+- **Framework:** GTK4/Libadwaita + Relm4 (match existing Vulcan Rust apps)
+- **Code reuse:** Merge and refactor existing apps (not fresh start)
+- **Theme format:** Keep existing `.sh` script format (vulcan-theme compatibility)
+- **Wallpaper backend:** swww (already configured for VulcanOS)
+- **Profile storage:** TOML files in ~/.config/ (consistent with wallpaper-manager)
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Timeshift rsync for snapshots | ext4 filesystem, battle-tested tool, CLI available | — Pending |
-| Git for dotfiles/packages | Version control, easy diff, reproducible | — Pending |
-| Local drive for data/snapshots | Fast restore, no cloud dependency, simple | — Pending |
-| Exclude vs encrypt sensitive | Simpler implementation, manual key management | — Pending |
-| Pacman hooks for auto-snapshot | Automatic protection before risky updates | — Pending |
+| Merge both apps into one | Themes and wallpapers are conceptually linked; separate apps create friction | — Pending |
+| Keep GTK4/Relm4 framework | Both existing apps use it; proven patterns; native GNOME look | — Pending |
+| Theme suggests wallpaper (overridable) | Balance between cohesion and user choice | — Pending |
+| Pre-made wallpapers, not on-demand AI | Simpler, faster UX; generation happens during development | — Pending |
+| Discovery-only for third-party apps | Avoid complexity of auto-installing VS Code/nvim themes | — Pending |
+| Shared CSS for theming propagation | Single source of truth for colors; templates can import | — Pending |
 
 ---
-*Last updated: 2026-01-23 after initialization*
+*Last updated: 2026-01-24 after milestone v2.0 initialization*
