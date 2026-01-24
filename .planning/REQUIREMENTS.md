@@ -9,10 +9,10 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### T2 Kernel Protection
 
-- [ ] **T2-01**: Pre-update snapshot created automatically before any pacman operation
-- [ ] **T2-02**: linux-t2 kernel version pinned to prevent accidental upgrades
+- [ ] **T2-01**: Mainline kernel installation blocked (linux, linux-lts, linux-zen, linux-hardened cannot be installed)
+- [ ] **T2-02**: /boot mount verified before kernel operations (pacman aborts if /boot not mounted)
 - [ ] **T2-03**: Warning displayed if kernel package would change during update
-- [ ] **T2-04**: Pacman operation aborted if safety conditions not met (no snapshot, disk full)
+- [ ] **T2-04**: Boot chain verifiable after kernel operations (initramfs contains T2 modules, GRUB config valid, fallback available)
 
 ### System Snapshots
 
@@ -57,6 +57,7 @@ Deferred to future milestone. Tracked but not in current roadmap.
 - **AUTO-02**: Scheduled automatic dotfile sync
 - **AUTO-03**: Pre-configured snapshot retention policy
 - **AUTO-04**: Scheduled personal data backup
+- **AUTO-05**: Pre-update snapshot created automatically before any pacman operation
 
 ### Advanced Restore
 
@@ -124,8 +125,8 @@ Which phases cover which requirements. Updated during roadmap creation.
 - Mapped to phases: 22
 - Unmapped: 0
 
-**Note:** Phase 4 (Automation & Validation) validates and automates Phase 1-3 requirements rather than introducing new requirements.
+**Note:** Phase 4 (Automation & Validation) validates and automates Phase 1-3 requirements rather than introducing new requirements. Pre-update snapshots (AUTO-05) are deferred to Phase 4.
 
 ---
 *Requirements defined: 2026-01-23*
-*Last updated: 2026-01-23 after roadmap creation (traceability complete)*
+*Last updated: 2026-01-23 (T2 requirements aligned with Phase 1 actual scope)*
