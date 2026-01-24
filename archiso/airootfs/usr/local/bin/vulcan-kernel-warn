@@ -37,11 +37,15 @@ notify_user() {
         user_id=$(id -u "$active_user" 2>/dev/null || echo "")
 
         if [[ -n "$user_id" ]] && [[ -d "/run/user/$user_id" ]]; then
-            export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$user_id/bus"
-            sudo -u "$active_user" notify-send \
+            # Use runuser with explicit environment - more reliable than sudo -u
+            # sudo -u doesn't preserve DBUS environment properly
+            runuser -u "$active_user" -- env \
+                DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$user_id/bus" \
+                XDG_RUNTIME_DIR="/run/user/$user_id" \
+                notify-send \
                 --urgency="$urgency" \
-                --icon=system-software-update \
-                --app-name="VulcanOS Kernel Update" \
+                --icon=/usr/share/icons/hicolor/128x128/apps/vulcan-kernel.png \
+                --app-name="VulcanOS" \
                 --expire-time=0 \
                 "$title" \
                 "$message" 2>/dev/null || true
@@ -59,19 +63,11 @@ fi
 
 log "Current linux-t2 version: $CURRENT_VERSION"
 
-# Prepare notification message
-NOTIFICATION_MESSAGE="Current version: $CURRENT_VERSION
-
-A kernel update is being installed. After installation:
-
-• System will need to be rebooted
-• Fallback boot entry will be preserved
-• You can boot into the previous kernel if needed
-
-The update will continue automatically."
+# Prepare notification message (keep short - details shown in terminal)
+NOTIFICATION_MESSAGE="Kernel update in progress. Reboot required after completion. Fallback entry preserved."
 
 # Send desktop notification
-notify_user "normal" "T2 Kernel Update" "$NOTIFICATION_MESSAGE"
+notify_user "normal" "Kernel Update" "linux-t2 $CURRENT_VERSION → Reboot required after completion."
 
 # Print to terminal (for users running pacman in terminal)
 echo ""

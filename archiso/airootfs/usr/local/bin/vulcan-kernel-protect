@@ -43,11 +43,15 @@ notify_user() {
         user_id=$(id -u "$active_user" 2>/dev/null || echo "")
 
         if [[ -n "$user_id" ]] && [[ -d "/run/user/$user_id" ]]; then
-            export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$user_id/bus"
-            sudo -u "$active_user" notify-send \
+            # Use runuser with explicit environment - more reliable than sudo -u
+            # sudo -u doesn't preserve DBUS environment properly
+            runuser -u "$active_user" -- env \
+                DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$user_id/bus" \
+                XDG_RUNTIME_DIR="/run/user/$user_id" \
+                notify-send \
                 --urgency="$urgency" \
-                --icon=dialog-error \
-                --app-name="VulcanOS Kernel Protection" \
+                --icon=/usr/share/icons/hicolor/128x128/apps/vulcan-kernel.png \
+                --app-name="VulcanOS" \
                 "$title" \
                 "$message" 2>/dev/null || true
         fi

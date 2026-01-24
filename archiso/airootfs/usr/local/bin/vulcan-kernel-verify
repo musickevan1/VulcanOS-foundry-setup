@@ -54,14 +54,39 @@ info() {
     log "[INFO] $*"
 }
 
-# Send desktop notification
+# Send desktop notification (handles root context from pacman hooks)
 notify() {
     local title="$1"
     local message="$2"
     local urgency="${3:-normal}"
 
-    if command -v notify-send &> /dev/null; then
-        notify-send -u "$urgency" -a "VulcanOS Kernel Verify" "$title" "$message"
+    if ! command -v notify-send &> /dev/null; then
+        return 0
+    fi
+
+    # If running as root, find active user session
+    if [[ $EUID -eq 0 ]]; then
+        local active_user
+        active_user=$(loginctl list-sessions --no-legend 2>/dev/null | awk '{print $3}' | head -1)
+
+        if [[ -n "$active_user" ]]; then
+            local user_id
+            user_id=$(id -u "$active_user" 2>/dev/null || echo "")
+
+            if [[ -n "$user_id" ]] && [[ -d "/run/user/$user_id" ]]; then
+                runuser -u "$active_user" -- env \
+                    DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$user_id/bus" \
+                    XDG_RUNTIME_DIR="/run/user/$user_id" \
+                    notify-send -u "$urgency" -a "VulcanOS" \
+                    -i /usr/share/icons/hicolor/128x128/apps/vulcan-kernel.png \
+                    "$title" "$message" 2>/dev/null || true
+            fi
+        fi
+    else
+        # Running as regular user - direct notify
+        notify-send -u "$urgency" -a "VulcanOS" \
+            -i /usr/share/icons/hicolor/128x128/apps/vulcan-kernel.png \
+            "$title" "$message" 2>/dev/null || true
     fi
 }
 
