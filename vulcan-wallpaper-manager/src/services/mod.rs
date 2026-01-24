@@ -1,1 +1,1 @@
-// Services module - external integrations
+pub mod hyprctl;
