@@ -1,0 +1,5 @@
+name = "laptop"
+description = "Default laptop profile"
+
+[monitor_wallpapers]
+# Will be populated when user sets wallpapers
