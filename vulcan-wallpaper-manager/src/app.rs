@@ -8,6 +8,7 @@ use crate::models::Monitor;
 use crate::services::{hyprctl, hyprpaper, thumbnail};
 use crate::components::monitor_layout::{MonitorLayoutModel, MonitorLayoutInput, MonitorLayoutOutput};
 use crate::components::wallpaper_picker::{WallpaperPickerModel, WallpaperPickerInput, WallpaperPickerOutput};
+use crate::components::profile_manager::{ProfileManagerModel, ProfileManagerInput, ProfileManagerOutput};
 
 #[derive(Debug)]
 pub enum AppMsg {
@@ -16,6 +17,10 @@ pub enum AppMsg {
     ApplyWallpaper,
     RefreshMonitors,
     OpenDirectory,
+    // Profile management messages
+    ProfileApply(HashMap<String, PathBuf>),
+    ProfileSaved(String),
+    ProfileError(String),
 }
 
 pub struct App {
@@ -25,6 +30,7 @@ pub struct App {
     monitor_wallpapers: HashMap<String, PathBuf>,
     monitor_layout: Controller<MonitorLayoutModel>,
     wallpaper_picker: Controller<WallpaperPickerModel>,
+    profile_manager: Controller<ProfileManagerModel>,
 }
 
 #[relm4::component(pub)]
@@ -55,6 +61,13 @@ impl SimpleComponent for App {
                         set_tooltip_text: Some("Open wallpaper folder"),
                         connect_clicked => AppMsg::OpenDirectory,
                     },
+
+                    pack_start = &gtk::Separator {
+                        set_orientation: gtk::Orientation::Vertical,
+                    },
+
+                    // Profile manager in header
+                    pack_start = model.profile_manager.widget() {},
 
                     pack_end = &gtk::Button {
                         set_icon_name: "view-refresh-symbolic",
@@ -159,6 +172,17 @@ impl SimpleComponent for App {
                 }
             });
 
+        // Create profile manager component
+        let profile_manager = ProfileManagerModel::builder()
+            .launch(())
+            .forward(sender.input_sender(), |msg| {
+                match msg {
+                    ProfileManagerOutput::ApplyProfile(wallpapers) => AppMsg::ProfileApply(wallpapers),
+                    ProfileManagerOutput::ProfileSaved(name) => AppMsg::ProfileSaved(name),
+                    ProfileManagerOutput::Error(e) => AppMsg::ProfileError(e),
+                }
+            });
+
         let model = App {
             monitors,
             selected_monitor: None,
@@ -166,6 +190,7 @@ impl SimpleComponent for App {
             monitor_wallpapers,
             monitor_layout,
             wallpaper_picker,
+            profile_manager,
         };
 
         let widgets = view_output!();
@@ -191,6 +216,10 @@ impl SimpleComponent for App {
                         Ok(()) => {
                             println!("Applied {} to {}", path.display(), monitor);
                             self.monitor_wallpapers.insert(monitor.clone(), path.clone());
+                            // Notify profile manager of current wallpaper state
+                            self.profile_manager.emit(ProfileManagerInput::UpdateWallpapers(
+                                self.monitor_wallpapers.clone()
+                            ));
                         }
                         Err(e) => {
                             eprintln!("Failed to apply wallpaper: {}", e);
@@ -215,6 +244,24 @@ impl SimpleComponent for App {
                 {
                     eprintln!("Failed to open directory: {}", e);
                 }
+            }
+
+            AppMsg::ProfileApply(wallpapers) => {
+                println!("Applying profile with {} wallpapers", wallpapers.len());
+                for (monitor, path) in &wallpapers {
+                    if let Err(e) = hyprpaper::apply_wallpaper(monitor, path) {
+                        eprintln!("Failed to apply to {}: {}", monitor, e);
+                    }
+                }
+                self.monitor_wallpapers.extend(wallpapers);
+            }
+
+            AppMsg::ProfileSaved(name) => {
+                println!("Profile saved: {}", name);
+            }
+
+            AppMsg::ProfileError(error) => {
+                eprintln!("Profile error: {}", error);
             }
         }
     }
