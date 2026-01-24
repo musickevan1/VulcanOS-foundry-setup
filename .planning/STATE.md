@@ -10,29 +10,29 @@ See: .planning/PROJECT.md (updated 2026-01-23)
 ## Current Position
 
 Phase: 5 of 5 (VulcanOS Wallpaper Manager)
-Plan: 4 of ? in current phase
+Plan: 5 of ? in current phase
 Status: In progress
-Last activity: 2026-01-24 — Completed 05-04-PLAN.md (component integration and wallpaper application)
+Last activity: 2026-01-24 — Completed 05-05-PLAN.md (profile management)
 
-Progress: [█████░░░░░] ~25% (5 plans complete)
+Progress: [██████░░░░] ~30% (6 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
+- Total plans completed: 6
 - Average duration: 4.6 minutes
-- Total execution time: 0.38 hours
+- Total execution time: 0.46 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-t2-kernel-protection | 2 | 8m 39s | 4m 19s |
-| 05-vulcanos-wallpaper-manager | 3 | 14m 31s | 4m 50s |
+| 05-vulcanos-wallpaper-manager | 4 | 19m 55s | 4m 59s |
 
 **Recent Trend:**
-- Last 5 plans: 01-02 (3m 52s), 05-01 (6m 51s), 05-02 (3m 14s), 05-04 (4m 26s)
-- Trend: Consistent velocity around 4-5 minutes per plan
+- Last 5 plans: 05-01 (6m 51s), 05-02 (3m 14s), 05-04 (4m 26s), 05-05 (5m 24s)
+- Trend: Consistent velocity around 4-6 minutes per plan
 
 *Updated after each plan completion*
 
@@ -58,6 +58,12 @@ Recent decisions affecting current work:
 - Vertical split pane layout (monitors top, wallpapers bottom for optimal space usage)
 - Apply button in bottom panel (contextual placement near wallpaper selection)
 - xdg-open for directory opening (respects user's file manager preference)
+- Profile storage in ~/.config/vulcan-wallpaper/profiles/ (XDG standard location)
+- Known profiles match hyprmon-desc names (desktop, console, campus, laptop, presentation)
+- Profile detection from cache or monitor count (automatic profile recognition)
+- Prevent deletion of built-in profiles (UI protection for known profiles)
+- Profile manager in header bar (easy access, grouped with other controls)
+- Clone macro for GTK signal handlers (proper GTK4/Rust pattern with strong references)
 
 **Phase 1 - Kernel Protection:**
 - Timeshift rsync for snapshots (ext4 filesystem, battle-tested tool, CLI available)
@@ -88,9 +94,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-01-24T06:23:57Z (plan 05-04 execution)
-Stopped at: Completed 05-04-PLAN.md (component integration and wallpaper application)
+Last session: 2026-01-24T06:32:30Z (plan 05-05 execution)
+Stopped at: Completed 05-05-PLAN.md (profile management)
 Resume file: None
 
 ---
-*Next step: Continue with phase 5 plan 05 (profile management) or other phases*
+*Next step: Continue with phase 5 plan 06 (CLI integration) or other phases*
