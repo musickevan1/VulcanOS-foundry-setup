@@ -1,0 +1,180 @@
+#!/bin/bash
+#
+# vulcan-kernel-protect - T2 MacBook Pro Kernel Protection Script
+#
+# Purpose: Prevent catastrophic boot failures by:
+#   1. Blocking mainline kernel installation (linux, linux-lts, linux-zen, linux-hardened)
+#   2. Ensuring /boot is mounted before kernel operations
+#   3. Verifying fallback kernel exists (warning only)
+#   4. Notifying user of critical errors via desktop notification
+#
+# Called by: /etc/pacman.d/hooks/10-vulcan-kernel-protect.hook (PreTransaction)
+# Exit codes: 0 = proceed, 1 = abort transaction
+# Bypass: Set VULCAN_UNSAFE=1 to override protections (logs warning)
+#
+
+set -euo pipefail
+
+# Logging
+LOG_FILE="/var/log/vulcan-kernel-protect.log"
+exec 1> >(tee -a "$LOG_FILE")
+exec 2>&1
+
+log() {
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] $*"
+}
+
+error() {
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] ERROR: $*" >&2
+}
+
+# Desktop notification helper (sends to active graphical session)
+notify_user() {
+    local urgency="$1"
+    local title="$2"
+    local message="$3"
+
+    # Find active graphical session user
+    local active_user
+    active_user=$(loginctl list-sessions --no-legend 2>/dev/null | awk '{print $3}' | head -1)
+
+    if [[ -n "$active_user" ]]; then
+        local user_id
+        user_id=$(id -u "$active_user" 2>/dev/null || echo "")
+
+        if [[ -n "$user_id" ]] && [[ -d "/run/user/$user_id" ]]; then
+            export DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$user_id/bus"
+            sudo -u "$active_user" notify-send \
+                --urgency="$urgency" \
+                --icon=dialog-error \
+                --app-name="VulcanOS Kernel Protection" \
+                "$title" \
+                "$message" 2>/dev/null || true
+        fi
+    fi
+}
+
+# Check for bypass
+if [[ "${VULCAN_UNSAFE:-0}" == "1" ]]; then
+    log "WARNING: VULCAN_UNSAFE=1 detected - bypassing all protections"
+    notify_user "critical" "Kernel Protection Bypassed" "VULCAN_UNSAFE=1 is set. All kernel protections are disabled. This is extremely dangerous on T2 hardware."
+    exit 0
+fi
+
+log "=== Kernel Protection Check Started ==="
+
+# Check 1: Verify /boot is accessible
+log "Checking /boot accessibility..."
+
+# Check if /boot is configured as a separate mountpoint
+if grep -q " /boot " /etc/fstab 2>/dev/null; then
+    log "/boot is in fstab - verifying it's mounted"
+    if ! mountpoint -q /boot; then
+        error "/boot is configured but not mounted - aborting kernel operation"
+        notify_user "critical" "Kernel Operation Blocked" "/boot is not mounted.\n\nKernel updates require /boot to be mounted to update bootloader files.\n\nRun: mount /boot"
+        echo ""
+        echo "ERROR: /boot is not mounted"
+        echo ""
+        echo "T2 MacBook Pro requires /boot to be mounted before kernel operations."
+        echo "This ensures the bootloader can access kernel files."
+        echo ""
+        echo "To fix: mount /boot"
+        echo ""
+        exit 1
+    fi
+    log "/boot is mounted - OK"
+else
+    log "/boot is not a separate partition - checking write access"
+    if [[ ! -w /boot ]]; then
+        error "/boot is not writable - aborting kernel operation"
+        notify_user "critical" "Kernel Operation Blocked" "/boot is not writable.\n\nKernel updates require write access to /boot."
+        echo ""
+        echo "ERROR: /boot is not writable"
+        echo ""
+        echo "Kernel operations require write access to /boot directory."
+        echo ""
+        exit 1
+    fi
+    log "/boot is writable - OK"
+fi
+
+# Check 2: Read packages from stdin and validate
+log "Reading target packages from stdin..."
+PACKAGES=()
+while IFS= read -r pkg; do
+    [[ -n "$pkg" ]] && PACKAGES+=("$pkg")
+done
+
+if [[ ${#PACKAGES[@]} -eq 0 ]]; then
+    log "No packages to process - exiting"
+    exit 0
+fi
+
+log "Processing packages: ${PACKAGES[*]}"
+
+# Check 3: Block mainline kernels
+MAINLINE_KERNELS=("linux" "linux-lts" "linux-zen" "linux-hardened")
+for pkg in "${PACKAGES[@]}"; do
+    for mainline in "${MAINLINE_KERNELS[@]}"; do
+        if [[ "$pkg" == "$mainline" ]]; then
+            error "Blocked installation of mainline kernel: $pkg"
+            notify_user "critical" "Mainline Kernel Blocked" "Installation of '$pkg' is not allowed on T2 MacBook Pro.\n\nT2 hardware requires the 'linux-t2' kernel with specialized patches for:\n• WiFi/Bluetooth (Apple BCM firmware)\n• Audio (T2 audio bridge)\n• Keyboard/Trackpad (Apple BCE driver)\n• Touch Bar support\n\nMainline kernels will result in a non-bootable system."
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "  KERNEL INSTALLATION BLOCKED"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo ""
+            echo "Package '$pkg' cannot be installed on T2 MacBook Pro."
+            echo ""
+            echo "WHY: T2 MacBook Pro (2018-2020) requires a patched kernel"
+            echo "     with specialized drivers that are NOT in mainline Linux."
+            echo ""
+            echo "REQUIRED PATCHES:"
+            echo "  • apple-bce driver (keyboard, trackpad, Touch Bar)"
+            echo "  • Broadcom WiFi/Bluetooth firmware loading"
+            echo "  • T2 audio bridge support"
+            echo "  • PCIe quirks for T2 chip communication"
+            echo ""
+            echo "SOLUTION: Use 'linux-t2' kernel instead"
+            echo "          pacman -S linux-t2 linux-t2-headers"
+            echo ""
+            echo "The linux-t2 kernel includes all necessary patches and is"
+            echo "the ONLY kernel that will boot properly on this hardware."
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo ""
+            exit 1
+        fi
+    done
+done
+
+log "No mainline kernels detected - OK"
+
+# Check 4: Verify linux-t2 operations are safe
+for pkg in "${PACKAGES[@]}"; do
+    if [[ "$pkg" == "linux-t2" ]]; then
+        log "Processing linux-t2 kernel operation"
+
+        # Check if fallback kernel exists
+        if [[ ! -f /boot/vmlinuz-linux-t2.backup ]]; then
+            log "WARNING: No fallback kernel found at /boot/vmlinuz-linux-t2.backup"
+            notify_user "normal" "Kernel Update Warning" "No fallback kernel detected.\n\nThis is the first kernel installation or fallback was not created.\n\nAfter this update completes, run:\nvulcan-kernel-fallback-create\n\nto create a fallback boot option."
+            echo ""
+            echo "WARNING: No fallback kernel detected"
+            echo ""
+            echo "After this kernel operation completes, you should create a fallback"
+            echo "kernel by running: vulcan-kernel-fallback-create"
+            echo ""
+            echo "This will allow you to boot into a previous kernel version if the"
+            echo "new kernel has issues."
+            echo ""
+            # This is a warning only - don't block the transaction
+        else
+            log "Fallback kernel exists - OK"
+        fi
+    fi
+done
+
+log "=== Kernel Protection Check Passed ==="
+log "All safety checks passed - allowing transaction to proceed"
+exit 0
