@@ -27,3 +27,6 @@ dirs = "5"
 
 # Async runtime
 tokio = { version = "1", features = ["rt", "process"] }
+
+# Lazy statics
+lazy_static = "1.4"
