@@ -1,440 +1,457 @@
-# Technology Stack: Linux System Backup & Sync on ext4
+# Technology Stack
 
-**Project:** VulcanOS Backup/Sync Milestone
-**Filesystem:** ext4 (no btrfs)
-**Researched:** 2025-01-23
-**Overall confidence:** HIGH
+**Project:** VulcanOS Unified Appearance Manager
+**Researched:** 2026-01-24
+**Context:** Subsequent milestone - merging vulcan-theme-manager + vulcan-wallpaper-manager
 
 ## Executive Summary
 
-For ext4-based Arch Linux system backup and recovery, the recommended stack combines **Timeshift** (system snapshots), **GNU Stow** (dotfiles), **pacman** native features (package lists), and **timeshift-autosnap** (automatic pre-update protection). This provides comprehensive coverage without requiring btrfs or complex configuration.
+This research focuses on **stack additions/changes** needed for a unified appearance manager. The existing GTK4/Relm4 foundation is validated and should be kept. Key additions are lightweight crates for file watching, CSS manipulation, and shared state patterns already available in Relm4.
 
-**Key insight:** Timeshift moved from AUR to official repos in 2025 (v25.12.4), making it a first-class citizen for ext4 snapshots on Arch. Combined with pacman hooks, it provides macOS Time Machine-like protection with minimal overhead.
+**Philosophy:** Minimal additions, maximum reuse of proven existing stack.
 
-## Recommended Stack
+## Existing Stack (Keep As-Is)
 
-### Core System Snapshots
+### Core GUI Framework
+| Technology | Version | Purpose | Why Keep |
+|------------|---------|---------|----------|
+| gtk4 | 0.10.3 | GUI toolkit bindings | Already used, latest stable, excellent Wayland support |
+| libadwaita | 0.8.1 | Modern GNOME styling | Already used, provides native appearance for integrated apps |
+| relm4 | 0.10.1 | Elm-inspired reactive framework | Already used, handles component communication and state |
+
+### Supporting Libraries (Existing)
+| Library | Version | Purpose | Status |
+|---------|---------|---------|--------|
+| serde / serde_json | 1.0 | Data serialization | Keep - theme/profile storage |
+| anyhow | 1.0 | Error handling | Keep - consistent error propagation |
+| dirs | 5 | Directory paths | Keep - XDG directory discovery |
+| lazy_static | 1.4 | Static initialization | Keep - singleton patterns |
+| tokio | 1.x | Async runtime | Keep - for wallpaper backend (swww calls) |
+| image | 0.25 | Image decoding | Keep - wallpaper thumbnails |
+| regex | 1.x | Pattern matching | Keep - theme file parsing |
+
+**Confidence:** HIGH - All versions verified from [docs.rs](https://docs.rs/)
+
+## New Stack Additions
+
+### 1. Configuration Format: TOML
+
+**Current state:** wallpaper-manager uses TOML, theme-manager uses shell scripts (.sh)
+
 | Technology | Version | Purpose | Why |
 |------------|---------|---------|-----|
-| **Timeshift** | 25.12.4-1 | System restore/rollback | Official repo, mature rsync+hardlinks for ext4, GUI+CLI, excludes /home by default |
-| **timeshift-autosnap** | 0.10.0-1 (AUR) | Pre-update snapshots | Pacman hook integration, automatic cleanup, prevents multiple snapshots per update |
-| **cronie** | 1.7.2-2 | Scheduled snapshots | Required by Timeshift, standard Arch cron implementation |
-| **rsync** | 3.4.1-2 | Snapshot engine | Timeshift backend for ext4, efficient hardlink-based incremental backups |
+| toml | 0.8 | Config serialization | Already in wallpaper-manager; TOML beats JSON/YAML for config files |
 
-**Rationale:** Timeshift in RSYNC mode creates full browsable snapshots using hardlinks for space efficiency. Each snapshot is a complete system backup but shares unchanged files between snapshots. Perfect for ext4 where filesystem-level snapshots (like btrfs) aren't available. The 25.12.4 release (Dec 2024) is actively maintained by Linux Mint team.
+**Rationale:**
+- **TOML for unified config:** Merge theme variables + wallpaper bindings + metadata into single format
+- **Why not YAML:** YAML's flexibility is dangerous (indentation errors, security issues) per [DEV Community comparison](https://dev.to/jsontoall_tools/json-vs-yaml-vs-toml-which-configuration-format-should-you-use-in-2026-1hlb)
+- **Why not keep .sh:** Shell scripts are powerful but harder to parse, edit programmatically, and validate
+- **Rust ecosystem fit:** Cargo uses TOML, [consistent with Rust conventions](https://doc.rust-lang.org/cargo/reference/config.html)
 
-**Confidence:** HIGH - Official Arch package, extensive Arch Wiki documentation, proven on ext4 for years.
+**Migration path:**
+```toml
+[metadata]
+name = "Vulcan Forge"
+id = "vulcan-forge"
+description = "Warm forge-inspired colors"
 
-### Dotfile Management
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| **GNU Stow** | 2.4.1-1 | Dotfile symlinks | Already in use by VulcanOS, simple, no magic, works with any git workflow |
-| **Git** | 2.52.0-2 | Version control | Standard VCS, manual sync to remote for backup |
-| **git-delta** | 0.18.2-6 | Diff viewer | Better commit review (already in VulcanOS) |
+[colors.background]
+primary = "#1c1917"
+secondary = "#292524"
+tertiary = "#44403c"
 
-**Rationale:** VulcanOS already uses Stow for dotfile management. Don't replace what works. Stow's symlink approach is transparent, reversible, and requires no special tooling. For backup, simply `git push` to remote repository (GitHub/GitLab/self-hosted). No need for chezmoi's complexity (templates, secrets) unless multi-machine with different configs is needed—not the case for VulcanOS.
+[colors.accent]
+primary = "#f97316"
+alt = "#fbbf24"
 
-**Why NOT chezmoi:** VulcanOS is single-machine focused (T2 MacBook Pro). Chezmoi's strengths (templates for machine-specific configs, password manager integration) are overkill. Stow + Git is simpler and already deployed.
+[wallpapers]
+suggested = ["vulcan-gradient.png", "forge-abstract.png"]
+default = "vulcan-gradient.png"
 
-**Confidence:** HIGH - Already in production use on VulcanOS, well-understood workflow.
+[targets]
+waybar = true
+wofi = true
+swaync = true
+hyprland = true
+terminals = ["kitty", "alacritty"]
+```
 
-### Package List Management
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| **pacman** | Built-in | Package list export | Native `-Qqe` flag exports explicit packages, `-Qqen`/`-Qqem` separates official/AUR |
-| **Git** | 2.52.0-2 | Package list versioning | Track package list changes over time |
+**Confidence:** HIGH - TOML is proven, well-supported in Rust
 
-**Rationale:** Pacman has native package list export. No additional tools needed. Simply:
-- `pacman -Qqen > pkglist-official.txt` (official repo packages)
-- `pacman -Qqem > pkglist-aur.txt` (AUR packages)
-- Commit to git, push to remote
+### 2. File System Watching (Optional)
 
-Restore with:
-- `pacman -S --needed - < pkglist-official.txt`
-- `yay -S --needed - < pkglist-aur.txt`
+| Library | Version | Purpose | When to Use |
+|---------|---------|---------|-------------|
+| notify | 6.x | File system events | Only if live theme reload needed |
 
-**Why NOT specialized tools:** Tools like `pkglist` generator scripts add complexity without significant benefit. Pacman's built-in flags are sufficient and documented in Arch Wiki.
+**Rationale:**
+- **Watch theme directories** for external changes (user editing .toml files)
+- **Auto-reload themes** when files change on disk
+- **Cross-platform:** Works on Linux/macOS/Windows via [notify-rs](https://github.com/notify-rs/notify)
+- **Battle-tested:** Used by cargo-watch, rust-analyzer, mdBook
 
-**Confidence:** HIGH - Standard Arch practice, documented in official wiki.
+**Use case:** Developer creates custom theme in editor → appears in theme browser immediately
 
-### Pacman Hook Automation
-| Technology | Version | Purpose | Why |
-|------------|---------|---------|-----|
-| **pacman hooks** | Built-in | Pre-transaction automation | Native libalpm feature, no external dependencies |
-| **timeshift-autosnap** | 0.10.0-1 (AUR) | Timeshift pacman integration | Automatic snapshots before updates, configurable retention, grub-btrfs compatible |
+**Alternative:** Skip it for MVP, add in post-release phase if users request it
 
-**Rationale:** Pacman hooks (`/etc/pacman.d/hooks/`) execute before/after package transactions. timeshift-autosnap provides pre-configured hook that:
-- Creates Timeshift snapshot before package upgrades
-- Deletes old auto-snapshots (configurable max count)
-- Prevents multiple snapshots per update (checks last snapshot time)
-- Updates GRUB if grub-btrfs installed (allows boot into snapshots)
+**Confidence:** MEDIUM - Feature is nice-to-have, not critical path
 
-**Alternative considered:** Writing custom hook - rejected because timeshift-autosnap is mature, configurable, and handles edge cases (AUR helper multiple pacman invocations, race conditions with grub-btrfsd).
+### 3. Directory Traversal
 
-**Confidence:** HIGH - Popular AUR package (timeshift-autosnap), well-maintained, based on standard pacman hook mechanism.
+| Library | Version | Purpose | When to Use |
+|---------|---------|---------|-------------|
+| walkdir | 2.x | Recursive directory walk | Third-party app discovery |
 
-### Optional: User Data Backup
-| Technology | Version | Purpose | When to Use |
-|------------|---------|---------|-------------|
-| **Restic** | 0.18.1-1 | Encrypted incremental backups | Large /home directory, need encryption, backup to remote/cloud |
-| **Borg** | 1.4.3-2 | Deduplicating backups | Backup to local external drive or SSH server, want compression |
+**Rationale:**
+- **Scan XDG directories** (`~/.local/share/applications`, `/usr/share/applications`) for .desktop files
+- **Efficient traversal:** [Comparable to GNU find](https://docs.rs/walkdir/latest/walkdir/) in performance
+- **Standard pattern:** Used throughout Rust ecosystem for file discovery
 
-**Rationale:** Timeshift explicitly excludes /home by design (it's a system restore tool, not user data backup). For user data:
-- **Restic:** If need encrypted backups to cloud (S3, Backblaze B2) or remote SSH. Fast, single binary, deduplication, supports many backends. Good for offsite backup strategy.
-- **Borg:** If backup to local external drive or SSH server. Better compression than Restic, FUSE mount for browsing backups. Slightly higher learning curve but more efficient for local backups.
+**Use case:** Discover installed apps with theming support (GTK apps, terminals, etc.)
 
-**Why NOT rsnapshot:** Older rsync wrapper. Restic/Borg offer better deduplication, encryption, and active development.
+**Discovery algorithm:**
+1. Walk XDG application directories
+2. Parse desktop entries ([ArchWiki reference](https://wiki.archlinux.org/title/Desktop_entries))
+3. Check for known config paths (e.g., `~/.config/{app}/style.css`)
+4. Flag apps that support theming
 
-**When to skip:** If /home is small (<50GB) and already synced to cloud (Nextcloud, Syncthing, etc.), user data backup may not be needed. Focus on Timeshift for system and Git for dotfiles.
+**Confidence:** HIGH - Standard Rust crate for this task
 
-**Confidence:** MEDIUM - Both tools well-regarded, but user data backup strategy depends on /home size and existing cloud sync. Not essential for system bootability goal.
+### 4. CSS Manipulation (Future Consideration)
+
+| Library | Version | Purpose | When to Use |
+|---------|---------|---------|-------------|
+| cssparser | 0.x | CSS parsing/serialization | Only if programmatic CSS editing needed |
+
+**Rationale:**
+- **Browser-grade parser:** [Used in Firefox](https://github.com/servo/rust-cssparser), implements CSS Syntax Level 3
+- **Not needed for MVP:** Current envsubst template approach works well
+- **Consider for advanced features:** Live CSS editing, CSS variable extraction from existing themes
+
+**When to add:** Post-MVP if users request visual CSS editor or theme import from arbitrary stylesheets
+
+**Confidence:** LOW - May not be needed at all
+
+## Shared State Patterns
+
+### Relm4 Built-in Solutions
+
+Relm4 provides [shared state modules](https://github.com/orgs/Relm4/discussions/552) for cross-component communication. No additional crates needed.
+
+**Pattern for unified app:**
+```rust
+// Shared configuration state
+pub struct AppConfig {
+    pub current_theme_id: String,
+    pub wallpaper_profiles: Vec<WallpaperProfile>,
+    pub auto_apply: bool,
+}
+
+// Components send messages via Relm4 channels
+enum AppMsg {
+    ThemeChanged(String),
+    WallpaperAssigned { monitor: String, path: PathBuf },
+    ConfigUpdated,
+}
+```
+
+**Communication:**
+- Theme browser → App → Wallpaper panel (when theme changes, suggest wallpapers)
+- Wallpaper panel → Theme applier (apply wallpaper + theme atomically)
+- Both → Settings service (persist unified config)
+
+**Resources:**
+- [Relm4 Book - Introduction](https://relm4.org/book/stable/)
+- [GitHub Discussion - Global State](https://github.com/orgs/Relm4/discussions/552)
+
+**Confidence:** HIGH - Relm4's messaging system handles this pattern natively
+
+## CSS Propagation Strategy
+
+### Background: Current Architecture
+
+**Theme application flow:**
+1. User selects theme in GUI
+2. `vulcan-theme` CLI loads theme .sh file (exports variables)
+3. `envsubst` processes templates (`.tpl` files) with variables
+4. Generated configs written to `~/.config/{app}/`
+5. Apps reload configs (some require restart)
+
+**Template files:**
+- `waybar-style.css.tpl` → `~/.config/waybar/style.css`
+- `wofi-style.css.tpl` → `~/.config/wofi/style.css`
+- `swaync-style.css.tpl` → `~/.config/swaync/style.css`
+- `hyprland-looknfeel.conf.tpl` → `~/.config/hypr/looknfeel.conf`
+- `kitty.conf.tpl` → `~/.config/kitty/kitty.conf`
+- `alacritty.toml.tpl` → `~/.config/alacritty/alacritty.toml`
+
+**Variables used:** `${BG_PRIMARY}`, `${ACCENT}`, `${FG_PRIMARY}`, etc. (50+ variables)
+
+### Propagation Requirements
+
+**Table stakes:**
+1. **Atomic application** - All configs update together, no partial states
+2. **Template preservation** - Keep `.tpl` files as source of truth
+3. **Variable consistency** - Same variable names across all targets
+4. **Preview without apply** - Show theme without persisting changes
+
+**Nice-to-have:**
+1. **Live reload** - Signal apps to reload configs without restart
+2. **Rollback** - Undo theme application if something breaks
+3. **Per-app targeting** - Apply theme to subset of apps
+
+### Recommended Approach: Keep Current System + Rust Wrapper
+
+**DO NOT rewrite the templating system.** It works well. Instead:
+
+1. **Rust theme applier calls vulcan-theme CLI:**
+   ```rust
+   use std::process::Command;
+
+   pub fn apply_theme(theme_id: &str) -> Result<()> {
+       Command::new("vulcan-theme")
+           .args(["set", theme_id])
+           .output()?;
+       Ok(())
+   }
+   ```
+
+2. **Preview mode uses temporary directory:**
+   ```rust
+   pub fn preview_theme(theme_id: &str) -> Result<()> {
+       let temp_dir = create_temp_config_dir()?;
+       // Apply theme to temp_dir, show previews from there
+       // Original configs untouched
+   }
+   ```
+
+3. **Unified app provides GUI for discovery:**
+   - Load theme metadata from .toml files
+   - Show color palette + suggested wallpapers
+   - Apply button → calls vulcan-theme CLI
+   - Wallpaper assignment → calls swww (already working)
+
+**Why not rewrite in Rust:**
+- envsubst is battle-tested, handles edge cases
+- Shell script templating is well-understood
+- No performance issues with current approach
+- Risk of introducing bugs during rewrite
+
+**What Rust adds:**
+- GUI for theme discovery and browsing
+- Preview without apply (temp directory trick)
+- Unified theme + wallpaper experience
+- Third-party app detection
+
+**Confidence:** HIGH - Reuse existing tooling, add GUI layer
+
+## Third-Party App Theming Discovery
+
+### Discovery Algorithm
+
+**Tier 1: Known configs (hardcoded list)**
+```rust
+const THEMED_APPS: &[(&str, &str)] = &[
+    ("waybar", "~/.config/waybar/style.css"),
+    ("wofi", "~/.config/wofi/style.css"),
+    ("swaync", "~/.config/swaync/style.css"),
+    ("kitty", "~/.config/kitty/kitty.conf"),
+    ("alacritty", "~/.config/alacritty/alacritty.toml"),
+    ("hyprland", "~/.config/hypr/looknfeel.conf"),
+];
+```
+
+**Tier 2: GTK4/Adwaita apps (via .desktop files)**
+1. Scan `/usr/share/applications/*.desktop` and `~/.local/share/applications/*.desktop`
+2. Parse desktop entries ([ArchWiki reference](https://wiki.archlinux.org/title/Desktop_entries))
+3. Check for GTK/GNOME in categories or keywords
+4. Mark as "themed via GTK theme" (no per-app config needed)
+
+**Tier 3: Custom config detection**
+1. For each installed app, check common config patterns:
+   - `~/.config/{app}/style.css`
+   - `~/.config/{app}/theme.toml`
+   - `~/.config/{app}/colors.conf`
+2. If file exists, mark as "custom themeable" (requires user template creation)
+
+**What NOT to do:**
+- Don't try to parse arbitrary config formats
+- Don't inject themes into non-themed apps
+- Don't modify configs without templates
+
+**Display in GUI:**
+- ✅ Themed: Apps with active theme support
+- ⚠️ GTK-themed: Apps that inherit GTK theme
+- ℹ️ Themeable: Apps with config files, needs template
+- ❌ Not themed: Apps without theming support
+
+**Confidence:** MEDIUM - Tier 1 is solid, Tier 2/3 need testing with real apps
+
+## Integration Points with Existing Stack
+
+### With vulcan-theme CLI
+- **Call via Command::new("vulcan-theme")** - Don't reimplement
+- **Parse theme list from `vulcan-theme list`** - Avoid duplicating discovery logic
+- **Use exit codes for error handling** - Rust sees success/failure
+
+### With swww (wallpaper backend)
+- **Already working in wallpaper-manager** - No changes needed
+- **Atomic theme+wallpaper apply:**
+  ```rust
+  pub fn apply_appearance(theme_id: &str, wallpapers: &HashMap<String, PathBuf>) -> Result<()> {
+      // 1. Apply theme (updates all CSS files)
+      apply_theme(theme_id)?;
+
+      // 2. Apply wallpapers (per-monitor)
+      for (monitor, path) in wallpapers {
+          set_wallpaper(monitor, path)?;
+      }
+
+      Ok(())
+  }
+  ```
+
+### With Hyprland
+- **Reload Hyprland config after theme change:**
+  ```bash
+  hyprctl reload
+  ```
+- **Or just restart relevant apps** - Hyprland itself picks up looknfeel.conf changes
+
+**Confidence:** HIGH - Integration points are well-defined
 
 ## Alternatives Considered
 
-| Category | Recommended | Alternative | Why Not |
-|----------|-------------|-------------|---------|
-| System Snapshots | Timeshift (rsync) | **Snapper** | Designed for btrfs/LVM snapshots. On ext4, requires LVM thin provisioning (complex setup). Timeshift's rsync mode simpler for ext4. |
-| System Snapshots | Timeshift | **Systemback** | Unmaintained, fork exists but unstable. Timeshift actively maintained by Linux Mint. |
-| System Snapshots | Timeshift | **Manual rsync scripts** | Reinventing wheel. Timeshift provides GUI, scheduling, GRUB integration, exclude patterns. |
-| Dotfiles | GNU Stow | **chezmoi** | Over-engineered for single-machine use case. Stow already deployed in VulcanOS. |
-| Dotfiles | Git + Stow | **yadm** | Adds wrapper layer. Direct Git + Stow is more transparent. |
-| User Data | Restic/Borg | **Duplicity** | Older, slower, less active development than Restic/Borg. |
-| User Data | Restic/Borg | **rsnapshot** | No encryption, no compression, no deduplication. Restic/Borg superior. |
-| Package List | pacman -Qq | **Custom tools** | Unnecessary. Pacman has built-in export. |
+### Alternative 1: CSS Variables with Live Injection
 
-## Installation & Configuration
+**Approach:** Use CSS custom properties (`--color-bg: #1c1917;`) in app stylesheets, inject via CssProvider at runtime.
 
-### 1. System Snapshots (Timeshift)
+**Why not:**
+- Requires apps to support CSS variables (Waybar, wofi, swaync don't use them consistently)
+- Can't theme non-GTK apps (terminals, Hyprland)
+- More complex than template approach
+- Loses existing 50+ theme variables
 
-```bash
-# Install
-sudo pacman -S timeshift
+### Alternative 2: Rewrite Theme System in Pure Rust
 
-# Install AUR helper for autosnap (if not already installed)
-# yay or paru already in VulcanOS
+**Approach:** Parse templates in Rust, replace variables, write configs.
 
-# Install autosnap hook
-yay -S timeshift-autosnap
+**Why not:**
+- Reinventing the wheel (envsubst exists)
+- Risk of template parsing bugs
+- No user-facing benefit
+- Harder to maintain templates (two systems instead of one)
 
-# Configure Timeshift (first time)
-sudo timeshift-gtk  # GUI configuration
-# OR
-sudo timeshift --create --comments "Initial snapshot" --tags D  # CLI
+### Alternative 3: D-Bus Theming Service
 
-# Configure autosnap
-# Edit /etc/timeshift-autosnap.conf
-skipAutosnap=false
-deleteSnapshots=true
-maxSnapshots=3
-updateGrub=true
-minHoursBetweenSnapshots=1
+**Approach:** Expose theme service via D-Bus, apps subscribe to theme changes.
 
-# Schedule regular snapshots
-sudo systemctl enable cronie
-sudo systemctl start cronie
-# Configure schedule in Timeshift GUI (daily/weekly/monthly)
+**Why not:**
+- Apps need modification to support D-Bus subscription
+- Over-engineering for single-user desktop system
+- Adds complexity with no MVP benefit
+- Doesn't solve legacy app theming
+
+**Confidence:** HIGH - Template approach is proven and correct
+
+## What NOT to Add
+
+### Do NOT add these crates:
+- **gtk-rs CSS libraries** - Use vulcan-theme CLI instead
+- **D-Bus crates** - Over-engineering for MVP
+- **Custom config parsers** - TOML + serde handles everything
+- **Advanced image processing** - `image` crate is sufficient
+- **Web-based UI** - GTK4 is native and integrated
+
+### Do NOT change these patterns:
+- **Template-based theming** - Works well, don't rewrite
+- **swww for wallpapers** - Already validated
+- **GTK4/Relm4 foundation** - Proven architecture
+
+## Installation
+
+### Updated Cargo.toml for Unified App
+
+```toml
+[package]
+name = "vulcan-appearance-manager"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+# GUI framework (existing)
+gtk4 = { version = "0.10", package = "gtk4", features = ["v4_16"] }
+libadwaita = { version = "0.8", package = "libadwaita", features = ["v1_6"] }
+relm4 = { version = "0.10", features = ["libadwaita"] }
+
+# Data handling (existing + TOML for unified config)
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+
+# Error handling (existing)
+anyhow = "1.0"
+
+# Utilities (existing)
+dirs = "5"
+regex = "1"
+lazy_static = "1.4"
+
+# Image handling (existing)
+image = "0.25"
+
+# Async runtime (existing, for swww calls)
+tokio = { version = "1", features = ["rt", "process"] }
+
+# NEW: File system operations
+walkdir = "2"
+
+# OPTIONAL: File watching (defer to post-MVP)
+# notify = "6"
 ```
 
-**Recommendation:**
-- Keep 3 autosnap snapshots (before updates)
-- Keep 5 daily snapshots
-- Keep 2 weekly snapshots
-- Keep 0 monthly (for personal laptop, not server)
-- Snapshots stored in `/run/timeshift/backup/timeshift/snapshots/`
+## Version Policy
 
-### 2. Dotfile Sync (Already Configured)
+**Semantic versioning:**
+- **0.10.x for GUI stack** - Match Relm4 version family
+- **1.x for stable crates** - Use latest stable (serde, anyhow, regex, etc.)
+- **0.x for evolving crates** - Pin minor versions to avoid breakage
 
-```bash
-# VulcanOS already uses Stow - just add remote backup
-cd ~/VulcanOS/dotfiles
-git remote add backup git@github.com:user/vulcanos-dotfiles-backup.git
-# OR self-hosted
-git remote add backup user@server:~/backups/dotfiles.git
+**Update cadence:**
+- Check for updates quarterly
+- Pin exact versions in Cargo.lock
+- Test before bumping minor versions
 
-# Push dotfiles to remote
-git push backup main
-
-# Automate with cron or manual workflow
-# Add to weekly routine: git push backup main
-```
-
-### 3. Package List Backup
-
-```bash
-# Create directory for package lists
-mkdir -p ~/.local/share/packages
-
-# Export package lists (manual or scripted)
-pacman -Qqen > ~/.local/share/packages/pkglist-official.txt
-pacman -Qqem > ~/.local/share/packages/pkglist-aur.txt
-
-# Add to git repository
-cd ~/.local/share/packages
-git init
-git add .
-git commit -m "Initial package list"
-git remote add origin git@github.com:user/vulcanos-packages.git
-git push -u origin main
-
-# Automate with pacman hook (optional)
-# Create /etc/pacman.d/hooks/package-list-backup.hook
-```
-
-**Example hook** (`/etc/pacman.d/hooks/package-list-backup.hook`):
-```ini
-[Trigger]
-Operation = Install
-Operation = Upgrade
-Operation = Remove
-Type = Package
-Target = *
-
-[Action]
-Description = Backing up package list...
-When = PostTransaction
-Exec = /bin/bash -c 'pacman -Qqen > /home/evan/.local/share/packages/pkglist-official.txt && pacman -Qqem > /home/evan/.local/share/packages/pkglist-aur.txt'
-```
-
-### 4. Optional: User Data Backup (Restic to External Drive)
-
-```bash
-# Install
-sudo pacman -S restic
-
-# Initialize repository on external drive
-# Assuming drive mounted at /mnt/backup
-restic init --repo /mnt/backup/restic-repo
-# Enter and confirm password (store in password manager!)
-
-# Create backup
-restic -r /mnt/backup/restic-repo backup /home/evan \
-  --exclude=/home/evan/.cache \
-  --exclude=/home/evan/VulcanOS/out \
-  --exclude=/home/evan/VulcanOS/customrepo
-
-# Automate with systemd timer (see Arch Wiki: Restic)
-# Or manual weekly/monthly backup workflow
-```
-
-## Backup Strategy: 3-2-1 Rule Compliance
-
-| Data Type | Primary | Secondary | Offsite |
-|-----------|---------|-----------|---------|
-| **System** | Timeshift snapshots (local) | Bootable USB (ISO) | N/A (recreatable from packages) |
-| **Dotfiles** | Stow symlinks (local repo) | Git push to GitHub/GitLab | ✓ Remote git |
-| **Package lists** | Local git repo | Git push to remote | ✓ Remote git |
-| **User data** | Local filesystem | Restic/Borg to external drive | Restic to cloud (optional) |
-
-**Note:** System snapshots (Timeshift) are local-only by design. For disaster recovery, VulcanOS ISO + package lists + dotfiles from Git = full system recreation. This is better than backing up system snapshots (which are large and OS-version specific).
-
-## Restore Scenarios
-
-### Scenario 1: Package Update Broke System
-**Solution:** Boot from Timeshift snapshot
-1. Reboot, select older snapshot from GRUB (if grub-btrfs installed)
-2. OR: Boot from live USB, restore with `sudo timeshift --restore`
-3. System rolls back to pre-update state
-
-**Time to recovery:** 5-15 minutes
-
-### Scenario 2: Accidentally Deleted Config Files
-**Solution:** Restore from dotfiles git
-```bash
-cd ~/VulcanOS/dotfiles
-git checkout HEAD -- hypr/.config/hypr/hyprland.conf
-stow -R hypr  # Re-stow if needed
-```
-
-**Time to recovery:** <1 minute
-
-### Scenario 3: Complete Disk Failure
-**Solution:** Rebuild from VulcanOS ISO + cloud backups
-1. Install VulcanOS from ISO
-2. `git clone` dotfiles repository
-3. `cd dotfiles && stow */`
-4. `git clone` package list repository
-5. `pacman -S --needed - < pkglist-official.txt`
-6. `yay -S --needed - < pkglist-aur.txt`
-7. Restore user data from Restic/Borg backup
-
-**Time to recovery:** 1-3 hours (mostly package download time)
-
-### Scenario 4: Corrupted /boot Partition
-**Solution:** Timeshift can restore /boot
-```bash
-# Boot from live USB
-sudo timeshift --restore --snapshot "2025-01-20_12-00-00"
-# Select snapshot that includes /boot
-```
-
-**Time to recovery:** 10-20 minutes
-
-## Performance Characteristics
-
-### Timeshift (RSYNC mode on ext4)
-- **First snapshot:** ~10-30 minutes (full copy of system, ~10-20GB depending on installed packages)
-- **Incremental snapshot:** ~30 seconds - 2 minutes (only changed files copied, hardlinks for unchanged)
-- **Disk space:** First snapshot = system size, each additional = ~500MB-2GB (depending on changes)
-- **Restoration:** ~5-15 minutes (rsync files back)
-
-### Package List Export
-- **Export time:** <1 second
-- **File size:** ~10-50KB (few hundred lines of package names)
-
-### Dotfiles Git Push
-- **Push time:** <5 seconds (configs are small text files)
-- **Repo size:** ~1-5MB (configs + themes)
-
-### Restic Backup (if used)
-- **First backup:** ~10-60 minutes (depends on /home size, ~50-200GB typical)
-- **Incremental:** ~1-5 minutes (only changed files)
-- **Repo growth:** ~5-10% of original size per backup (due to deduplication)
-
-## Caveats & Limitations
-
-### Timeshift
-- ❗ **Excludes /home by default** - This is intentional (system restore tool, not user backup)
-- ❗ **Requires external drive or separate partition** - Don't snapshot to same partition (defeats purpose)
-- ❗ **RSYNC mode slower than btrfs snapshots** - btrfs snapshots are instant, rsync takes minutes
-- ⚠️ **Snapshots are not bootable images** - Can't create bootable USB from snapshot (use ISO for that)
-- ℹ️ **Snapshot location matters** - Default `/run/timeshift/backup/` is tmpfs on some systems, change to persistent storage
-
-**Mitigation:**
-- Configure Timeshift to store snapshots on dedicated partition or external drive
-- Edit `/etc/timeshift/timeshift.json` to set `backup_device_uuid`
-
-### timeshift-autosnap
-- ⚠️ **Snapshots before EVERY package operation** - Can create many snapshots if updating frequently
-- ℹ️ **minHoursBetweenSnapshots config prevents spam** - Set to 1-6 hours to avoid multiple snapshots per day
-
-**Mitigation:**
-- Set `maxSnapshots=3` to limit auto-snapshot retention
-- Set `minHoursBetweenSnapshots=6` if you update multiple times per day
-
-### GNU Stow
-- ⚠️ **Symlinks can break if source deleted** - Don't delete dotfiles repo while stowed
-- ⚠️ **Conflicts with existing files** - Stow won't overwrite existing non-symlink files
-
-**Mitigation:**
-- Never delete `~/VulcanOS/dotfiles/` directory
-- Use `stow --adopt` to pull existing configs into stow directory
-
-### pacman Package Lists
-- ❗ **Doesn't preserve configuration** - Only package names, not /etc configs or package settings
-- ℹ️ **AUR packages may fail to install** - Packages removed from AUR or dependency issues
-
-**Mitigation:**
-- Backup `/etc` separately (include in Timeshift snapshots)
-- Review AUR package list before mass install, remove obsolete packages
-
-### Restic/Borg
-- ⚠️ **Repository password required** - Lose password = lose backups (no recovery)
-- ℹ️ **External drive must be mounted** - Backups fail if drive not available
-
-**Mitigation:**
-- Store Restic/Borg password in password manager with backup codes
-- Use systemd mount unit for consistent external drive mounting
-- Configure backup script to check if drive mounted before running
-
-## Disk Space Planning
-
-For VulcanOS system with typical development setup:
-
-| Component | Size | Retention | Total Space |
-|-----------|------|-----------|-------------|
-| System (/) | ~20GB | Base | 20GB |
-| Timeshift snapshots | ~2GB each | 3 auto + 5 daily + 2 weekly | ~20GB |
-| /home | ~100GB | Live data | 100GB |
-| Restic backups (optional) | ~110GB initial + ~10GB incremental | 10 snapshots | ~200GB |
-| **Total recommended** | | | **340GB** |
-
-**Recommendation for VulcanOS T2 MacBook Pro:**
-- System partition: 40GB (20GB system + 20GB Timeshift)
-- Home partition: Remaining space
-- External drive: 500GB+ for Restic/Borg user data backups
-
-**If space limited:**
-- Reduce Timeshift daily snapshots to 2 (instead of 5)
-- Skip monthly snapshots
-- Use Restic with cloud backend (no local storage needed)
-
-## Monitoring & Maintenance
-
-### Weekly Tasks
-```bash
-# Check Timeshift snapshot status
-sudo timeshift --list
-
-# Verify dotfiles git status
-cd ~/VulcanOS/dotfiles && git status
-
-# Update package lists
-pacman -Qqen > ~/.local/share/packages/pkglist-official.txt
-pacman -Qqem > ~/.local/share/packages/pkglist-aur.txt
-cd ~/.local/share/packages && git commit -am "Update $(date +%Y-%m-%d)" && git push
-```
-
-### Monthly Tasks
-```bash
-# Clean old Timeshift snapshots (if not auto-managed)
-sudo timeshift --delete-all --older-than 30d
-
-# Verify Restic repository integrity (if used)
-restic -r /mnt/backup/restic-repo check
-
-# Test restore (pick random config file)
-cd ~/VulcanOS/dotfiles
-git checkout HEAD~5 -- waybar/.config/waybar/config.jsonc
-# Verify file restored correctly
-git checkout HEAD -- waybar/.config/waybar/config.jsonc  # Restore to latest
-```
-
-### Automation Recommendations
-
-1. **Timeshift snapshots:** Handled by cronie + Timeshift schedule (automatic)
-2. **Package list backup:** Pacman hook (automatic) or weekly cron job
-3. **Dotfiles git push:** Manual (configs don't change daily) or weekly cron
-4. **User data backup:** Weekly/monthly cron job or systemd timer
-
-**Example systemd timer for package list (optional):**
-```ini
-# /etc/systemd/system/package-list-backup.timer
-[Unit]
-Description=Weekly package list backup
-
-[Timer]
-OnCalendar=weekly
-Persistent=true
-
-[Install]
-WantedBy=timers.target
-```
+**Minimum Rust version:** 1.83 (required by gtk4)
 
 ## Sources
 
-### High Confidence (Official Documentation)
-- [Arch Wiki: System backup](https://wiki.archlinux.org/title/System_backup)
-- [Arch Wiki: Timeshift](https://wiki.archlinux.org/title/Timeshift)
-- [Arch Wiki: Restic](https://wiki.archlinux.org/title/Restic)
-- [Arch Wiki: pacman](https://wiki.archlinux.org/title/Pacman)
-- [Arch Wiki: pacman/Tips and tricks - Package lists](https://wiki.archlinux.org/title/Pacman/Tips_and_tricks)
-- [Arch Linux Packages: timeshift 25.12.4-1](https://archlinux.org/packages/extra/x86_64/timeshift/)
-- [Arch Linux Packages: stow 2.4.1-1](https://archlinux.org/packages/extra/any/stow/)
-- [Arch Linux Packages: restic 0.18.1-1](https://archlinux.org/packages/extra/x86_64/restic/)
-- [Arch Linux Packages: borg 1.4.3-2](https://archlinux.org/packages/extra/x86_64/borg/)
-- [GitHub: teejee2008/timeshift](https://github.com/teejee2008/timeshift)
-- [chezmoi.io official site](https://www.chezmoi.io/)
+### Official Documentation
+- [GTK4 Rust Bindings Documentation](https://gtk-rs.org/gtk4-rs/stable/latest/docs/gtk4/)
+- [Relm4 Book](https://relm4.org/book/stable/)
+- [Cargo Configuration Reference](https://doc.rust-lang.org/cargo/reference/config.html)
+- [CSS in GTK4](https://gtk-rs.org/gtk4-rs/git/book/css.html)
+- [GTK4 CSS Properties](https://docs.gtk.org/gtk4/css-properties.html)
 
-### Medium Confidence (Community Resources)
-- [AUR: timeshift-autosnap 0.10.0-1](https://aur.archlinux.org/packages/timeshift-autosnap)
-- [GitHub: dagorret/timeshift-autosnap](https://github.com/dagorret/timeshift-autosnap)
-- [MangoHost: Duplicacy vs Restic vs Borg comparison 2025](https://mangohost.net/blog/duplicacy-vs-restic-vs-borg-which-backup-tool-is-right-in-2025/)
-- [Grigio: Backup speed benchmark: rsync vs borg vs restic vs kopia](https://grigio.org/backup-speed-benchmark/)
-- [Solene: Backup software: borg vs restic](https://dataswamp.org/~solene/2021-05-21-borg-vs-restic.html)
-- [Arch Linux Forums: Hooking the pacman update process](https://forum.manjaro.org/t/hooking-the-pacman-update-process/20422)
-- [Arch Linux Forums: Making a pacman hook to backup /boot](https://bbs.archlinux.org/viewtopic.php?id=289248)
+### Crate Documentation
+- [gtk4 0.10.3 on docs.rs](https://docs.rs/gtk4/0.10.3/gtk4/)
+- [relm4 0.10.1 on docs.rs](https://docs.rs/relm4/0.10.1/relm4/)
+- [libadwaita 0.8.1 on docs.rs](https://docs.rs/libadwaita/0.8.1/libadwaita/)
+- [walkdir on docs.rs](https://docs.rs/walkdir/latest/walkdir/)
+- [notify-rs on GitHub](https://github.com/notify-rs/notify)
+- [cssparser on docs.rs](https://docs.rs/cssparser/)
 
-### Tools Mentioned (Not Recommended)
-- Snapper - [Arch Wiki: Snapper](https://wiki.archlinux.org/title/Snapper) - Designed for btrfs/LVM, complex on ext4
-- rsnapshot - [Arch Wiki: Synchronization and backup programs](https://wiki.archlinux.org/title/Synchronization_and_backup_programs) - Older, less feature-rich than Restic/Borg
-- yadm - [yadm.io](https://yadm.io/) - Dotfile manager wrapper, unnecessary with Stow already in use
+### Community Resources
+- [GTK4 CSS Styling Tutorial](https://jamesbenner.hashnode.dev/how-to-style-your-gtk4-rust-app-with-css)
+- [Rust GTK4 CSS Dynamic Theming Example](https://github.com/jbenner-radham/rust-gtk4-css-styling)
+- [Relm4 Discussion - Global State](https://github.com/orgs/Relm4/discussions/552)
+- [JSON vs YAML vs TOML Comparison](https://dev.to/jsontoall_tools/json-vs-yaml-vs-toml-which-configuration-format-should-you-use-in-2026-1hlb)
+
+### System Integration
+- [ArchWiki: Desktop Entries](https://wiki.archlinux.org/title/Desktop_entries)
+- [Waybar Theming Examples on GitHub](https://github.com/topics/waybar-themes)
+
+### Research Confidence
+- **HIGH:** Core stack (GTK4/Relm4), TOML, walkdir, integration patterns
+- **MEDIUM:** File watching (nice-to-have), third-party discovery (needs testing)
+- **LOW:** CSS parsing (may not be needed)

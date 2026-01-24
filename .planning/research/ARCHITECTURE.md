@@ -1,567 +1,573 @@
-# Architecture Patterns: System Backup Integration
+# Architecture Patterns: VulcanOS Unified Appearance Manager
 
-**Domain:** Linux System Backup Integration for Desktop Environments
-**Researched:** 2026-01-23
-**Confidence:** HIGH
+**Domain:** Desktop appearance management (themes + wallpapers)
+**Researched:** 2026-01-24
+**Confidence:** HIGH (based on existing codebase analysis)
+
+## Executive Summary
+
+The unified Appearance Manager merges two existing GTK4/Relm4 applications (vulcan-theme-manager and vulcan-wallpaper-manager) into a single cohesive interface while adding theme-wallpaper binding and shared CSS infrastructure. The architecture must preserve the clean separation of concerns already established while creating new integration points.
+
+**Key architectural decisions:**
+1. **Tab-based UI merging pattern** - Keep existing components, add tabbed navigation
+2. **Shared services layer** - Extract common infrastructure (CSS generation, file watching)
+3. **Binding service** - New service layer for theme-wallpaper coordination
+4. **Plugin discovery system** - New service for finding third-party application configs
 
 ## Recommended Architecture
 
-VulcanOS backup integration should follow a modular, event-driven architecture that hooks into the package manager, desktop environment, and user workflows without disrupting the existing system.
+### High-Level Component Structure
+
+```
+vulcan-appearance-manager/
+├── src/
+│   ├── main.rs                    # App entry, shared CSS, tab orchestration
+│   ├── app.rs                     # Main AppModel with TabView
+│   ├── models/
+│   │   ├── theme.rs               # From theme-manager (existing)
+│   │   ├── color_group.rs         # From theme-manager (existing)
+│   │   ├── monitor.rs             # From wallpaper-manager (existing)
+│   │   ├── wallpaper.rs           # From wallpaper-manager (existing)
+│   │   ├── profile.rs             # From wallpaper-manager (existing)
+│   │   ├── binding.rs             # NEW: theme-wallpaper binding
+│   │   └── mod.rs
+│   ├── services/
+│   │   ├── theme_parser.rs        # From theme-manager (existing)
+│   │   ├── theme_storage.rs       # From theme-manager (existing)
+│   │   ├── theme_applier.rs       # From theme-manager (MODIFIED)
+│   │   ├── hyprctl.rs             # From wallpaper-manager (existing)
+│   │   ├── hyprpaper.rs           # From wallpaper-manager (existing)
+│   │   ├── profile_storage.rs     # From wallpaper-manager (existing)
+│   │   ├── thumbnail.rs           # From wallpaper-manager (existing)
+│   │   ├── image_splitter.rs      # From wallpaper-manager (existing)
+│   │   ├── css_generator.rs       # NEW: shared CSS infrastructure
+│   │   ├── binding_manager.rs     # NEW: theme-wallpaper coordination
+│   │   ├── app_discovery.rs       # NEW: third-party app detection
+│   │   └── mod.rs
+│   ├── components/
+│   │   ├── theme_tab/             # Theme management (existing components)
+│   │   │   ├── theme_browser.rs   # From theme-manager
+│   │   │   ├── theme_card.rs      # From theme-manager
+│   │   │   ├── theme_editor.rs    # From theme-manager
+│   │   │   ├── preview_panel.rs   # From theme-manager
+│   │   │   └── mod.rs
+│   │   ├── wallpaper_tab/         # Wallpaper management (existing components)
+│   │   │   ├── monitor_layout.rs  # From wallpaper-manager
+│   │   │   ├── wallpaper_picker.rs # From wallpaper-manager
+│   │   │   ├── profile_manager.rs  # From wallpaper-manager
+│   │   │   ├── split_dialog.rs     # From wallpaper-manager
+│   │   │   └── mod.rs
+│   │   ├── binding_tab/           # NEW: Theme-wallpaper binding UI
+│   │   │   ├── binding_editor.rs  # Create/edit bindings
+│   │   │   ├── binding_list.rs    # Display existing bindings
+│   │   │   └── mod.rs
+│   │   ├── apps_tab/              # NEW: Third-party app theming
+│   │   │   ├── app_browser.rs     # List discovered apps
+│   │   │   ├── app_config_editor.rs # Configure app theming
+│   │   │   └── mod.rs
+│   │   └── mod.rs
+│   └── shared/                    # NEW: Shared utilities
+│       ├── css.rs                 # CSS constant definitions
+│       ├── config.rs              # Shared config paths
+│       └── mod.rs
+└── Cargo.toml
+```
 
 ### Component Boundaries
 
-| Component | Responsibility | Communicates With | Location |
-|-----------|---------------|-------------------|----------|
-| Pacman Hooks | Trigger backups on system changes | Backup Engine, Notification System | `/etc/pacman.d/hooks/*.hook` |
-| Backup Engine | Execute backup operations | Storage Backend, Hook System | `/usr/local/bin/vulcan-backup` |
-| Menu Integration | User-facing backup controls | Backup Engine, Wofi | `dotfiles/scripts/.local/bin/vulcan-menu` |
-| Waybar Module | Backup status display | Backup Engine (via state files) | Custom waybar module config |
-| Notification Layer | User feedback | Backup Engine, swaync | Via `notify-send` |
-| Configuration | Backup profiles, schedules | All components | `~/.config/vulcan-backup/` |
+| Component | Responsibility | Communicates With |
+|-----------|---------------|-------------------|
+| **AppModel** | Tab orchestration, message routing | All tab components, binding_manager |
+| **theme_tab/** | Theme browsing, editing, preview, apply | theme_storage, theme_applier, css_generator |
+| **wallpaper_tab/** | Monitor layout, wallpaper selection, profiles | hyprctl, hyprpaper, profile_storage |
+| **binding_tab/** | Theme-wallpaper binding creation/management | binding_manager, theme_storage, profile_storage |
+| **apps_tab/** | Third-party app discovery, config generation | app_discovery, css_generator |
+| **theme_applier** | Apply themes via vulcan-theme CLI | vulcan-theme script, binding_manager |
+| **binding_manager** | Coordinate theme+wallpaper application | theme_applier, hyprpaper, profile_storage |
+| **css_generator** | Generate CSS for third-party apps | theme_storage, app_discovery |
+| **app_discovery** | Scan for supported third-party apps | File system (~/.config/) |
 
 ### Data Flow
 
+#### Theme Application Flow (without binding)
 ```
-User Action (pacman -Syu)
-    ↓
-Pacman Transaction Starts
-    ↓
-PreTransaction Hook → Backup Engine → Storage Backend
-    ↓                        ↓
-Pacman Upgrade         Notify User (pre-backup complete)
-    ↓
-PostTransaction Hook → Backup Engine → Storage Backend
-    ↓                        ↓
-Transaction Complete   Notify User (post-backup complete)
-                            ↓
-                      Waybar Module (update status)
+User selects theme → theme_tab → AppModel → theme_applier → vulcan-theme CLI →
+  → envsubst templates → Config files written → Services reloaded
 ```
 
-**Manual Workflow:**
+#### Theme Application Flow (with binding)
 ```
-User opens vulcan-menu
-    ↓
-Selects "System" → "Backup"
-    ↓
-Wofi submenu shows: [Create Backup | Restore | Manage | Schedule]
-    ↓
-User selects action → Backup Engine executes → Notification feedback
+User selects theme → theme_tab → AppModel → binding_manager checks bindings →
+  ├─→ theme_applier applies theme
+  └─→ hyprpaper applies bound wallpaper profile
+```
+
+#### Wallpaper Application Flow
+```
+User selects wallpaper → wallpaper_tab → AppModel → hyprpaper service →
+  → swww command → Wallpaper displayed
+```
+
+#### Binding Creation Flow
+```
+User creates binding → binding_tab → binding_manager →
+  → Binding saved to ~/.config/vulcan/bindings.toml
+  → Binding activated (theme + wallpaper applied together)
+```
+
+#### Third-Party App Theming Flow
+```
+App discovery scans ~/.config/ → app_discovery identifies supported apps →
+  → apps_tab displays list → User enables theming →
+  → css_generator creates app-specific CSS from current theme →
+  → CSS written to app config directory → App reloaded
+```
+
+## Integration Points
+
+### 1. Existing Apps → Unified App
+
+**Migration strategy:**
+- **Move, don't rewrite** - Copy existing component files into new directory structure
+- **Namespace with tabs** - Place existing components under `theme_tab/` and `wallpaper_tab/`
+- **Preserve models** - Keep all existing model structs unchanged
+- **Preserve services** - Keep existing service modules (only MODIFY theme_applier for binding hooks)
+
+**File mapping:**
+```
+vulcan-theme-manager/src/components/*.rs → theme_tab/*.rs
+vulcan-wallpaper-manager/src/components/*.rs → wallpaper_tab/*.rs
+vulcan-theme-manager/src/models/*.rs → models/*.rs (merge, no conflicts)
+vulcan-wallpaper-manager/src/models/*.rs → models/*.rs (merge, no conflicts)
+vulcan-theme-manager/src/services/*.rs → services/*.rs
+vulcan-wallpaper-manager/src/services/*.rs → services/*.rs
+```
+
+### 2. vulcan-theme CLI Integration
+
+**Current integration:** theme_applier.rs calls `vulcan-theme set <id>` via Command::new()
+
+**New integration points:**
+```rust
+// services/theme_applier.rs
+pub fn apply_theme_with_binding(theme_id: &str) -> Result<()> {
+    // 1. Check if theme has binding
+    if let Some(binding) = binding_manager::get_binding_for_theme(theme_id)? {
+        // 2. Apply theme
+        apply_theme(theme_id)?;
+
+        // 3. Apply bound wallpaper profile
+        if let Some(profile) = binding.wallpaper_profile {
+            profile_storage::apply_profile(&profile)?;
+        }
+    } else {
+        // No binding, just apply theme
+        apply_theme(theme_id)?;
+    }
+    Ok(())
+}
+```
+
+**vulcan-theme remains unchanged** - No modifications to bash script needed. GUI app calls it as external command.
+
+### 3. Shared CSS Infrastructure
+
+**Problem:** Both apps duplicate CSS in main.rs. Third-party apps need generated CSS.
+
+**Solution:** Extract to shared module
+```rust
+// src/shared/css.rs
+pub const VULCAN_BRAND_CSS: &str = include_str!("../../assets/vulcan-brand.css");
+
+pub fn load_brand_css() {
+    relm4::set_global_css(VULCAN_BRAND_CSS);
+}
+
+// src/services/css_generator.rs
+pub fn generate_css_for_app(app: &SupportedApp, theme: &Theme) -> Result<String> {
+    match app {
+        SupportedApp::Vscode => generate_vscode_css(theme),
+        SupportedApp::Firefox => generate_firefox_css(theme),
+        SupportedApp::Thunderbird => generate_thunderbird_css(theme),
+        // ... discovered apps
+    }
+}
+
+fn generate_vscode_css(theme: &Theme) -> Result<String> {
+    // Generate VS Code settings.json with theme colors
+    let json = serde_json::json!({
+        "workbench.colorCustomizations": {
+            "editor.background": theme.bg_primary,
+            "editor.foreground": theme.fg_primary,
+            "activityBar.background": theme.bg_secondary,
+            // ... full color mapping
+        }
+    });
+    Ok(serde_json::to_string_pretty(&json)?)
+}
+```
+
+### 4. Theme-Wallpaper Binding Data Model
+
+**New model:**
+```rust
+// src/models/binding.rs
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ThemeWallpaperBinding {
+    pub theme_id: String,
+    pub wallpaper_profile: Option<String>, // Profile name
+    pub auto_apply: bool, // Auto-apply wallpaper when theme changes
+}
+
+impl ThemeWallpaperBinding {
+    pub fn save(&self) -> Result<()> {
+        binding_manager::save_binding(self)
+    }
+
+    pub fn load(theme_id: &str) -> Result<Option<Self>> {
+        binding_manager::load_binding(theme_id)
+    }
+}
+```
+
+**Storage format:** TOML in `~/.config/vulcan/bindings.toml`
+```toml
+[vulcan-forge]
+wallpaper_profile = "forge-flames"
+auto_apply = true
+
+[catppuccin-mocha]
+wallpaper_profile = "mocha-mountains"
+auto_apply = true
+```
+
+### 5. Third-Party App Discovery
+
+**Discovery service:**
+```rust
+// src/services/app_discovery.rs
+pub enum SupportedApp {
+    Vscode,
+    Firefox,
+    Thunderbird,
+    Slack,
+    Discord,
+    Spotify,
+    // ... extensible enum
+}
+
+impl SupportedApp {
+    pub fn config_path(&self) -> PathBuf {
+        match self {
+            Self::Vscode => home_dir().join(".config/Code/User/settings.json"),
+            Self::Firefox => home_dir().join(".mozilla/firefox/*/chrome/userChrome.css"),
+            Self::Thunderbird => home_dir().join(".thunderbird/*/chrome/userChrome.css"),
+            // ...
+        }
+    }
+
+    pub fn is_installed(&self) -> bool {
+        self.config_path().exists() || self.binary_exists()
+    }
+
+    pub fn supports_css_theming(&self) -> bool {
+        true // All supported apps must support CSS theming
+    }
+}
+
+pub fn discover_installed_apps() -> Vec<SupportedApp> {
+    SupportedApp::all()
+        .into_iter()
+        .filter(|app| app.is_installed())
+        .collect()
+}
+```
+
+**App theming state:** Stored in `~/.config/vulcan/app-theming.toml`
+```toml
+[apps]
+vscode = { enabled = true, last_applied = "vulcan-forge" }
+firefox = { enabled = true, last_applied = "vulcan-forge" }
+thunderbird = { enabled = false }
 ```
 
 ## Patterns to Follow
 
-### Pattern 1: Pacman Hook Integration
+### Pattern 1: Tab-Based App Merging
+**What:** Use libadwaita TabView to combine two apps into one window
+**When:** Merging related functionality without complete rewrite
+**Example:**
+```rust
+// src/app.rs
+pub struct App {
+    theme_tab: Controller<ThemeTabModel>,
+    wallpaper_tab: Controller<WallpaperTabModel>,
+    binding_tab: Controller<BindingTabModel>,
+    apps_tab: Controller<AppsTabModel>,
+}
 
-**What:** Use alpm-hooks to trigger backups at transaction boundaries.
-
-**When:** Critical system changes (kernel updates, major packages).
-
-**File Structure:**
-```
-/etc/pacman.d/hooks/
-├── 00-vulcan-pre-backup.hook    # PreTransaction (runs first, alphabetical)
-└── 99-vulcan-post-backup.hook   # PostTransaction (runs last)
-```
-
-**Example Hook:**
-```ini
-[Trigger]
-Operation = Upgrade
-Type = Package
-Target = linux*
-Target = systemd
-Target = grub
-
-[Action]
-Description = Creating pre-upgrade system backup...
-When = PreTransaction
-Exec = /usr/local/bin/vulcan-backup auto pre
-Depends = rsync
-NeedsTargets
-```
-
-**Key Points:**
-- Use numeric prefixes (00-, 99-) to control execution order
-- `NeedsTargets` passes matched package names to script via stdin
-- `Depends` ensures backup tool is installed before hook runs
-- `AbortOnFail` (PreTransaction only) can halt upgrades if backup fails
-
-**Sources:**
-- [Arch Linux Pacman Wiki - Hooks](https://wiki.archlinux.org/title/Pacman)
-- [alpm-hooks(5) manual](https://man.archlinux.org/man/alpm-hooks.5)
-
----
-
-### Pattern 2: Wofi Submenu Integration
-
-**What:** Nested menu system using wofi's dmenu mode for backup controls.
-
-**When:** User wants manual backup operations through GUI.
-
-**Integration Point:** `dotfiles/scripts/.local/bin/vulcan-menu` (existing file)
-
-**Example Pattern:**
-```bash
-show_backup_menu() {
-    local options="󰆓  Create Backup
-󰁯  Restore Backup
-󰋖  List Backups
-󰃰  Schedule Backup
-󰛖  Settings
-$ICON_BACK  Back"
-
-    local choice
-    choice=$(wofi_menu "Backup Manager" "$options")
-
-    local action
-    action=$(echo "$choice" | sed 's/^[^ ]* *//' | tr '[:upper:]' '[:lower:]')
-
-    case "$action" in
-        "create backup")  create_backup_interactive ;;
-        "restore backup") restore_backup_interactive ;;
-        "list backups")   list_backups_interactive ;;
-        "schedule backup") schedule_backup_interactive ;;
-        "settings")       edit_backup_config ;;
-        "back")           show_main_menu ;;
-        *)                exit 0 ;;
-    esac
+view! {
+    adw::ApplicationWindow {
+        adw::TabView {
+            append = &adw::TabPage {
+                set_title: "Themes",
+                set_child: model.theme_tab.widget(),
+            },
+            append = &adw::TabPage {
+                set_title: "Wallpapers",
+                set_child: model.wallpaper_tab.widget(),
+            },
+            append = &adw::TabPage {
+                set_title: "Bindings",
+                set_child: model.binding_tab.widget(),
+            },
+            append = &adw::TabPage {
+                set_title: "Applications",
+                set_child: model.apps_tab.widget(),
+            },
+        }
+    }
 }
 ```
 
-**Location in vulcan-menu:**
-Add to main menu options (around line 64-72):
-```bash
-$ICON_BACKUP  Backup    # New entry
-```
-
-Add case handler (around line 80-91):
-```bash
-"backup")  show_backup_menu ;;
-```
-
-**Key Points:**
-- Follow existing VulcanOS menu patterns (see vulcan-power, vulcan-menu)
-- Use Nerd Font icons for consistency
-- Wofi dmenu mode: `wofi --dmenu --prompt "..." --cache-file /dev/null`
-- Return to parent menu with "Back" option
-- Extract action by removing icon prefix: `sed 's/^[^ ]* *//'`
-
-**Sources:**
-- [Hyprland Wiki - App Launchers](https://wiki.hypr.land/Useful-Utilities/App-Launchers/)
-- [wofi manual page](https://sr.ht/~scoopta/wofi/)
-
----
-
-### Pattern 3: Waybar Module Integration
-
-**What:** Custom Waybar module displaying backup status and last backup time.
-
-**When:** User wants persistent backup status visibility.
-
-**Configuration:** `dotfiles/waybar/.config/waybar/config.jsonc`
-
-**Example Module:**
-```json
-"custom/backup": {
-    "format": "{icon} {}",
-    "format-icons": {
-        "idle": "󰆓",
-        "running": "󰦖",
-        "error": "󰅙",
-        "success": "󰄬"
-    },
-    "return-type": "json",
-    "exec": "/home/evan/.local/bin/vulcan-backup-status",
-    "interval": 60,
-    "on-click": "vulcan-menu backup",
-    "tooltip": true,
-    "exec-on-event": true
+### Pattern 2: Service Message Routing
+**What:** Central app model routes messages to appropriate service layer
+**When:** Multiple tabs need to coordinate through shared services
+**Example:**
+```rust
+// src/app.rs
+fn update(&mut self, msg: AppMsg, sender: ComponentSender<Self>) {
+    match msg {
+        AppMsg::ApplyTheme(theme_id) => {
+            // Check for binding before applying
+            if let Ok(binding) = binding_manager::get_binding(&theme_id) {
+                // Apply theme + wallpaper together
+                theme_applier::apply_theme(&theme_id)?;
+                if let Some(profile) = binding.wallpaper_profile {
+                    profile_storage::apply_profile(&profile)?;
+                    self.wallpaper_tab.emit(WallpaperTabMsg::ProfileApplied(profile));
+                }
+            } else {
+                // Just apply theme
+                theme_applier::apply_theme(&theme_id)?;
+            }
+        }
+        // ... route to appropriate tab
+    }
 }
 ```
 
-**Status Script Pattern:**
-```bash
-#!/bin/bash
-# vulcan-backup-status - Waybar custom module output
-
-STATE_FILE="$HOME/.config/vulcan-backup/state"
-LAST_BACKUP_FILE="$HOME/.config/vulcan-backup/last_backup"
-
-if [[ -f "$STATE_FILE" ]]; then
-    state=$(cat "$STATE_FILE")
-else
-    state="idle"
-fi
-
-if [[ -f "$LAST_BACKUP_FILE" ]]; then
-    last_backup=$(cat "$LAST_BACKUP_FILE")
-    tooltip="Last backup: $last_backup"
-else
-    tooltip="No backups yet"
-fi
-
-# Output JSON for Waybar
-cat <<EOF
-{
-    "text": "",
-    "tooltip": "$tooltip",
-    "class": "$state"
-}
-EOF
-```
-
-**CSS Styling:** `dotfiles/waybar/.config/waybar/style.css`
-```css
-#custom-backup.idle { color: #a6adc8; }
-#custom-backup.running { color: #f9e2af; }
-#custom-backup.success { color: #a6e3a1; }
-#custom-backup.error { color: #f38ba8; }
-```
-
-**Key Points:**
-- Use `return-type: json` for structured output
-- `interval`: seconds between polls (60 = every minute)
-- `exec-on-event: true` refreshes after click events
-- State files in `~/.config/vulcan-backup/` for persistence
-- Follow existing VulcanOS Waybar patterns (see hyprwhspr module, lines 68-75)
-
-**Sources:**
-- [Waybar Custom Module Documentation](https://man.archlinux.org/man/extra/waybar/waybar-custom.5.en)
-- [Waybar Custom Scripts Guide](https://waybar.org/can-i-add-custom-scripts-to-waybar/)
-
----
-
-### Pattern 4: Script Organization
-
-**What:** Logical separation of user scripts vs system scripts.
-
-**When:** All VulcanOS tools and utilities.
-
-**Directory Structure:**
-```
-# User scripts (symlinked via GNU Stow)
-dotfiles/scripts/.local/bin/
-├── vulcan-backup           # Main backup CLI
-├── vulcan-backup-status    # Waybar status generator
-└── vulcan-menu             # Modified to include backup submenu
-
-# System scripts (installed to ISO, used by hooks)
-archiso/airootfs/usr/local/bin/
-├── vulcan-backup           # Copy of user script for system-wide access
-└── (other system utilities)
-
-# Pacman hooks
-archiso/airootfs/etc/pacman.d/hooks/
-├── 00-vulcan-pre-backup.hook
-└── 99-vulcan-post-backup.hook
-
-# Configuration
-~/.config/vulcan-backup/
-├── config.toml             # User settings
-├── profiles/               # Backup profiles
-├── state                   # Current operation state
-└── last_backup             # Timestamp of last successful backup
-```
-
-**Installation Flow:**
-1. **Development:** Edit in `dotfiles/scripts/.local/bin/`
-2. **Testing:** Stow to `~/.local/bin/` for live testing
-3. **ISO Integration:** Copy to `archiso/airootfs/usr/local/bin/` and hooks
-
-**Key Points:**
-- User scripts in `~/.local/bin` (via Stow, personal use)
-- System scripts in `/usr/local/bin` (system-wide, untouched by pacman)
-- NEVER put custom scripts in `/usr/bin` (pacman-managed)
-- Configuration in `~/.config/` (XDG Base Directory spec)
-- State files in `~/.config/vulcan-backup/` (not `~/.local/share` - easier access)
-
-**Sources:**
-- [Arch Linux Forums - Script Organization](https://bbs.archlinux.org/viewtopic.php?id=165042)
-- [FHS - Filesystem Hierarchy Standard](https://en.wikipedia.org/wiki/Filesystem_Hierarchy_Standard)
-
----
-
-### Pattern 5: Notification Integration
-
-**What:** User feedback via swaync during backup operations.
-
-**When:** All backup events (start, progress, completion, errors).
-
-**Example Pattern:**
-```bash
-notify_backup() {
-    local title="$1"
-    local message="$2"
-    local urgency="${3:-normal}"
-    local icon="${4:-drive-harddisk}"
-
-    if command -v notify-send &> /dev/null; then
-        notify-send "$title" "$message" \
-            -i "$icon" \
-            -u "$urgency" \
-            -t 5000 \
-            -a "VulcanOS Backup"
-    fi
+### Pattern 3: Shared CSS Generation
+**What:** Generate application-specific CSS/config from theme model
+**When:** Propagating theme to third-party applications
+**Example:**
+```rust
+// src/services/css_generator.rs
+pub struct CssTemplate {
+    template: String,
+    output_path: PathBuf,
 }
 
-# Usage examples
-notify_backup "Backup Started" "Creating system backup..." "normal" "document-save"
-notify_backup "Backup Complete" "Backup saved to /mnt/backups" "normal" "emblem-default"
-notify_backup "Backup Failed" "Insufficient disk space" "critical" "dialog-error"
+impl CssTemplate {
+    pub fn apply(&self, theme: &Theme) -> Result<()> {
+        let css = self.template
+            .replace("{{bg_primary}}", &theme.bg_primary)
+            .replace("{{fg_primary}}", &theme.fg_primary)
+            .replace("{{accent}}", &theme.accent);
+            // ... full substitution
+
+        fs::write(&self.output_path, css)?;
+        Ok(())
+    }
+}
 ```
 
-**Integration with Hooks:**
-```bash
-# In hook script
-/usr/local/bin/vulcan-backup auto pre 2>&1 | while read -r line; do
-    notify_backup "Pre-Upgrade Backup" "$line"
-done
+### Pattern 4: CLI Tool Delegation
+**What:** Delegate complex theme application to existing bash script
+**When:** Bash script handles envsubst templates and service reloading
+**Why:** Don't duplicate bash logic in Rust - call existing tooling
+**Example:**
+```rust
+// services/theme_applier.rs
+pub fn apply_theme(theme_id: &str) -> Result<()> {
+    let vulcan_theme = find_vulcan_theme()?;
+    Command::new(&vulcan_theme)
+        .arg("set")
+        .arg(theme_id)
+        .status()?;
+    Ok(())
+}
 ```
-
-**Key Points:**
-- Use `-a "VulcanOS Backup"` for notification grouping in swaync
-- Standard urgency levels: `low`, `normal`, `critical`
-- Timeout: 5000ms (5 seconds) for non-critical
-- Icon names: use freedesktop icon naming spec
-- Follow existing VulcanOS patterns (see vulcan-power, vulcan-menu)
-
----
 
 ## Anti-Patterns to Avoid
 
-### Anti-Pattern 1: Blocking Pacman Transactions Indefinitely
+### Anti-Pattern 1: Complete Rewrite
+**What:** Rewriting existing components from scratch
+**Why bad:** Wastes working code, introduces new bugs, delays delivery
+**Instead:** Move existing component files into new directory structure, add namespacing
 
-**What:** Long-running backup operations that freeze package manager.
+### Anti-Pattern 2: Duplicating vulcan-theme Logic
+**What:** Reimplementing envsubst template processing in Rust
+**Why bad:**
+- Duplicates 490 lines of working bash code
+- Must maintain two implementations
+- Risk of divergence between CLI and GUI behavior
+**Instead:** Call vulcan-theme as subprocess, let it handle templating
 
-**Why bad:** User can't cancel, system appears hung, poor UX.
+### Anti-Pattern 3: Tight Coupling Between Tabs
+**What:** Theme tab directly calling wallpaper tab methods
+**Why bad:** Creates circular dependencies, hard to test, brittle
+**Instead:** Route all cross-tab communication through AppModel, use binding_manager service
 
+### Anti-Pattern 4: Hardcoded App List
+**What:** Match statement with fixed list of supported apps
+**Why bad:** Requires code change to add new app support
 **Instead:**
-- Use PostTransaction hooks for full backups (non-blocking)
-- PreTransaction hooks should be fast (metadata snapshots only)
-- Set reasonable timeouts in backup scripts
-- Provide cancellation mechanisms
+```rust
+// GOOD: Extensible discovery
+pub fn discover_apps() -> Vec<DiscoveredApp> {
+    scan_config_dir()
+        .filter(|app| has_css_support(app))
+        .collect()
+}
 
----
-
-### Anti-Pattern 2: Hard-Coding Paths
-
-**What:** Absolute paths to backup destinations, user directories.
-
-**Why bad:** Breaks on different mount points, multi-user systems.
-
-**Instead:**
-- Use configuration files: `~/.config/vulcan-backup/config.toml`
-- Environment variables: `${HOME}`, `${USER}`
-- Detect mount points dynamically: `findmnt`, `lsblk`
-
----
-
-### Anti-Pattern 3: Silent Failures
-
-**What:** Backup fails but user isn't notified.
-
-**Why bad:** False sense of security, data loss risk.
-
-**Instead:**
-- Always notify on error (critical urgency)
-- Log to systemd journal: `systemd-cat`
-- Exit with non-zero status codes
-- Use `AbortOnFail` in PreTransaction hooks for critical backups
-
----
-
-### Anti-Pattern 4: Multiple Menu Systems
-
-**What:** Creating separate GUI tools instead of integrating with vulcan-menu.
-
-**Why bad:** Fragmented UX, inconsistent styling, maintenance burden.
-
-**Instead:**
-- Extend existing `vulcan-menu` with submenu
-- Follow established VulcanOS patterns
-- Use same wofi configuration and styling
-- Consistent icon usage (Nerd Fonts)
-
----
-
-### Anti-Pattern 5: Root-Owned User Configurations
-
-**What:** Backup configs in `/etc` or owned by root when user-specific.
-
-**Why bad:** Permission issues, can't customize per-user.
-
-**Instead:**
-- System defaults in `/etc/vulcan-backup/` (if needed)
-- User configs in `~/.config/vulcan-backup/` (XDG spec)
-- Copy system defaults to user config on first run
-- Use appropriate permissions (644 for configs, 755 for scripts)
-
----
-
-## Build Order & Dependencies
-
-### Phase 1: Core Infrastructure
-1. Backup engine script (`vulcan-backup`)
-2. Configuration schema (`config.toml`)
-3. State management (state files)
-
-**Dependencies:**
-- rsync (table stakes)
-- OR borg/restic (if chosen)
-- notify-send (swaync)
-
-### Phase 2: Desktop Integration
-1. Waybar module (`vulcan-backup-status`)
-2. Waybar config additions
-3. CSS styling
-
-**Dependencies:**
-- Phase 1 complete
-- Waybar installed
-- State files working
-
-### Phase 3: Menu Integration
-1. Modify `vulcan-menu` (add backup submenu)
-2. Interactive functions
-3. Wofi integration
-
-**Dependencies:**
-- Phase 1 complete
-- vulcan-menu patterns established
-- wofi installed
-
-### Phase 4: Automation
-1. Pacman hooks (pre/post transaction)
-2. Optional: systemd timers for scheduled backups
-3. ISO integration
-
-**Dependencies:**
-- Phase 1-3 tested
-- Backup engine stable
-- Hook syntax validated
-
----
-
-## Integration Points: VulcanOS Specifics
-
-### 1. Existing Hook System
-**Status:** NONE - No pacman hooks currently exist in VulcanOS.
-
-**Opportunity:** Clean slate, establish patterns from scratch.
-
-**Location:** Create `archiso/airootfs/etc/pacman.d/hooks/` directory.
-
----
-
-### 2. Waybar Configuration
-**Current File:** `dotfiles/waybar/.config/waybar/config.jsonc`
-
-**Modules-right current:** `["tray", "custom/notification", "bluetooth", "network", "pulseaudio", "cpu", "memory", "battery"]`
-
-**Proposed:** Insert `"custom/backup"` after `"memory"`, before `"battery"`.
-
-**Existing Custom Modules:**
-- `custom/separator` (line 62-66)
-- `custom/hyprwhspr` (line 68-75) - **Good reference pattern**
-- `custom/notification` (line 118-138)
-
-**Pattern to follow:** `custom/hyprwhspr` uses:
-- JSON return type
-- 1-second interval
-- Exec-on-event: true
-- Tooltip enabled
-- External script for status
-
----
-
-### 3. Menu System
-**Current File:** `dotfiles/scripts/.local/bin/vulcan-menu`
-
-**Main Menu Options (lines 64-72):**
-```
-System, Style, Quick Settings, Install, Remove, Setup, Update, T2 MacBook, Power
+// BAD: Hardcoded
+pub fn supported_apps() -> Vec<&'static str> {
+    vec!["vscode", "firefox", "thunderbird"] // Can't extend without code change
+}
 ```
 
-**Proposed Insertion:** Add "Backup" between "System" and "Style".
+### Anti-Pattern 5: Inline CSS in Components
+**What:** Hardcoding CSS strings in component view! macros
+**Why bad:** Duplicated across components, hard to theme, inconsistent
+**Instead:** Use shared CSS module, load once in main.rs
 
-**Existing Patterns:**
-- Icon prefix with Nerd Fonts
-- Submenu functions: `show_system_menu()`, `show_style_menu()`, etc.
-- Wofi menu helper: `wofi_menu()` function (lines 43-57)
-- Notification helper: `notify()` function (lines 28-32)
-- Terminal execution: `run_in_terminal()`, `run_in_terminal_hold()` (lines 34-40)
+## Build Order Recommendations
 
-**Pattern to replicate:** Follow `show_system_menu()` (lines 464-504) as template.
+**Phase 1: Foundation** (Week 1)
+1. Create new vulcan-appearance-manager crate
+2. Copy all models/ from both apps (no conflicts, merge mod.rs)
+3. Copy all services/ from both apps (merge mod.rs)
+4. Add shared/css.rs module
+5. Verify cargo build succeeds
 
----
+**Phase 2: Tab Integration** (Week 1-2)
+1. Create app.rs with TabView skeleton
+2. Copy theme_tab/ components (rename imports)
+3. Copy wallpaper_tab/ components (rename imports)
+4. Wire up existing tabs to AppModel
+5. Test existing functionality works in tabs
 
-### 4. Script Organization
-**Current Structure:**
-- User scripts: `dotfiles/scripts/.local/bin/` (29 scripts)
-- System scripts: `archiso/airootfs/usr/local/bin/` (19 scripts)
-- Naming convention: `vulcan-*` prefix
+**Phase 3: Binding System** (Week 2)
+1. Implement models/binding.rs
+2. Implement services/binding_manager.rs
+3. Add binding hooks to theme_applier.rs
+4. Create binding_tab/ components
+5. Test theme+wallpaper binding
 
-**Existing Patterns:**
-- `vulcan-menu` - Multi-level menu system (1,642 lines)
-- `vulcan-power` - Simple action menu (157 lines)
-- `vulcan-wallpaper` - Resource management (~200 lines)
-- `vulcan-theme` - Configuration switcher
+**Phase 4: App Discovery** (Week 3)
+1. Implement services/app_discovery.rs
+2. Implement services/css_generator.rs (start with VS Code)
+3. Create apps_tab/ components
+4. Test VS Code theming
+5. Add more apps incrementally
 
-**Backup Script Should:**
-- Use `vulcan-backup` naming
-- Include `--help` flag
-- Support both CLI and interactive modes
-- Output JSON for Waybar integration
-- Follow VulcanOS script header format
+**Parallel track:** Update dotfiles/archiso throughout to include new binary
 
----
+## Deployment Strategy
 
-## Scalability Considerations
+**Binary replacement:**
+```bash
+# Old
+vulcan-theme-manager
+vulcan-wallpaper-manager
 
-| Concern | Initial (Single User) | Multi-Monitor Desktop | Network Backups |
-|---------|----------------------|----------------------|-----------------|
-| **Storage** | Local disk (rsync) | NAS mount (rsync) | Remote (borg/restic) |
-| **Automation** | Pacman hooks only | + systemd timers | + remote scheduling |
-| **Restoration** | Manual via menu | Profile-based | Remote pull |
-| **Monitoring** | Waybar module | + Desktop notifications | + Email/webhook |
-| **Encryption** | Optional (LUKS disk) | Optional | Required (borg/restic) |
+# New (replaces both)
+vulcan-appearance-manager
+```
 
----
+**Desktop file:**
+```ini
+[Desktop Entry]
+Name=Appearance Manager
+Comment=Manage themes, wallpapers, and application appearance
+Exec=vulcan-appearance-manager
+Icon=preferences-desktop-theme
+Categories=Settings;DesktopSettings;GTK;
+```
 
-## Architecture Recommendations Summary
+**Menu integration:** Update vulcan-menu to launch unified app instead of separate apps
 
-1. **Hook-Driven Architecture:** Use pacman hooks as primary automation trigger
-2. **Modular Design:** Separate backup engine, UI, and automation
-3. **State-Based UI:** Waybar reads state files, doesn't execute backups
-4. **Event Notifications:** All operations notify via swaync
-5. **Configuration Hierarchy:** System defaults + user overrides
-6. **Script Location:** User scripts in `~/.local/bin`, system in `/usr/local/bin`
-7. **Integration Pattern:** Extend existing vulcan-menu, don't create new tools
+## Performance Considerations
 
-**Critical Success Factors:**
-- Fast PreTransaction hooks (< 5 seconds)
-- Clear user feedback at all stages
-- Non-blocking PostTransaction operations
-- Consistent with VulcanOS UX patterns
-- Logged errors for debugging
+| Concern | Solution |
+|---------|----------|
+| **Tab switching lag** | Lazy-load wallpaper thumbnails only when wallpaper tab visible |
+| **Theme preview slowness** | Keep vulcan-theme CLI fast (already optimized with envsubst) |
+| **App discovery scan** | Cache discovered apps, only re-scan on demand |
+| **CSS generation** | Generate on-demand when user enables app, not on every theme change |
+| **Multiple wallpaper preloads** | Use swww (already does this efficiently) |
 
----
+## Configuration Files
+
+**New configuration locations:**
+```
+~/.config/vulcan/
+├── current-theme              # Existing (from vulcan-theme)
+├── bindings.toml              # NEW: theme-wallpaper bindings
+├── app-theming.toml           # NEW: third-party app enablement
+└── appearance-manager.toml    # NEW: GUI app settings (window size, etc.)
+
+~/.config/vulcan-wallpaper-manager/
+└── profiles/                  # Existing (from wallpaper-manager)
+    └── *.toml
+
+~/.config/themes/              # Existing (from vulcan-theme)
+├── colors/
+│   └── *.sh
+└── templates/
+    └── *.tpl
+```
+
+## Testing Strategy
+
+**Component isolation:**
+- Theme tab tests: Can apply themes without wallpaper tab
+- Wallpaper tab tests: Can apply wallpapers without theme tab
+- Binding tests: Mock both theme_applier and hyprpaper services
+
+**Integration tests:**
+- Binding application: Theme change triggers wallpaper change
+- Profile coordination: Wallpaper profile respects theme binding
+- CLI coordination: GUI changes reflected in CLI tool output
+
+**Manual testing checklist:**
+- [ ] Theme tab works identically to old app
+- [ ] Wallpaper tab works identically to old app
+- [ ] Theme binding creates wallpaper change
+- [ ] Wallpaper profile manual change doesn't break binding
+- [ ] Third-party app CSS generates correctly
+- [ ] vulcan-theme CLI still works independently
+
+## Migration Path
+
+**For users:**
+1. Update system: `yay -S vulcan-appearance-manager`
+2. Old apps automatically replaced by new unified app
+3. Existing themes and wallpaper profiles preserved (same config locations)
+4. vulcan-theme CLI continues to work (unchanged)
+
+**For developers:**
+1. Archive old repos: vulcan-theme-manager, vulcan-wallpaper-manager
+2. All future development in vulcan-appearance-manager
+3. Keep vulcan-theme bash script independent (still used by both GUI and CLI users)
 
 ## Sources
 
-**Official Documentation (HIGH confidence):**
-- [Arch Linux Pacman Wiki](https://wiki.archlinux.org/title/Pacman)
-- [alpm-hooks(5) manual page](https://man.archlinux.org/man/alpm-hooks.5)
-- [Waybar Custom Module Documentation](https://man.archlinux.org/man/extra/waybar/waybar-custom.5.en)
-- [Hyprland Wiki - App Launchers](https://wiki.hypr.land/Useful-Utilities/App-Launchers/)
-
-**Community Resources (MEDIUM confidence):**
-- [Arch Linux Forums - Pacman Hook Examples](https://bbs.archlinux.org/viewtopic.php?id=289248)
-- [GitHub - desbma/pacman-hooks](https://github.com/desbma/pacman-hooks)
-- [Waybar Custom Scripts Guide](https://waybar.org/can-i-add-custom-scripts-to-waybar/)
-- [Arch Linux Forums - Script Organization](https://bbs.archlinux.org/viewtopic.php?id=165042)
-
-**Backup Tool Comparisons (MEDIUM confidence):**
-- [Backup Speed Benchmark: rsync vs borg vs restic](https://grigio.org/backup-speed-benchmark/)
-- [Restic vs Borg Comparison](https://faisalrafique.com/restic-vs-borg/)
-- [GitHub - restic/others (Exhaustive Backup List)](https://github.com/restic/others)
+- [GitHub - Relm4/Relm4: Build truly native applications with ease!](https://github.com/Relm4/Relm4)
+- [Introduction - GUI development with Relm4](https://relm4.org/book/stable/)
+- [Themeing and GTK4 · linuxmint · Discussion #182](https://github.com/orgs/linuxmint/discussions/182)
+- [Gradience - Change Colors & Custom CSS to GTK4 + LibAwaita Apps](https://fostips.com/customize-gtk4-app-window-colors/)
+- Existing VulcanOS codebase analysis (vulcan-theme-manager, vulcan-wallpaper-manager)

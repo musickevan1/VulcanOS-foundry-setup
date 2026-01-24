@@ -1,808 +1,746 @@
-# Domain Pitfalls: T2 MacBook Kernel Updates & System Backups
+# Domain Pitfalls: Unified Appearance Management
 
-**Domain:** Arch Linux system protection on T2 MacBook Pro (2019)
-**Researched:** 2026-01-23
-**Overall confidence:** HIGH (verified with official t2linux docs + Arch community sources)
+**Domain:** Merging theme-manager + wallpaper-manager into unified appearance system
+**Researched:** 2026-01-24
+**Context:** VulcanOS milestone to consolidate vulcan-theme-manager and vulcan-wallpaper-manager
+
+## Executive Summary
+
+This research identifies pitfalls specific to:
+1. Merging two existing GTK4/Relm4 applications with overlapping state
+2. Bridging shell-script theme system with GUI management
+3. Coordinating wallpaper-theme bindings across multiple backends
+4. Maintaining backward compatibility with existing CLI tools
+
+**Critical finding:** The most dangerous pitfall is **state synchronization drift** between the GUI app, CLI tool (vulcan-theme), and live system configuration. The current architecture has THREE sources of truth that can diverge.
 
 ---
 
 ## Critical Pitfalls
 
-Mistakes that cause rewrites, data loss, or unbootable systems.
+Mistakes that cause rewrites or major issues.
 
-### Pitfall 1: Wrong Kernel Installed During Update
+### Pitfall 1: State Synchronization Drift (Three Sources of Truth)
 
 **What goes wrong:**
-Pacman updates to mainline `linux` kernel from official Arch repos instead of `linux-t2` from arch-mact2. System becomes completely unbootable with no keyboard/trackpad/WiFi access in recovery.
+The system currently has three potential sources of truth:
+1. **vulcan-theme CLI state** - tracks "current theme" via internal state
+2. **GUI application state** - each app tracks selected_theme/selected_wallpaper
+3. **Live system state** - actual applied configs (swww query, GTK settings, etc.)
+
+When merging apps, these can diverge catastrophically:
+- User applies theme via CLI → GUI shows wrong theme as current
+- User previews in GUI → CLI thinks different theme is active
+- System state changes externally → both GUI and CLI unaware
+- App restarts → loses preview state, applies wrong theme
 
 **Why it happens:**
-- User runs `pacman -Syu` without `IgnorePkg` configured
-- Mainline kernel gets higher priority than T2-patched kernel
-- Pacman doesn't know the system requires T2-specific patches
-- The `linux` package appears as a "newer" update than `linux-t2`
+- Each component was designed independently with its own state tracking
+- No shared state store or event bus
+- Preview/apply distinction creates temporary state that's not persisted
+- Relm4 component lifecycle doesn't guarantee cleanup on app crash
 
 **Consequences:**
-- Boot succeeds but no hardware works (keyboard, trackpad, WiFi, audio, Touch Bar)
-- Cannot access terminal to fix the issue
-- Requires external USB keyboard/mouse + live USB to chroot and reinstall `linux-t2`
-- On encrypted systems with LUKS, cannot even type password without USB keyboard
+- User applies Theme A via GUI, later runs `vulcan-theme current` → says Theme B
+- Preview gets stuck: user cancels preview but system stays in preview state
+- Wallpaper profile applies but theme manager shows different theme
+- System restore after logout applies wrong theme+wallpaper combination
 
 **Prevention:**
-```bash
-# In /etc/pacman.conf, add to [options] section:
-IgnorePkg = linux linux-headers linux-lts linux-lts-headers
+1. **Single source of truth:** Make live system state the authority
+   - Query actual state on app startup (swww query, vulcan-theme current)
+   - Don't cache "current theme" in app state - query when needed
+   - Use CLI as write-through layer, not separate state store
 
-# Only allow T2 kernels to update
-# Explicitly update T2 kernel when needed:
-sudo pacman -S linux-t2 linux-t2-headers
-```
+2. **Explicit state transitions:**
+   ```rust
+   enum AppearanceState {
+       Idle(CurrentConfig),           // Normal state, config applied
+       Previewing(PreviewConfig, Original), // Temporary preview, revertible
+       Applying(NewConfig),           // In-flight transition
+   }
+   ```
 
-**Detection warning signs:**
-- Pacman output shows `linux` package being upgraded (not `linux-t2`)
-- Kernel version changes from `*-t2-*` to regular version number
-- After reboot: GRUB shows kernel entries without `-t2` suffix
+3. **Stateless preview implementation:**
+   - Preview should be `apply(new) + store(original)` not `set_preview_flag()`
+   - Cancel preview = `apply(original)` not `clear_preview_flag()`
+   - This prevents stuck preview state
 
-**Recovery steps:**
-1. Boot from VulcanOS live USB (or any T2-compatible live ISO)
-2. Mount your encrypted root partition:
-   ```bash
-   cryptsetup open /dev/nvme0n1p3 cryptroot
-   mount /dev/mapper/cryptroot /mnt
-   mount /dev/nvme0n1p1 /mnt/boot  # Critical: mount boot!
-   ```
-3. Chroot into broken system:
-   ```bash
-   arch-chroot /mnt
-   ```
-4. Reinstall T2 kernel:
-   ```bash
-   pacman -S linux-t2 linux-t2-headers
-   # Verify mkinitcpio ran: check /boot for new vmlinuz-linux-t2
-   ```
-5. Update GRUB:
-   ```bash
-   grub-mkconfig -o /boot/grub/grub.cfg
-   ```
-6. Exit chroot, unmount, reboot
+4. **Startup state reconciliation:**
+   ```rust
+   fn init() -> AppState {
+       let cli_theme = query_vulcan_theme_current()?;
+       let live_wallpapers = query_swww_state()?;
+       let gtk_theme = query_gsettings()?;
 
-**Phase assignment:** Phase 1 (Pre-flight checks) — prevent before first update
+       // Detect inconsistencies early
+       if cli_theme != gtk_theme {
+           warn!("State drift detected!");
+           // Show user reconciliation dialog
+       }
+
+       AppState { /* use live state as truth */ }
+   }
+   ```
+
+**Detection:**
+- App shows Theme A as current, but `vulcan-theme current` says Theme B
+- Preview cancel button enabled when no preview is active
+- Wallpaper doesn't match selected theme's theme_wallpaper field
+- Toast notifications about "applied theme X" but UI still shows theme Y selected
+
+**Phase to address:** Phase 1 (Foundation architecture)
+Must establish single source of truth pattern before building unified UI.
 
 ---
 
-### Pitfall 2: /boot Partition Not Mounted During Kernel Update
+### Pitfall 2: Shell Script Parsing Fragility
 
 **What goes wrong:**
-Kernel update succeeds in pacman's database, but kernel files aren't copied to EFI partition. System boots to old kernel (if lucky) or fails to boot entirely.
+Theme files are bash `.sh` scripts that export variables. The parser in `theme_parser.rs` uses regex/string matching, which is fragile:
 
-**Why it happens:**
-- `/boot` unmounted manually for backup operations
-- Systemd automount not configured
-- User forgets to check before running `pacman -Syu`
-- Backup script unmounts `/boot` and doesn't remount before update
-- Power loss during backup while `/boot` unmounted
-
-**Consequences:**
-- New kernel exists in `/usr/lib/modules/` but not in `/boot`
-- GRUB can't find kernel to boot
-- System drops to emergency shell or GRUB rescue mode
-- Mismatch between installed modules and booted kernel causes driver failures
-
-**Prevention:**
 ```bash
-# Add pre-update check to ~/.bashrc or system-wide hook:
-alias pacman-update='mountpoint -q /boot && sudo pacman -Syu || echo "ERROR: /boot not mounted!"'
+# This works
+export THEME_NAME="Tokyo Night"
 
-# Or create pacman hook at /etc/pacman.d/hooks/00-check-boot.hook:
-[Trigger]
-Operation = Upgrade
-Type = Package
-Target = linux-t2
+# This breaks the parser
+export THEME_NAME="He said \"hello\""  # Nested quotes
 
-[Action]
-Description = Verifying /boot is mounted before kernel update...
-When = PreTransaction
-Exec = /usr/bin/mountpoint -q /boot
-AbortOnFail
+# This breaks the parser
+export THEME_WALLPAPER="~/Pictures/My Wallpapers/space.png"  # Spaces in path
+
+# This breaks the parser silently
+export ACCENT="#ff6600"
+export ACCENT_ALT = "#ffaa00"  # Space before = breaks bash, parser might miss it
 ```
 
-**Detection warning signs:**
-- Running `lsblk` shows `/boot` without mount point
-- `mount | grep boot` returns nothing
-- `df -h` doesn't show EFI partition
-- After kernel update: `ls /boot` shows old kernel timestamp
+**Why it happens:**
+- Parser uses simplified regex instead of full bash parser
+- No validation that .sh file is actually valid bash
+- Shell variable expansion (`~`, `$HOME`) handled inconsistently
+- Comments, multiline strings, escaped characters not properly handled
 
-**Recovery steps:**
-1. Boot from live USB
-2. Mount partitions **in correct order**:
-   ```bash
-   cryptsetup open /dev/nvme0n1p3 cryptroot
-   mount /dev/mapper/cryptroot /mnt
-   mount /dev/nvme0n1p1 /mnt/boot  # THIS IS THE CRITICAL STEP
-   ```
-3. Chroot and reinstall kernel:
-   ```bash
-   arch-chroot /mnt
-   pacman -S linux-t2  # Triggers mkinitcpio hook again
-   # Verify: ls -lh /boot should show new vmlinuz-linux-t2
-   grub-mkconfig -o /boot/grub/grub.cfg
-   ```
+**Consequences:**
+- User creates custom theme via editor → parser silently drops values
+- Imported theme file has slightly different syntax → corrupts theme
+- Theme with spaces in wallpaper path → file not found error at apply time
+- Round-trip edit loses comments, formatting, special characters
 
-**Phase assignment:** Phase 1 (Pre-flight checks) — automated verification
+**Prevention:**
+1. **Validate before parse:** Run `bash -n theme.sh` to check syntax validity
+2. **Normalize on save:** When serializing, use consistent safe format:
+   ```bash
+   # Always single-quoted for values, double-quoted for paths
+   export THEME_NAME='Tokyo Night'
+   export THEME_WALLPAPER="/full/absolute/path/no/spaces"
+   ```
+3. **Expand variables immediately:** Convert `~` to `/home/user` on import
+4. **Whitelist allowed syntax:** Only support simple `export VAR="value"` format
+5. **Add parser tests:** Test suite with malformed theme files
+
+**Detection:**
+- Theme import succeeds but preview shows wrong colors
+- Saved theme can't be re-imported
+- Theme editor shows empty fields for valid theme file
+- Bash syntax errors when running `vulcan-theme set <custom-theme>`
+
+**Phase to address:** Phase 1 (Foundation)
+Parser must be hardened before exposing theme editing to users.
 
 ---
 
-### Pitfall 3: Backup to External Drive While System Running Without Snapshots
+### Pitfall 3: Wallpaper Backend Assumption Mismatch
 
 **What goes wrong:**
-Using `rsync` to backup a running system creates inconsistent filesystem state. Database files, log files, and application state become corrupted in backup. Restore fails or produces broken system.
+Code currently assumes `swww` backend (as seen in autostart.conf and service code), but documentation/comments reference `hyprpaper`, and old config files use `hyprpaper.conf`. This creates four failure modes:
+
+1. **Old config loaded:** App finds hyprpaper.conf, tries to parse, but system runs swww
+2. **Backend detection fails:** App assumes swww is running, but user manually killed daemon
+3. **Transition period:** User switching from hyprpaper to swww, both configs exist
+4. **Future backend change:** Code is swww-specific, hard to swap backends later
 
 **Why it happens:**
-- Naive `rsync -av / /mnt/backup` while applications running
-- No filesystem snapshots (ext4 doesn't support atomic snapshots natively)
-- Files change mid-backup (databases write, logs append, package manager runs)
-- Incremental backups capture partial state transitions
+- VulcanOS transitioned from hyprpaper to swww mid-development
+- Hard-coded backend calls in `hyprpaper.rs` service layer (misnamed file!)
+- No abstraction layer for wallpaper backends
+- Config file discovery doesn't check which daemon is actually running
 
 **Consequences:**
-- Backup "succeeds" but is unusable for restore
-- Package database (`/var/lib/pacman`) corrupted in backup
-- Systemd journal files inconsistent
-- User dotfiles in inconsistent state if modified during backup
-- **Worse:** You don't discover this until disaster recovery fails
+- App launches, can't set wallpaper (swww not running)
+- Wallpaper appears to apply but doesn't persist (wrong config file updated)
+- Profile restore fails silently (queries swww when hyprpaper is running)
+- Future: Hyprland switches recommended backend → requires rewrite
 
 **Prevention:**
+1. **Runtime backend detection:**
+   ```rust
+   fn detect_wallpaper_backend() -> Result<WallpaperBackend> {
+       if is_process_running("swww-daemon") {
+           Ok(WallpaperBackend::Swww)
+       } else if is_process_running("hyprpaper") {
+           Ok(WallpaperBackend::Hyprpaper)
+       } else {
+           Err("No wallpaper backend running")
+       }
+   }
+   ```
 
-**Option A: Stop critical services (simple but intrusive)**
-```bash
-# Before backup:
-systemctl stop docker postgresql redis  # Stop databases
-# Run backup
-# Restart services
-```
+2. **Backend abstraction trait:**
+   ```rust
+   trait WallpaperBackend {
+       fn apply(&self, monitor: &str, path: &Path) -> Result<()>;
+       fn query_active(&self) -> Result<HashMap<String, PathBuf>>;
+       fn preload(&self, path: &Path) -> Result<()>;
+   }
 
-**Option B: Use LVM snapshots (if using LVM - VulcanOS doesn't by default)**
-```bash
-lvcreate -L 5G -s -n root-snapshot /dev/vg0/root
-mount /dev/vg0/root-snapshot /mnt/snapshot
-rsync -aAXv /mnt/snapshot/ /mnt/backup/
-umount /mnt/snapshot
-lvremove /dev/vg0/root-snapshot
-```
+   impl WallpaperBackend for SwwwBackend { /* ... */ }
+   impl WallpaperBackend for HyprpaperBackend { /* ... */ }
+   ```
 
-**Option C: Migrate to Btrfs (best long-term solution)**
-- Allows instant read-only snapshots
-- Zero-copy snapshots consume minimal space
-- Timeshift can automate snapshot-based backups
-- **Tradeoff:** Requires filesystem conversion (destructive operation)
+3. **Explicit backend selection in UI:**
+   Show detected backend in status bar, allow user override in settings
 
-**Option D: Exclude volatile paths (pragmatic approach for ext4)**
-```bash
-rsync -aAXv \
-  --exclude='/dev/*' \
-  --exclude='/proc/*' \
-  --exclude='/sys/*' \
-  --exclude='/tmp/*' \
-  --exclude='/run/*' \
-  --exclude='/mnt/*' \
-  --exclude='/media/*' \
-  --exclude='/lost+found' \
-  --exclude='/var/cache/pacman/pkg/*' \
-  --exclude='/var/lib/docker/overlay2/*' \
-  --exclude='/home/*/.cache/*' \
-  / /mnt/backup/
-```
+4. **Config file versioning:**
+   Don't auto-migrate hyprpaper.conf to swww - warn user and offer migration
 
-**Detection warning signs:**
-- Backup runs slowly (> 30 minutes for typical system)
-- Multiple passes show different file counts
-- Restored system has pacman database errors
-- Systemd-journald fails on restored system
+**Detection:**
+- App works on dev machine (swww), fails on user's install (hyprpaper)
+- Wallpaper changes don't persist across compositor restart
+- `list_active()` returns empty when wallpapers are clearly set
+- Error logs mention swww when user is running hyprpaper
 
-**Recovery:**
-If backup is already corrupted:
-1. **DO NOT trust the backup for full restore**
-2. Use it only for recovering `/home` user data
-3. Rebuild system from fresh ISO
-4. Restore user files selectively after reinstall
-
-**Phase assignment:** Phase 2 (Backup strategy) — implement snapshot-aware backups
+**Phase to address:** Phase 1 (Foundation)
+Backend abstraction must exist before building profile/theme binding system.
 
 ---
 
-### Pitfall 4: External Backup Drive Disconnects During rsync
+### Pitfall 4: Component Lifecycle Memory Leaks
 
 **What goes wrong:**
-USB controller issues, power management, or cable problems cause external SSD to disconnect mid-backup. Rsync fails silently or reports "Input/output error". User thinks backup succeeded.
+Relm4 Controllers for child components (theme_browser, preview_panel, editor_dialog) are stored in parent App struct. When opening/closing dialogs repeatedly or switching between themes rapidly, child components accumulate without proper cleanup, causing:
+
+- Memory usage grows with each theme preview
+- Widget count increases without bound
+- Event handlers remain connected to destroyed widgets
+- GTK4's cairo renderer has known ~70kb leak per window (compounding issue)
 
 **Why it happens:**
-- **USB controller buffer overflow:** `xhci_hcd swiotlb buffer is full` kernel error
-- **Aggressive power management:** USB autosuspend kicks in during long rsync
-- **Loose USB-C cable:** Especially on T2 MacBooks with worn ports
-- **Insufficient power delivery:** USB-powered SSDs brown out during heavy writes
-- **Filesystem mounted async:** Buffer cache not flushed before disconnect
-- **T2 MacBook-specific:** Thunderbolt/USB-C controller quirks under Linux
+- Child Controllers stored as `Option<Controller<T>>` but never properly dropped
+- Dialog windows closed via `window.close()` but Controller reference kept alive
+- Preview panel receives theme updates but doesn't clean up previous theme's resources
+- GTK4 itself has known memory leaks in cairo/NGL renderers
 
 **Consequences:**
-- Partial backup looks complete (directory structure exists)
-- Files truncated at moment of disconnect
-- Ext4 filesystem on external drive becomes corrupted
-- **Worse:** Cron job reports success but backup is incomplete
-- Only discovered during emergency restore attempt
+- App uses 50MB after launch, 500MB after 100 theme previews
+- Lag when opening theme editor after browsing many themes
+- Eventual OOM crash on systems with limited RAM (ISO's target: 4GB machines)
+- System swapping during appearance customization (terrible UX)
 
 **Prevention:**
+1. **Explicit cleanup in dialog pattern:**
+   ```rust
+   // Bad: Controller kept alive
+   self.editor_dialog = Some(editor);
+   self.editor_window = Some(window);
 
-**1. Disable USB autosuspend for backup drive:**
-```bash
-# Find USB device ID:
-lsusb
-# Example output: Bus 001 Device 003: ID 152d:0583 JMicron Technology
-
-# Disable autosuspend permanently:
-echo 'ACTION=="add", SUBSYSTEM=="usb", ATTR{idVendor}=="152d", ATTR{idProduct}=="0583", ATTR{power/autosuspend}="-1"' | sudo tee /etc/udev/rules.d/50-usb-backup-no-autosuspend.rules
-
-# Reload udev:
-sudo udevadm control --reload-rules
-```
-
-**2. Use sync mount option:**
-```bash
-# In /etc/fstab for backup partition:
-UUID=xxx /mnt/backup ext4 defaults,sync 0 2
-
-# Or mount manually with sync:
-mount -o sync /dev/sda1 /mnt/backup
-```
-
-**3. Verify drive stays connected:**
-```bash
-#!/bin/bash
-# backup-with-verification.sh
-
-BACKUP_DEV="/dev/disk/by-uuid/YOUR-BACKUP-UUID"
-BACKUP_MNT="/mnt/backup"
-
-# Check drive is present
-if [ ! -e "$BACKUP_DEV" ]; then
-  echo "ERROR: Backup drive not found!"
-  exit 1
-fi
-
-# Mount if not already mounted
-mountpoint -q "$BACKUP_MNT" || mount "$BACKUP_MNT"
-
-# Run rsync with verification
-rsync -aAXv --checksum / "$BACKUP_MNT/" 2>&1 | tee /var/log/backup-last.log
-
-# Check exit status
-if [ ${PIPESTATUS[0]} -ne 0 ]; then
-  echo "ERROR: rsync failed! Check /var/log/backup-last.log"
-  notify-send "Backup FAILED" "Check logs immediately"
-  exit 1
-fi
-
-# Verify drive still connected after rsync
-if [ ! -e "$BACKUP_DEV" ]; then
-  echo "CRITICAL: Backup drive disconnected during rsync!"
-  notify-send "Backup CORRUPTED" "Drive disconnected during backup!"
-  exit 1
-fi
-
-# Force filesystem sync
-sync
-
-echo "Backup completed successfully"
-notify-send "Backup Complete" "System backup finished"
-```
-
-**4. Monitor kernel logs during backup:**
-```bash
-# In separate terminal while backup runs:
-journalctl -f | grep -E 'usb|xhci|I/O error'
-
-# Warning signs:
-# - "xhci_hcd ... swiotlb buffer is full"
-# - "usb ... device descriptor read/64, error -110"
-# - "I/O error, dev sda, sector XXX"
-```
-
-**Detection warning signs:**
-- Backup completes in suspiciously short time
-- File count in backup doesn't match source
-- `dmesg` shows USB disconnect events during backup window
-- External drive LED stopped blinking mid-backup
-- Rsync exit code non-zero but cron reports success
-
-**Recovery:**
-If drive disconnected during backup:
-1. **DO NOT use this backup for restore**
-2. Run filesystem check on external drive:
-   ```bash
-   umount /mnt/backup
-   fsck.ext4 -f /dev/sda1
+   // Good: Drop Controller when done
+   if let Some(old_editor) = self.editor_dialog.take() {
+       old_editor.shutdown(); // If available
+       drop(old_editor);
+   }
    ```
-3. Delete corrupted backup
-4. Fix underlying issue (USB autosuspend, cable, power)
-5. Re-run full backup with monitoring
 
-**Phase assignment:** Phase 2 (Backup strategy) — robust external drive handling
+2. **Detach read-only child components:**
+   Preview panel doesn't need bi-directional messaging, use `.detach()`
+
+3. **Limit preview panel updates:**
+   Don't recreate entire preview on every theme change, update colors only:
+   ```rust
+   // Bad: Recreates widget tree
+   self.preview_panel = create_new_preview(theme);
+
+   // Good: Update existing widgets
+   self.preview_panel.emit(PreviewPanelInput::UpdateColors(theme.colors()));
+   ```
+
+4. **Resource pooling for thumbnails:**
+   Wallpaper picker loads all thumbnails into memory - implement LRU cache with max size
+
+5. **Monitor with instrumentation:**
+   ```rust
+   #[cfg(debug_assertions)]
+   fn log_memory_usage() {
+       let mem = current_memory_mb();
+       if mem > 200 { warn!("High memory usage: {}MB", mem); }
+   }
+   ```
+
+**Detection:**
+- Run app, open 20 themes, check `ps aux` - memory should stay flat
+- Open/close theme editor 50 times - memory should not grow linearly
+- Browse wallpaper grid with 1000 images - should not OOM
+- Valgrind shows increasing "definitely lost" bytes over time
+
+**Phase to address:** Phase 2 (Component integration)
+Must profile during component merge, before shipping unified app.
 
 ---
 
-### Pitfall 5: No LTS/Fallback Kernel Configured in GRUB
+### Pitfall 5: Theme-Wallpaper Binding Coherence
 
 **What goes wrong:**
-New `linux-t2` kernel has regression (WiFi breaks, suspend fails, display issues). No fallback kernel in GRUB menu. User stuck with broken system.
+Theme files have optional `THEME_WALLPAPER` field. Wallpaper profiles have per-monitor paths. When both exist, conflicts arise:
+
+1. **Ambiguous authority:** Theme says "use wallpaper A", profile says "use wallpaper B"
+2. **Single vs multi-monitor:** Theme specifies one wallpaper, profile specifies 5 (one per monitor)
+3. **Profile switching:** User switches monitor profile (laptop→desktop), theme wallpaper now wrong
+4. **Missing wallpaper:** Theme references `/path/to/cool.png` which doesn't exist
+5. **Circular dependency:** Applying theme changes wallpaper, changing wallpaper invalidates theme
 
 **Why it happens:**
-- Default Arch install only keeps one kernel
-- GRUB configuration doesn't expose old kernel entries
-- User removes old kernel with `pacman -Sc` after update
-- T2 patches sometimes introduce hardware regressions
-- Upstream kernel changes break T2-specific drivers
+- Theme and wallpaper systems designed independently
+- No clear precedence rules (theme wins? profile wins? user's last action wins?)
+- VulcanOS has dynamic monitor setups (hyprmon-desc profiles: laptop, desktop, console, campus, presentation)
+- Theme wallpaper is optional, so sometimes exists, sometimes doesn't
 
 **Consequences:**
-- Cannot boot to working kernel
-- Forced to use live USB for every kernel regression
-- WiFi/Bluetooth broken = cannot download older kernel
-- No quick rollback path for testing new kernels
-- Extended downtime for critical work
+- User applies "Tokyo Night" theme → wallpaper changes to theme's default
+- User carefully arranges per-monitor wallpapers → theme application wipes them out
+- User switches to laptop profile → theme's 3840x2160 wallpaper stretched on 1920x1200 screen
+- "Undo theme" button doesn't restore wallpapers (only theme colors)
+- Theme preview shows wallpaper A, theme application shows wallpaper B
 
 **Prevention:**
-
-**1. Install LTS kernel as fallback (if T2 LTS exists):**
-```bash
-# Check if arch-mact2 provides LTS:
-pacman -Ss linux-t2-lts
-
-# If available:
-pacman -S linux-t2-lts linux-t2-lts-headers
-grub-mkconfig -o /boot/grub/grub.cfg
-```
-
-**2. Keep previous kernel version:**
-```bash
-# Configure pacman to keep old kernel packages:
-# In /etc/pacman.conf:
-CleanMethod = KeepCurrent
-
-# Or manually before removing old kernel:
-# 1. After update, DON'T run: pacman -Sc
-# 2. Old vmlinuz stays in /boot
-# 3. GRUB will show both kernel versions
-```
-
-**3. Configure GRUB to show menu:**
-```bash
-# Edit /etc/default/grub:
-GRUB_TIMEOUT=5           # Show menu for 5 seconds
-GRUB_TIMEOUT_STYLE=menu  # Always show menu
-# Remove quiet from: GRUB_CMDLINE_LINUX_DEFAULT
-# (so you can see boot errors)
-
-# Regenerate config:
-grub-mkconfig -o /boot/grub/grub.cfg
-```
-
-**4. Manual kernel preservation:**
-```bash
-# Before kernel update, backup current working kernel:
-cp /boot/vmlinuz-linux-t2 /boot/vmlinuz-linux-t2.backup
-cp /boot/initramfs-linux-t2.img /boot/initramfs-linux-t2-backup.img
-
-# Create custom GRUB entry in /boot/grub/custom.cfg:
-menuentry "Arch Linux (T2 Backup Kernel)" {
-    linux /vmlinuz-linux-t2.backup root=/dev/mapper/cryptroot intel_iommu=on iommu=pt pcie_ports=compat
-    initrd /initramfs-linux-t2-backup.img
-}
-```
-
-**Detection warning signs:**
-- GRUB menu only shows one kernel entry
-- No "Advanced options" submenu
-- After kernel update: old kernel files removed from `/boot`
-- `pacman -Q | grep linux` shows only one kernel package
-
-**Recovery:**
-If new kernel is broken and no fallback:
-1. Boot from live USB
-2. Chroot into system
-3. Downgrade to previous kernel:
-   ```bash
-   # Check pacman cache for old kernel:
-   ls /var/cache/pacman/pkg/ | grep linux-t2
-
-   # Install old version:
-   pacman -U /var/cache/pacman/pkg/linux-t2-6.X.X-1-x86_64.pkg.tar.zst
-
-   # Prevent auto-update temporarily:
-   echo "IgnorePkg = linux-t2 linux-t2-headers" >> /etc/pacman.conf
+1. **Explicit binding modes:**
+   ```rust
+   enum ThemeWallpaperBinding {
+       ThemeControlled,     // Theme THEME_WALLPAPER always applied
+       ProfileControlled,   // Wallpaper profile independent of theme
+       ThemeDefaulted,      // Use theme wallpaper if no profile set
+       UserOverride,        // User manually picked, ignore both
+   }
    ```
 
-**Phase assignment:** Phase 1 (Pre-flight checks) — ensure fallback exists
-
----
-
-### Pitfall 6: mkinitcpio Hook Failure Goes Unnoticed
-
-**What goes wrong:**
-Kernel package updates successfully, but `mkinitcpio` hook fails to generate initramfs. Boot entry exists but kernel panics on boot because initramfs is missing or outdated.
-
-**Why it happens:**
-- `/boot` partition full (ESP only 512MB, logs/old kernels accumulate)
-- `mkinitcpio.conf` misconfigured (missing hooks, wrong module order)
-- DKMS module fails to build for new kernel
-- Pacman hook runs with old kernel modules still loaded
-- Power loss during mkinitcpio execution
-- Insufficient permissions (rare, but possible with ACL issues)
-
-**Consequences:**
-- System boots to kernel panic: "failed to mount root"
-- GRUB shows kernel entry but boot fails
-- Emergency shell has limited tools (no network, no keyboard on T2)
-- Must chroot from live USB to fix
-
-**Prevention:**
-
-**1. Monitor mkinitcpio output during updates:**
-```bash
-# Don't run pacman in background or with piped output
-# Watch for these SUCCESS indicators:
-# ==> Building image from preset: /etc/mkinitcpio.d/linux-t2.preset: 'default'
-# ==> Image generation successful
-
-# FAILURE indicators:
-# ==> ERROR: module not found: 'xxx'
-# ==> WARNING: No modules were added to the image
-```
-
-**2. Create post-transaction verification hook:**
-```bash
-# /etc/pacman.d/hooks/99-verify-initramfs.hook
-[Trigger]
-Operation = Install
-Operation = Upgrade
-Type = Package
-Target = linux-t2
-
-[Action]
-Description = Verifying initramfs was generated...
-When = PostTransaction
-Exec = /usr/local/bin/verify-initramfs.sh
-```
-
-```bash
-#!/bin/bash
-# /usr/local/bin/verify-initramfs.sh
-
-KERNEL_VERSION=$(pacman -Q linux-t2 | cut -d' ' -f2 | cut -d'-' -f1)
-INITRAMFS="/boot/initramfs-linux-t2.img"
-
-# Check file exists and is recent (modified in last 5 minutes)
-if [ ! -f "$INITRAMFS" ]; then
-  echo "CRITICAL: $INITRAMFS not found!"
-  exit 1
-fi
-
-if [ $(find "$INITRAMFS" -mmin -5 | wc -l) -eq 0 ]; then
-  echo "WARNING: $INITRAMFS not updated recently"
-  exit 1
-fi
-
-# Check file size (should be > 10MB typically)
-SIZE=$(stat -c%s "$INITRAMFS")
-if [ $SIZE -lt 10485760 ]; then
-  echo "WARNING: $INITRAMFS suspiciously small ($SIZE bytes)"
-  exit 1
-fi
-
-echo "✓ Initramfs verified: $SIZE bytes, recently updated"
-exit 0
-```
-
-**3. Keep /boot partition clean:**
-```bash
-# Automate old kernel cleanup:
-# /etc/pacman.d/hooks/98-clean-boot.hook
-[Trigger]
-Operation = Remove
-Type = Package
-Target = linux-t2
-
-[Action]
-Description = Cleaning old kernels from /boot...
-When = PostTransaction
-Exec = /bin/sh -c 'rm -f /boot/vmlinuz-linux-t2.old /boot/initramfs-linux-t2-fallback.img.old'
-```
-
-**4. Increase ESP partition size (if consistently full):**
-```bash
-# Check current space:
-df -h /boot
-
-# If < 100MB free, consider:
-# - Removing old bootloaders (if dual-boot removed)
-# - Moving /boot to separate larger partition
-# - This requires repartitioning (advanced/risky)
-```
-
-**Detection warning signs:**
-- Kernel update completes in < 30 seconds (mkinitcpio usually takes 1-2 minutes)
-- No "Building image" messages in pacman output
-- `ls -lh /boot` shows old timestamp on initramfs
-- `/boot` partition at > 90% capacity
-
-**Recovery:**
-1. Boot from live USB
-2. Chroot and regenerate initramfs:
+2. **Per-monitor theme wallpaper support:**
+   Extend theme format to support monitor-specific wallpapers:
    ```bash
-   arch-chroot /mnt
-   mkinitcpio -P  # Rebuild all presets
-   # Check for errors in output!
-   ls -lh /boot  # Verify new files created
+   export THEME_WALLPAPER_DEFAULT="~/Wallpapers/tokyo-night.png"
+   export THEME_WALLPAPER_PRIMARY="~/Wallpapers/tokyo-night-ultrawide.png"
+   export THEME_WALLPAPER_SECONDARY="~/Wallpapers/tokyo-night-vertical.png"
    ```
 
-**Phase assignment:** Phase 1 (Pre-flight checks) — automated verification
+3. **Binding state in profile:**
+   Save binding mode in wallpaper profile:
+   ```toml
+   [profile.desktop]
+   binding_mode = "profile_controlled"
+   monitor_wallpapers = { "DP-1" = "...", "DP-2" = "..." }
+   ```
+
+4. **Clear UI indicator:**
+   Show icon/badge when wallpaper is "locked to theme" vs "independent"
+
+5. **Smart application order:**
+   ```rust
+   fn apply_appearance(theme: Theme, profile: WallpaperProfile, mode: BindingMode) {
+       match mode {
+           ThemeControlled => {
+               apply_theme_colors(theme);
+               apply_theme_wallpaper(theme); // Theme wins
+           }
+           ProfileControlled => {
+               apply_theme_colors(theme);
+               apply_wallpaper_profile(profile); // Profile wins
+           }
+           ThemeDefaulted => {
+               apply_theme_colors(theme);
+               if !profile_has_wallpapers() && theme.has_wallpaper() {
+                   apply_theme_wallpaper(theme);
+               } else {
+                   apply_wallpaper_profile(profile);
+               }
+           }
+       }
+   }
+   ```
+
+**Detection:**
+- Apply theme, wallpapers change unexpectedly
+- Set wallpapers carefully, apply theme, wallpapers reset
+- Switch monitor profile, theme looks wrong (wallpaper doesn't match)
+- Preview theme shows one wallpaper, apply shows different wallpaper
+- Undo/cancel doesn't restore original wallpaper state
+
+**Phase to address:** Phase 3 (Theme-Wallpaper binding)
+This is the core integration challenge. Requires clear design decision before implementation.
 
 ---
 
 ## Moderate Pitfalls
 
-Mistakes that cause delays, data loss, or technical debt but are recoverable.
+Mistakes that cause delays or technical debt.
 
-### Pitfall 7: Pacman Database Lock During Automated Backups
-
-**What goes wrong:**
-Automated backup script runs `rsync` while `pacman` is mid-transaction. Pacman lock file (`/var/lib/pacman/db.lck`) copied to backup. Later manual `pacman` run fails with "unable to lock database".
-
-**Why it happens:**
-- Cron job runs backup at fixed time
-- User/system runs `pacman -Syu` at same time
-- Lock file exists temporarily during package transactions
-- Rsync copies lock file to backup
-
-**Prevention:**
-```bash
-# Exclude lock file from backup:
-rsync -aAXv --exclude='/var/lib/pacman/db.lck' / /mnt/backup/
-
-# Or check if pacman is running before backup:
-if pgrep -x pacman > /dev/null; then
-  echo "Pacman running, skipping backup"
-  exit 1
-fi
-```
-
-**Recovery:**
-```bash
-# If restored system has stale lock:
-rm /var/lib/pacman/db.lck
-```
-
-**Phase assignment:** Phase 2 (Backup strategy) — exclude volatile files
-
----
-
-### Pitfall 8: Backup Script Doesn't Preserve Extended Attributes
+### Pitfall 6: GTK CSS Cascading Conflicts
 
 **What goes wrong:**
-Using `rsync -av` instead of `rsync -aAXv` loses file capabilities, SELinux contexts (if used), and ACLs. Restored system has permission issues.
+Unified app tries to theme itself using same CSS system it's managing for desktop. Conflicts arise:
+
+- App loads custom CSS to style its own GTK widgets
+- User applies theme that changes GTK CSS globally
+- App's custom styles get overridden by theme CSS
+- App UI becomes unreadable (dark text on dark background)
 
 **Why it happens:**
-- User copies common rsync examples without understanding flags
-- `-a` (archive) doesn't include `-A` (ACLs) and `-X` (xattrs)
+GTK CSS has cascading issues where global CSS sends a giant string into the app that may override certain things based on random string matching. No strong isolation between "app-specific CSS" and "system theme CSS".
 
 **Prevention:**
-```bash
-# Always use:
-rsync -aAXv / /mnt/backup/
-# -a = archive (permissions, timestamps, etc.)
-# -A = preserve ACLs
-# -X = preserve extended attributes
-# -v = verbose
-```
+1. **Namespace app CSS with high-specificity selectors:**
+   ```css
+   /* Bad: Can be overridden by theme */
+   .theme-preview { background: #fff; }
 
-**Recovery:**
-After restore, fix capabilities if needed:
-```bash
-# Example: If ping doesn't work (needs CAP_NET_RAW):
-sudo setcap cap_net_raw+ep /usr/bin/ping
-```
+   /* Good: App-specific class unlikely to collide */
+   .vulcan-appearance-manager .theme-preview-card {
+       background: #fff;
+   }
+   ```
 
-**Phase assignment:** Phase 2 (Backup strategy) — correct rsync flags
+2. **Use inline styles for critical UI:**
+   For elements that MUST be readable regardless of theme, set style directly in code
 
----
+3. **Test with extreme themes:**
+   Test app with all-black theme, all-white theme, high-contrast theme
 
-### Pitfall 9: GRUB Updates Without T2 Kernel Parameters
-
-**What goes wrong:**
-Running `grub-mkconfig` without T2 kernel parameters in `/etc/default/grub` results in bootable but broken system (no keyboard/trackpad).
-
-**Why it happens:**
-- User edits GRUB config manually
-- Forgets to add `intel_iommu=on iommu=pt pcie_ports=compat`
-- GRUB update from pacman regenerates config
-
-**Prevention:**
-```bash
-# Verify /etc/default/grub contains:
-GRUB_CMDLINE_LINUX_DEFAULT="quiet intel_iommu=on iommu=pt pcie_ports=compat"
-
-# After any GRUB change:
-grub-mkconfig -o /boot/grub/grub.cfg
-# Verify output shows kernel parameters
-```
+4. **Libadwaita as foundation:**
+   Use Adwaita widgets which are designed to respect system theme properly
 
 **Detection:**
-- Boot succeeds but no keyboard/trackpad/WiFi
-- `cat /proc/cmdline` missing T2 parameters
+- Apply theme, app's own UI becomes unreadable
+- Preview panel colors don't show correctly
+- Button text disappears on certain themes
 
-**Recovery:**
-1. Boot with external USB keyboard
-2. Edit `/etc/default/grub`
-3. Run `grub-mkconfig -o /boot/grub/grub.cfg`
-4. Reboot
-
-**Phase assignment:** Phase 1 (Pre-flight checks) — verify GRUB config
+**Phase to address:** Phase 2 (Component integration)
+Test each theme against app's own UI.
 
 ---
 
-### Pitfall 10: Forgotten to Test Backup Restoration
+### Pitfall 7: Config File Format Fragmentation
 
 **What goes wrong:**
-Backups run successfully for months. Disaster strikes. Restoration fails because backup process had subtle bug never detected.
+System has multiple overlapping config formats:
+- Themes: `.sh` bash scripts in `~/.config/themes/colors/`
+- Wallpaper profiles: `.toml` in `~/.config/vulcan-wallpaper/profiles/`
+- GTK: gsettings database
+- Hyprland: `.conf` files
+- Waybar/other tools: `.jsonc`, `.css`, `.toml`
 
-**Why it happens:**
-- "Set and forget" backup mentality
-- Never validated backup integrity
-- Assumptions about rsync correctness
-- No dry-run restoration tests
+When unified app tries to manage all of these:
+- Parsing errors in one format shouldn't crash app
+- Format updates require updating multiple parsers
+- Backup/restore must handle all formats
+- Export feature: which format to use?
 
 **Prevention:**
+1. **Format abstraction layer:**
+   ```rust
+   trait ConfigFormat {
+       fn parse(&self, path: &Path) -> Result<Config>;
+       fn serialize(&self, config: &Config) -> String;
+       fn validate(&self, path: &Path) -> Result<()>;
+   }
+   ```
+
+2. **Fail gracefully on parse errors:**
+   Show toast "Skipped malformed theme: X" instead of crashing
+
+3. **Unified export format option:**
+   Let user export as "VulcanOS Appearance Profile" (single TOML with all settings)
+
+4. **Version config files:**
+   Add version header to generated configs for future migration
+
+**Detection:**
+- One malformed theme file prevents app from loading all themes
+- Import fails silently because format wasn't detected
+- Export produces invalid config file
+
+**Phase to address:** Phase 2 (Component integration)
+
+---
+
+### Pitfall 8: Live Reload Race Conditions
+
+**What goes wrong:**
+When applying theme, multiple config files are updated and apps reloaded:
+
 ```bash
-# Monthly restoration test in VM:
-1. Boot VirtualBox/QEMU with empty virtual disk
-2. Boot from VulcanOS ISO
-3. Mount virtual disk
-4. Restore from backup: rsync -aAXv /mnt/backup/ /mnt/newroot/
-5. Chroot and verify: pacman -Qk (check all packages)
-6. Try booting restored system in VM
+# Theme application sequence
+1. Write ~/.config/gtk-3.0/settings.ini
+2. Write ~/.config/gtk-4.0/settings.ini
+3. Write ~/.config/Kvantum/kvantum.kvconfig
+4. Run gsettings set org.gnome.desktop.interface gtk-theme ...
+5. Reload waybar (killall -SIGUSR2 waybar)
+6. Reload hyprland (hyprctl reload)
 ```
 
-**Phase assignment:** Phase 3 (Validation system) — automated restore testing
+Race condition windows:
+- File written but not flushed when app reads it
+- App reloads before all files written (sees half-applied theme)
+- Multiple apps reloading simultaneously contend for resources
+
+**Prevention:**
+1. **Synchronous write-then-reload:**
+   ```rust
+   fn apply_theme(theme: &Theme) -> Result<()> {
+       // Write ALL configs first
+       write_gtk3_config(theme)?;
+       write_gtk4_config(theme)?;
+       write_kvantum_config(theme)?;
+
+       // Flush to disk
+       std::io::stdout().flush()?;
+
+       // THEN reload apps
+       reload_waybar()?;
+       reload_hyprland()?;
+   }
+   ```
+
+2. **Add delays between reloads:**
+   ```rust
+   reload_waybar()?;
+   std::thread::sleep(Duration::from_millis(100));
+   reload_hyprland()?;
+   ```
+
+3. **Check reload success:**
+   Don't just fire-and-forget `killall -SIGUSR2`, check if process exists first
+
+4. **Atomic config updates:**
+   Write to temp file, then atomic rename (prevents partial reads)
+
+**Detection:**
+- Theme applies but waybar shows old colors (reload happened too early)
+- Sometimes theme applies correctly, sometimes partially
+- Config file corruption after theme application
+
+**Phase to address:** Phase 3 (Application)
+
+---
+
+### Pitfall 9: Thumbnail Generation Performance
+
+**What goes wrong:**
+Wallpaper picker loads directory with 1000+ high-res images. Generating thumbnails on-the-fly:
+
+- Blocks UI thread (app freezes)
+- Re-generates same thumbnail multiple times (no cache)
+- Loads full 4K image into memory just to shrink to 200px thumbnail
+- File watcher re-scans directory on every thumbnail write
+
+**Prevention:**
+1. **Thumbnail cache directory:**
+   `~/.cache/vulcan-appearance-manager/thumbnails/` with hash-based names
+
+2. **Background thumbnail generation:**
+   Use tokio task to generate thumbnails asynchronously
+
+3. **Progressive loading:**
+   Show placeholder, load thumbnails in batches of 20
+
+4. **Use system thumbnailer:**
+   Check for existing thumbnails in `~/.cache/thumbnails/` (FreeDesktop spec)
+
+5. **Debounce file watcher:**
+   Don't re-scan on every change, batch updates every 500ms
+
+**Detection:**
+- App freezes when opening wallpaper picker
+- High CPU usage when browsing wallpapers
+- Thousands of thumbnail files regenerated every launch
+
+**Phase to address:** Phase 4 (Polish)
+
+---
+
+### Pitfall 10: Undo/History Stack Complexity
+
+**What goes wrong:**
+User wants "undo" for appearance changes. Naive approach:
+
+```rust
+// Stores entire appearance state per change
+struct UndoStack {
+    history: Vec<AppearanceState>,  // 10 entries * 50KB each = 500KB
+}
+```
+
+But appearance state includes:
+- Theme (40+ color values)
+- Wallpaper paths (5 monitors * path)
+- GTK settings
+- Kvantum settings
+- Waybar config
+
+Problems:
+- Memory usage grows unbounded
+- Undo of theme change also undoes wallpaper change (user wanted independent undo)
+- Preview + apply creates duplicate history entries
+- Can't undo just wallpaper, must undo entire appearance
+
+**Prevention:**
+1. **Separate undo stacks:**
+   ```rust
+   struct UndoManager {
+       theme_history: VecDeque<ThemeSnapshot>,
+       wallpaper_history: VecDeque<WallpaperSnapshot>,
+       max_entries: usize,
+   }
+   ```
+
+2. **Diff-based history:**
+   Store only changed values, not entire state
+
+3. **Clear history on explicit apply:**
+   Preview changes are temporary (don't add to history), only apply adds entry
+
+4. **Limit history depth:**
+   Keep last 10 entries, drop oldest
+
+**Detection:**
+- Memory grows with number of theme changes
+- Undo button reverts more than expected
+- Can't undo wallpaper without undoing theme
+
+**Phase to address:** Phase 4 (Polish)
 
 ---
 
 ## Minor Pitfalls
 
-Annoyances that are easily fixable.
+Mistakes that cause annoyance but are fixable.
 
-### Pitfall 11: Backup Notifications Ignored
+### Pitfall 11: File Picker Default Directory
 
 **What goes wrong:**
-Cron job runs backup, sends mail to local mailbox, user never checks `/var/spool/mail/`.
+Import theme/wallpaper dialogs open to random directory (last used by any GTK app).
 
 **Prevention:**
-```bash
-# Send desktop notifications instead:
-notify-send "Backup complete" "$(date)"
+Set default directory to known locations:
+- Theme import: `~/.config/themes/colors/`
+- Wallpaper import: `~/Pictures/Wallpapers/`
 
-# Or integrate with swaync (VulcanOS notification daemon)
-```
+**Detection:**
+Dialog opens to `/usr/share/` or `~/Downloads/`
 
-**Phase assignment:** Phase 3 (Validation system) — user-visible notifications
+**Phase to address:** Phase 4 (Polish)
 
 ---
 
-### Pitfall 12: Huge /var/cache/pacman/pkg Directory Backed Up
+### Pitfall 12: No Validation on Theme Import
 
 **What goes wrong:**
-Backing up 10GB+ of cached packages wastes backup space and time.
+User imports `.sh` file that's actually a bash script virus, or just garbage data.
 
 **Prevention:**
-```bash
-# Exclude from backup:
---exclude='/var/cache/pacman/pkg/*'
+1. Run `bash -n theme.sh` to validate syntax
+2. Check for required exports (THEME_NAME, THEME_ID, etc.)
+3. Sandbox bash execution (don't actually source untrusted .sh)
+4. Show preview before importing
 
-# Or periodically clean cache:
-paccache -rk2  # Keep last 2 versions
-```
+**Detection:**
+Importing garbage file crashes app or corrupts theme list
 
-**Phase assignment:** Phase 2 (Backup strategy) — exclude unnecessary data
+**Phase to address:** Phase 2 (Component integration)
+
+---
+
+### Pitfall 13: Hardcoded Paths
+
+**What goes wrong:**
+Code has hardcoded `/home/evan/` paths instead of using `$HOME` or `dirs::home_dir()`.
+
+**Prevention:**
+Audit codebase for hardcoded paths, replace with proper home dir detection.
+
+**Detection:**
+App works for user "evan", fails for everyone else.
+
+**Phase to address:** Phase 1 (Foundation) - must fix before merge
 
 ---
 
 ## Phase-Specific Warnings
 
-| Phase Topic | Likely Pitfall | Mitigation Strategy |
-|-------------|---------------|---------------------|
-| Pre-flight checks | Wrong kernel installed | `IgnorePkg` in pacman.conf + verification hook |
-| Pre-flight checks | `/boot` unmounted during update | Mountpoint check hook before kernel updates |
-| Pre-flight checks | No fallback kernel | Install/preserve old kernel + GRUB menu timeout |
-| Pre-flight checks | GRUB missing T2 parameters | Automated `/etc/default/grub` verification |
-| Pre-flight checks | mkinitcpio failure | Post-transaction initramfs verification hook |
-| Backup strategy | Live system rsync | Document limitations, recommend snapshot migration |
-| Backup strategy | External drive disconnect | USB autosuspend disable + sync mount + monitoring |
-| Backup strategy | Exclude volatile files | Proper rsync flags + exclusion list |
-| Validation system | Never test restore | Automated monthly VM restore test |
-| Validation system | Silent failures | Desktop notifications + log aggregation |
-
----
-
-## T2 MacBook-Specific Considerations
-
-### Hardware-Related Pitfalls
-
-1. **Touch Bar becomes non-functional after suspend**
-   - S3 suspend broken since macOS Sonoma
-   - Requires systemd workaround (not kernel-related)
-   - Recovery: Reboot system
-
-2. **WiFi firmware missing after restore**
-   - `apple-bcm-firmware` package must be in backup
-   - Firmware files in `/lib/firmware/brcm/` critical
-   - Prevention: Verify firmware files in backup
-
-3. **T2 audio config lost**
-   - `apple-t2-audio-config` package provides ALSA config
-   - Recovery: Reinstall package after restore
-
-4. **Keyboard backlight not working after kernel update**
-   - `apple-magic-backlight` module may need recompilation
-   - DKMS should auto-rebuild but sometimes fails
-   - Check: `modprobe apple-magic-backlight`
-
-### Firmware Update Pitfalls
-
-**Pitfall:** macOS firmware update changes EFI variables
-- T2 firmware updates from macOS may reset boot order
-- Linux entry might disappear from boot menu
-- Prevention: Keep macOS partition, document EFI boot entry restoration:
-  ```bash
-  efibootmgr -c -d /dev/nvme0n1 -p 1 -L "Arch Linux" -l '\EFI\arch\grubx64.efi'
-  ```
+| Phase Topic | Likely Pitfall | Mitigation |
+|-------------|---------------|------------|
+| Foundation architecture | State synchronization drift (#1) | Establish single source of truth pattern |
+| Foundation architecture | Backend assumption mismatch (#3) | Implement backend abstraction trait |
+| Foundation architecture | Shell script parsing fragility (#2) | Harden parser, add validation |
+| Component integration | Memory leaks (#4) | Profile memory usage, implement cleanup |
+| Component integration | GTK CSS conflicts (#6) | Namespace app CSS, test with extreme themes |
+| Theme-Wallpaper binding | Binding coherence (#5) | Design binding mode system first |
+| Application logic | Live reload races (#8) | Atomic writes, synchronous reload sequence |
+| Polish & UX | Thumbnail performance (#9) | Implement cache, async loading |
+| Polish & UX | Undo complexity (#10) | Separate undo stacks per concern |
 
 ---
 
 ## Sources
 
-Research sources, categorized by confidence level:
+### Relm4 and GTK4 Component Architecture
+- [Relm4 GitHub Repository](https://github.com/Relm4/Relm4)
+- [Relm4 Documentation - Introduction](https://relm4.org/book/stable/)
+- [Announcing Relm4 v0.5 beta](https://relm4.org/blog/posts/announcing_relm4_v0.5_beta/)
 
-### HIGH Confidence (Official Documentation)
-- [t2linux wiki - Post-installation guide](https://wiki.t2linux.org/guides/postinstall/)
-- [t2linux wiki - Arch kernel updating](https://wiki.t2linux.org/distributions/arch/faq/)
-- [Arch Wiki - mkinitcpio](https://wiki.archlinux.org/title/Mkinitcpio)
-- [Arch Wiki - Timeshift](https://wiki.archlinux.org/title/Timeshift)
-- [Arch Wiki - pacman](https://wiki.archlinux.org/title/Pacman)
+### GTK4 Memory Leaks and Lifecycle
+- [GTK4 memory leak in cairo renderer - Issue #6404](https://gitlab.gnome.org/GNOME/gtk/-/issues/6404)
+- [Suspected memory leak in GTK 4's NGL renderer - Issue #7045](https://gitlab.gnome.org/GNOME/gtk/-/issues/7045)
+- [Valgrind reports memory leak with gtk4](https://discourse.gnome.org/t/valgrind-reports-memory-leak-with-gtk4/25598)
 
-### MEDIUM Confidence (Community Documentation + Forum Consensus)
-- [Repairing a Botched Arch Linux Kernel Upgrade](https://arusahni.net/blog/2024/04/arch-crash-recovery-chroot.html)
-- [Arch Forums - T2 Macbook Air and kernel updates](https://bbs.archlinux.org/viewtopic.php?id=299034)
-- [Arch Forums - Making a pacman hook to backup /boot](https://bbs.archlinux.org/viewtopic.php?id=289248)
-- [Arch Forums - rsync system backup discussions](https://bbs.archlinux.org/viewtopic.php?id=277249)
-- [Arch Forums - GRUB fallback kernel](https://bbs.archlinux.org/viewtopic.php?id=99762)
-- [Arch Forums - mkinitcpio module errors](https://bbs.archlinux.org/viewtopic.php?id=298525)
-- [Arch Forums - External USB drive LUKS rsync issues](https://bbs.archlinux.org/viewtopic.php?id=247760)
+### GTK CSS Theming Cross-Application Issues
+- [GTK CSS Theming - ArchWiki](https://wiki.archlinux.org/title/GTK)
+- [How to apply CSS per application? - GNOME Discourse](https://discourse.gnome.org/t/how-to-apply-css-per-application/11382)
+- [GTK CSS Overview Documentation](https://docs.gtk.org/gtk3/css-overview.html)
 
-### MEDIUM-LOW Confidence (Blog Posts, Recent User Reports)
-- [The Terrors of Linux on a T2 Mac](https://awpsec.medium.com/the-terrors-of-linux-on-a-t2-mac-9b66699a8693)
-- [CachyOS - T2 MacBook installation guide](https://wiki.cachyos.org/installation/installation_t2macbook/)
+### Design System Architecture Pitfalls
+- [The Dark Side of Design Systems - Mistakes and Lessons](https://sakalim.com/content/the-dark-side-of-design-systems-mistakes-missteps-and-lessons-learned)
+- [System Architecture Mistakes: 10 Deadly Sins](https://medium.com/@hemanthkumar.v/system-architecture-mistakes-10-deadly-sins-how-to-fix-them-b5329cc7dccc)
+- [Frontend Design Patterns That Actually Work in 2026](https://www.netguru.com/blog/frontend-design-patterns)
+
+### Wayland Wallpaper Management (swww)
+- [swww GitHub - A Solution to your Wayland Wallpaper Woes](https://github.com/LGFae/swww)
+- [swww - Hyprland Wiki](https://wiki.hypr.land/Useful-Utilities/Wallpapers/)
+- [Can I finally start using Wayland in 2026?](https://michael.stapelberg.ch/posts/2026-01-04-wayland-sway-in-2026/)
+
+### Shell Script Configuration and Security
+- [Avoid Race Conditions in Secure Programs](https://tldp.org/HOWTO/Secure-Programs-HOWTO/avoid-race.html)
+- [Race Conditions and Secure File Operations](https://developer.apple.com/library/archive/documentation/Security/Conceptual/SecureCodingGuide/Articles/RaceConditions.html)
+- [Parsing config files with Bash](https://opensource.com/article/21/6/bash-config)
+- [ShellCheck Parser Errors](https://www.shellcheck.net/wiki/Parser-error)
 
 ---
 
-## Research Methodology Notes
+## Research Methodology
+
+**Confidence level:** MEDIUM
+
+**Reasoning:**
+- **HIGH confidence:** State synchronization issues, shell parsing fragility, wallpaper backend mismatch - directly observed in codebase
+- **MEDIUM confidence:** GTK4 memory leaks - confirmed by upstream bug reports, but mitigation strategies are general best practices
+- **LOW confidence:** Specific numeric thresholds (thumbnail batch size, history depth) - no hard data, based on general performance wisdom
 
 **Verification approach:**
-- Cross-referenced t2linux official docs (HIGH confidence)
-- Validated against multiple Arch Forums threads (MEDIUM confidence)
-- Confirmed T2-specific issues in community wikis
-- Tested kernel parameter requirements against official recommendations
+1. Examined actual codebase (both apps) for state management patterns
+2. Verified wallpaper backend confusion (hyprpaper.conf exists, swww in autostart)
+3. Confirmed theme format (.sh scripts) and wallpaper format (.toml)
+4. Found GTK4/Relm4 memory leak issues in upstream bug trackers
+5. Researched general theming system pitfalls via design system literature
 
-**Gaps identified:**
-- No official documentation on T2 kernel rollback procedures (relied on general Arch practices)
-- Limited information on T2-specific GRUB quirks (extrapolated from general T2 requirements)
-- No comprehensive guide on backup strategies for T2 Macs specifically (applied general Linux + T2 constraints)
+**Gaps not covered:**
+- Actual memory usage profiling (requires running merged app)
+- Performance benchmarks for thumbnail generation
+- Real-world testing of theme-wallpaper binding modes
+- User testing of undo/history UX
 
-**Confidence assessment:**
-- **T2 kernel pitfalls:** HIGH (well-documented in t2linux wiki)
-- **Arch backup pitfalls:** HIGH (extensive Arch Wiki + forum consensus)
-- **T2 + backup interaction:** MEDIUM (inferred from separate sources)
-- **Hardware-specific edge cases:** MEDIUM-LOW (community reports, not all verified)
+These gaps should be addressed during implementation with instrumentation and user testing.

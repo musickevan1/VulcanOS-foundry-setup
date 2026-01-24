@@ -1,620 +1,186 @@
-# Feature Landscape: Linux Backup and Sync Tools
+# Feature Landscape: Unified Appearance Management
 
-**Domain:** System backup and snapshot management
-**Researched:** 2026-01-23
-**Context:** VulcanOS ext4-based system with Timeshift rsync mode, pacman integration, wofi menu
-
-## Executive Summary
-
-Linux backup/sync tools divide into three primary categories: snapshot-based (btrfs/LVM), incremental backup archives (borg/restic), and synchronization tools (rsync/rclone). For VulcanOS's ext4 filesystem, rsync-based snapshot tools like Timeshift are the standard choice.
-
-**Table stakes** features include snapshot creation/restoration, automated scheduling, and exclusion filters. **Differentiators** include pre-update hooks, GUI quick actions, and status reporting. **Anti-features** to avoid include excessive quota tracking, cloud-only dependencies, and overly complex configuration wizards.
-
----
+**Domain:** Desktop theme and wallpaper coordination for Linux/Wayland
+**Researched:** 2026-01-24
+**Confidence:** MEDIUM (based on verified ecosystem research + existing VulcanOS features)
 
 ## Table Stakes
 
-Features users expect from backup/snapshot tools. Missing these = frustrated users.
+Features users expect from unified appearance management. Missing = product feels incomplete.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| **Snapshot creation** | Core functionality | Low | Single command or button to create snapshot |
-| **Snapshot restoration** | Core functionality | Low | Ability to rollback system to previous state |
-| **Automated scheduling** | Manual backups fail | Medium | Hourly/daily/weekly/monthly intervals |
-| **Exclusion filters** | Avoid backing up cache/temp | Low | Skip /tmp, ~/.cache, node_modules, etc. |
-| **Snapshot listing** | Need to see what exists | Low | Show snapshots with timestamp and description |
-| **Snapshot deletion** | Disk space management | Low | Remove old snapshots manually or automatically |
-| **Boot snapshot** | Pre-update protection | Medium | Create snapshot before risky operations |
-| **Incremental backups** | Disk space efficiency | Medium | Only backup changed files (rsync mode) |
-| **External drive support** | Offline backup storage | Low | Backup to local external drive |
-| **Retention policies** | Automatic cleanup | Medium | Keep last N daily/weekly/monthly snapshots |
-
-**Sources:**
-- [Arch Wiki: Synchronization and backup programs](https://wiki.archlinux.org/title/Synchronization_and_backup_programs)
-- [Timeshift features](https://github.com/linuxmint/timeshift)
-- [25 Best Backup Tools for Linux](https://www.tecmint.com/linux-system-backup-tools/)
-
----
+| **Theme Browser** | Universal expectation across GNOME Tweaks, KDE Settings, nwg-look | Low | ✅ Already implemented in theme-manager |
+| **Visual Theme Preview** | Users need to see colors before applying (cards with color swatches) | Low | ✅ Already implemented (color preview cards) |
+| **Apply Theme System-Wide** | Must propagate to GTK, Qt, terminal, compositor | Medium | ✅ Already implemented via vulcan-theme CLI |
+| **Wallpaper Picker** | Expected in all appearance tools (GNOME, KDE, Windows 11) | Low | ✅ Already implemented in wallpaper-manager |
+| **Per-Monitor Wallpaper** | Multi-monitor setups are common, especially on dev machines | Medium | ✅ Already implemented via swww |
+| **Wallpaper Preview** | Must see wallpaper thumbnails before applying | Medium | ✅ Already implemented with thumbnail generation |
+| **Save/Load Profiles** | Users expect to save configurations (KDE, GNOME) | Low | ✅ Already implemented for wallpapers |
+| **Instant Apply** | Changes take effect immediately (nwg-look direct gsettings model) | Low | ✅ Already implemented (theme preview mode) |
+| **Persist Settings** | Changes survive reboot/session restart | Low | ✅ Already implemented via vulcan-theme |
 
 ## Differentiators
 
-Features that set tools apart. Not expected by default, but highly valued when present.
+Features that set VulcanOS appearance manager apart from GNOME Tweaks, KDE Settings, nwg-look.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| **Pre-pacman hook** | Automatic before updates | Medium | snap-pac style pacman hooks |
-| **Quick action GUI** | One-click backup/restore | Low | Button in menu instead of terminal |
-| **Status reporting** | Know backup is current | Low | "Last backup: 2 hours ago, 5 snapshots" |
-| **Menu integration** | Access without terminal | Low | Wofi/rofi submenu for backup actions |
-| **Diff browsing** | See what changed | High | Compare snapshots file-by-file |
-| **Single file restore** | Granular recovery | Medium | Restore individual files from snapshot |
-| **Kernel pinning** | Prevent boot failures | Medium | Hold specific kernel version from updates |
-| **Pre/post comparisons** | Audit package changes | Medium | snap-pac creates paired snapshots |
-| **GRUB boot menu** | Boot into old snapshot | High | grub-btrfs style boot entries (rsync harder) |
-| **Notification alerts** | Inform of backup status | Low | Desktop notification on success/failure |
-| **Dot rollback** | Recover config files | Low | Restore dotfiles from snapshot |
-| **Package list export** | Reproducible installs | Low | Save pacman -Qqe to file with sync |
-| **Git integration** | Version control configs | Low | Auto-commit dotfiles to git after backup |
-
-**Sources:**
-- [snap-pac documentation](https://github.com/wesbarnett/snap-pac)
-- [Btrfs Assistant features](https://github.com/garuda-linux/btrfs-assistant)
-- [Timeshift GUI integration](https://itsfoss.com/backup-restore-linux-timeshift/)
-
----
+| **Theme-Suggested Wallpapers** | Each theme includes recommended wallpaper (`theme_wallpaper` field exists) | Low | Existing `theme_wallpaper: Option<String>` in Theme struct - just needs UI integration |
+| **Wallpaper-Suggested Themes** | Show which themes match a selected wallpaper's color palette | Medium | Requires color extraction + matching algorithm (pywal/matugen pattern) |
+| **Unified Theme+Wallpaper Profiles** | Save coordinated appearance (theme + per-monitor wallpapers) as single profile | Low | Combine existing theme storage + wallpaper profile storage |
+| **Panoramic Wallpaper Splitting** | Automatically split wide images across monitors | Low | ✅ Already implemented in wallpaper-manager |
+| **Editor with Color Groups** | Organized theme editing (50+ variables grouped logically) | Low | ✅ Already implemented in theme-manager |
+| **Third-Party App Discovery** | Detect installed themeable apps (kitty, nvim, VS Code, browsers) and show theme status | Medium | Scan for config files in standard locations + offer to apply themes |
+| **Live Preview Without Apply** | Test themes/wallpapers temporarily, cancel to revert | Low | ✅ Already implemented (`vulcan-theme preview`) |
+| **Transition Animations** | Smooth wallpaper transitions (fade effects) | Low | ✅ Already implemented via swww |
+| **Built-In + Custom Theme Mix** | Ship with curated themes, allow user-created themes | Low | ✅ Already implemented (is_builtin flag, custom theme creation) |
+| **Theme Description Discovery** | Automatically parse THEME_DESCRIPTION from theme files for rich metadata | Low | ✅ Already implemented in dotfiles/themes |
 
 ## Anti-Features
 
-Features to explicitly NOT build. Common mistakes in backup tool design.
+Features to explicitly NOT build. Common mistakes in appearance management domain.
 
 | Anti-Feature | Why Avoid | What to Do Instead |
 |--------------|-----------|-------------------|
-| **Cloud-only backup** | Dependency on third party | Support local external drives first |
-| **Proprietary formats** | Lock-in, no portability | Use standard rsync/tar snapshots |
-| **Quota tracking** | Performance degradation | Simple disk usage check instead |
-| **Setup wizards** | Complexity, overwhelming | Sane defaults, optional config |
-| **Backup everything** | Wasted space, slow restore | Exclude cache/temp/build dirs by default |
-| **No manual override** | Loss of control | Allow emergency snapshots anytime |
-| **Auto-delete without warning** | Data loss risk | Warn before deleting snapshots |
-| **GUI-only interface** | No scriptability | Always provide CLI equivalent |
-| **Encryption required** | Added complexity | Exclude sensitive files instead |
-| **Online account required** | Privacy concern | Work fully offline |
-| **Automatic cloud sync** | Bandwidth waste, privacy | Local only, explicit cloud opt-in |
-| **Version history UI** | Feature bloat for simple tools | Show list, let file manager browse |
-
-**Rationale:**
-
-**Quota tracking:** Btrfs quota groups cause [severe performance issues](https://btrfs.readthedocs.io/en/latest/Qgroups.html) especially with frequent snapshots. Simple du or df checks are sufficient for ext4/rsync backups.
-
-**Setup wizards:** [Tool bloat research](https://level.io/blog/tool-bloat-in-modern-it) shows complexity adds cognitive load. Timeshift works with zero config—just click Create.
-
-**Encryption required:** For single-user desktop, excluding sensitive files (.env, .ssh/, .gnupg/) is simpler than managing encrypted vaults. No key management overhead.
-
-**Sources:**
-- [Btrfs quota performance problems](https://btrfs.readthedocs.io/en/latest/Qgroups.html)
-- [Tool bloat in IT](https://level.io/blog/tool-bloat-in-modern-it)
-- [Linux backup best practices](https://www.redhat.com/sysadmin/5-backup-tips)
-
----
+| **Automatic Theme Generation from Wallpaper** | pywal/matugen approach can produce ugly themes if colors don't work well together; VulcanOS is opinionated about design quality | Curate high-quality themes manually; suggest pre-vetted wallpapers for each theme |
+| **Online Theme Store/Marketplace** | Adds maintenance burden, security concerns, quality control issues | Ship excellent built-in themes; document custom theme creation for advanced users |
+| **Per-Application Theme Overrides** | Creates visual inconsistency; users want unified appearance, not patchwork | Apply themes system-wide only; if app can't be themed, document it |
+| **Theme Import from Other Systems** | GTK themes, KDE color schemes, pywal templates use incompatible formats and concepts | Provide migration guide but don't auto-convert (quality suffers) |
+| **Animated Wallpapers** | Performance impact, battery drain, distracts from productivity focus | Support static images only; swww transitions are enough animation |
+| **Wallpaper Slideshow/Rotation** | Adds complexity, users rarely configure it correctly | Single wallpaper per monitor; easy to change manually when desired |
+| **Cloud Sync of Themes/Wallpapers** | Privacy concerns, network dependency, large image files | Local-only storage; users can sync dotfiles via git if desired |
+| **AI-Generated Themes** | 2026 trend but produces generic results; conflicts with curated brand | Hand-craft themes with intentional color theory |
 
 ## Feature Dependencies
 
 ```
-Snapshot System (core)
-├── Snapshot creation ──> Automated scheduling
-├── Snapshot listing ──> Snapshot deletion
-├── Snapshot restoration ──> GRUB boot entries (optional)
-└── Exclusion filters ──> Retention policies
+Core Features (already built):
+├── Theme Browser → Theme Preview → Theme Apply → Persist Theme
+├── Wallpaper Picker → Per-Monitor Assignment → Apply Wallpaper → Persist Config
+└── Profile Storage (wallpapers only)
 
-Menu Integration (differentiator)
-├── Status reporting ──> Quick action GUI
-└── Quick action GUI ──> Notification alerts
-
-Package Manager Integration (differentiator)
-├── Pre-pacman hook ──> Pre/post comparisons
-├── Kernel pinning ──> Boot snapshot
-└── Package list export ──> Git integration
-
-Data Sync (table stakes)
-├── External drive support ──> Automated scheduling
-├── Git integration ──> Dot rollback
-└── Incremental backups ──> Retention policies
+New Unified Features:
+├── Theme-Suggested Wallpapers
+│   └── Requires: theme_wallpaper field (✅ exists) + UI to show/apply
+│
+├── Wallpaper-Suggested Themes
+│   └── Requires: Color extraction from wallpaper → Match against theme color palette
+│
+├── Unified Profiles
+│   ├── Depends on: Theme storage + Wallpaper profile storage (both ✅ exist)
+│   └── Creates: Combined profile format (theme_id + monitor_wallpapers)
+│
+├── Third-Party App Discovery
+│   ├── Requires: Filesystem scanning for config files
+│   ├── Detects: ~/.config/kitty/, ~/.config/nvim/, ~/.vscode-oss/, ~/.mozilla/
+│   └── Shows: "✓ Themed" or "Configure" status per app
+│
+└── Transition to Unified UI
+    ├── Merge theme-manager + wallpaper-manager into single window
+    ├── Side-by-side panels: Themes (left) + Wallpapers (right)
+    └── Preview panel (bottom): Show live theme + wallpaper combination
 ```
-
-**Critical path for VulcanOS:**
-1. Snapshot creation/restoration (must work first)
-2. Pre-pacman hook (T2 kernel protection)
-3. Quick action GUI (menu integration)
-4. Status reporting (user feedback)
-
-**Nice-to-have later:**
-- Single file restore (can browse manually for now)
-- Diff browsing (complex, low ROI)
-- GRUB boot entries (very complex for rsync mode)
-
----
 
 ## MVP Recommendation
 
-For VulcanOS milestone, prioritize:
+For unified appearance manager MVP, prioritize in this order:
 
-### Must Have (Table Stakes)
-1. **Snapshot creation** — via Timeshift CLI or GUI
-2. **Snapshot restoration** — recover from failed update
-3. **Automated scheduling** — daily snapshots via systemd timer
-4. **Exclusion filters** — skip cache, temp, build dirs
-5. **Snapshot listing** — show available restore points
-6. **External drive support** — backup to local SSD
+### Phase 1: Basic Unification (Low-Hanging Fruit)
+1. **Merge UIs** - Combine theme-manager and wallpaper-manager windows into single app with tabs/panels
+2. **Theme-Suggested Wallpapers** - Show "Suggested Wallpaper" button when viewing theme (uses existing `theme_wallpaper` field)
+3. **Unified Profile Save/Load** - Combine theme ID + wallpaper profile into single JSON file
 
-### Must Have (Differentiators for VulcanOS)
-7. **Pre-pacman hook** — auto-snapshot before updates (critical for T2 kernel safety)
-8. **Quick action menu** — wofi submenu with Sync/Snapshot/Restore
-9. **Status reporting** — "Last backup: X ago, N snapshots available"
+### Phase 2: Enhanced Coordination (Medium Effort)
+4. **Third-Party App Discovery** - Scan for themeable apps, show status, offer to regenerate configs
+5. **Wallpaper-Suggested Themes** - Extract dominant colors from wallpaper, rank themes by color similarity
+6. **Combined Preview Panel** - Bottom panel shows theme + wallpaper preview together before applying
+
+### Phase 3: Polish (Low Priority)
+7. **Profile Quick-Switch** - Dropdown in Waybar/notification area for instant profile switching
+8. **Import Existing Configs** - Detect current GTK theme, wallpaper, terminal colors and create matching profile
 
 ### Defer to Post-MVP
-- **Single file restore** — can mount snapshot and copy manually
-- **Diff browsing** — nice but not critical, use git diff for dotfiles
-- **GRUB boot entries** — very complex for rsync mode, manual restore sufficient
-- **Notification alerts** — useful but not blocking
-- **Package list export** — can run pacman -Qqe manually for now
-- **Git auto-commit** — can commit dotfiles manually initially
-
-### Explicitly Skip
-- **Cloud sync** — out of scope (PROJECT.md constraint)
-- **Btrfs features** — ext4 filesystem (PROJECT.md constraint)
-- **Encrypted backups** — excluding sensitive files instead (PROJECT.md decision)
-- **Multi-machine sync** — single T2 MacBook Pro only (PROJECT.md scope)
-
----
-
-## Feature Complexity Analysis
-
-| Category | Feature | Implementation Effort | Testing Effort | Maintenance Risk |
-|----------|---------|----------------------|----------------|------------------|
-| **Low** | Snapshot creation | Call timeshift CLI | Boot restore test | Low |
-| **Low** | Snapshot listing | Parse timeshift list | Visual check | Low |
-| **Low** | Quick action menu | Wofi entries → scripts | Click test | Low |
-| **Low** | Status reporting | Check snapshot timestamps | Display test | Low |
-| **Low** | Exclusion filters | Timeshift config file | Verify excluded | Low |
-| **Medium** | Pre-pacman hook | Pacman hook file + script | Update test | Medium |
-| **Medium** | Automated scheduling | Systemd timer | Wait for trigger | Low |
-| **Medium** | Retention policies | Timeshift config | Check old deleted | Low |
-| **Medium** | External drive support | Mount point config | Drive disconnect | Medium |
-| **Medium** | Kernel pinning | Pacman IgnorePkg | Update test | Medium |
-| **High** | Single file restore | Mount snapshot + file browser | Many file types | Medium |
-| **High** | Diff browsing | File comparison UI | Many scenarios | High |
-| **High** | GRUB boot entries | Bootloader integration | Boot failure risk | Very High |
-
-**Recommendation:** Start with Low complexity features. Add Medium features one at a time with testing. Defer High complexity features until core system is stable.
-
----
-
-## Snapshot Tool Comparison Matrix
-
-Context: VulcanOS uses ext4, so btrfs-only tools are not applicable.
-
-| Tool | Mode | Best For | VulcanOS Fit | Notes |
-|------|------|----------|--------------|-------|
-| **Timeshift** | rsync | ext4 full system | ✓ Excellent | De facto standard for ext4 snapshots |
-| **Snapper** | btrfs/LVM | btrfs subvolumes | ✗ Not applicable | Requires btrfs or thin-provisioned LVM |
-| **Borg** | Archive | Incremental backups | △ Possible | Good for data, not system snapshots |
-| **Restic** | Archive | Cloud backups | △ Possible | Better for offsite, not system restore |
-| **rsnapshot** | rsync | File-level backups | △ Alternative | Similar to Timeshift, less GUI |
-| **Back In Time** | rsync | User data | △ Possible | More for /home than system |
-
-**Verdict:** Timeshift rsync mode is the correct choice for VulcanOS.
-- ✓ Works on ext4
-- ✓ Full system snapshots
-- ✓ CLI and GUI available
-- ✓ Active development
-- ✓ Well documented
-- ✓ Arch package available
-
-**Sources:**
-- [Timeshift vs Snapper comparison](https://www.compsmag.com/vs/timeshift-vs-snapper/)
-- [Borg vs Restic vs rsync benchmark](https://grigio.org/backup-speed-benchmark/)
-- [Arch Wiki backup tools](https://wiki.archlinux.org/title/Synchronization_and_backup_programs)
-
----
-
-## Menu Integration Patterns
-
-Research on how Linux backup tools integrate with desktop menus and status bars.
-
-### Common Patterns
-
-**System Tray Icon:**
-- Shows backup status (green = recent, yellow = old, red = failed)
-- Click opens quick actions menu
-- Right-click for settings/preferences
-- Examples: Dropbox, MEGA, Insync
-
-**File Manager Integration:**
-- Context menu: "Restore from snapshot"
-- Browse snapshots as folders
-- Restore individual files with right-click
-- Examples: Nautilus extensions, Dolphin plugins
-
-**Application Menu:**
-- Launcher entry for backup GUI
-- Opens full application window
-- Not quick for common actions
-- Examples: Timeshift GUI, Back In Time
-
-**Rofi/Wofi Submenu (Desktop WM):**
-- Custom menu with backup actions
-- Script-driven, keyboard-navigable
-- Common in tiling WM setups
-- Examples: Custom i3/sway/Hyprland menus
-
-**Waybar Module (Status Bar):**
-- Shows last backup time
-- Click to open action menu
-- Tooltip with snapshot count
-- Examples: Custom Waybar modules
-
-### VulcanOS Pattern (Recommended)
 
-**Waybar icon (top-left)** → Click → **vulcan-menu (wofi)** → Navigate to **Backup submenu**
-
-Backup submenu shows:
-```
-⬤ Last backup: 2 hours ago
-📊 5 snapshots available
-━━━━━━━━━━━━━━━━━━━━
-🔄 Sync Now
-📸 Create Snapshot
-⏮ Restore Snapshot
-⚙️ Configure
-```
-
-**Rationale:**
-- Consistent with existing VulcanOS menu pattern
-- No new system tray dependency
-- Keyboard navigable (wofi)
-- Scriptable (easy to maintain)
-- Shows status inline (no extra query needed)
-
-**Sources:**
-- [Linux GUI backup tools](https://www.thelinuxvault.net/linux-backup-recovery/exploring-gui-tools-for-linux-backup-management/)
-- [File manager integration patterns](https://www.linux.com/topic/cloud/5-linux-gui-cloud-backup-tools/)
-
----
-
-## Status Reporting Patterns
-
-How backup tools communicate state to users.
-
-### Status Dimensions
-
-| Dimension | Information | Display Method |
-|-----------|-------------|----------------|
-| **Last backup time** | "2 hours ago" | Relative timestamp |
-| **Snapshot count** | "5 snapshots" | Integer count |
-| **Disk usage** | "12.3 GB used" | Size calculation |
-| **Next scheduled** | "In 22 hours" | Timer countdown |
-| **Backup health** | "OK" / "Warning" / "Error" | Status indicator |
-| **Drive status** | "Connected" / "Disconnected" | Mount check |
-
-### Common Implementations
-
-**Timeshift:**
-- GUI shows list with creation time, description, size
-- No persistent status indicator
-- Must open GUI to check
-
-**Back In Time:**
-- System tray icon color indicates status
-- Tooltip shows last backup time
-- Click for detailed view
-
-**Borg/Restic:**
-- CLI output shows statistics
-- No GUI status by default
-- Custom scripts needed for display
-
-**Custom Scripts:**
-- Check snapshot directory timestamps
-- Parse tool output for counts
-- Display in menu/bar
-
-### VulcanOS Implementation (Recommended)
-
-**Status script:** `/usr/local/bin/vulcan-backup-status`
-```bash
-#!/bin/bash
-# Query timeshift for last snapshot
-# Count snapshots
-# Check external drive mount
-# Output: "Last: 2h ago | Snapshots: 5 | Drive: ✓"
-```
-
-**Display locations:**
-- Wofi backup submenu (inline at top)
-- Waybar tooltip (on hover)
-- Optional: notification after backup completes
-
-**Update frequency:**
-- Check on menu open (dynamic)
-- Cached for tooltip (refresh every 5min)
-- Force update after backup action
-
----
-
-## Pacman Hook Integration
-
-Automatic snapshot creation before package updates.
-
-### Hook Mechanism
-
-Pacman supports hooks via files in `/etc/pacman.d/hooks/*.hook`:
-- `[Trigger]` section defines when to run
-- `[Action]` section defines what to run
-- Runs at PreTransaction or PostTransaction
-
-### Example: snap-pac for btrfs
-
-```ini
-[Trigger]
-Operation = Upgrade
-Operation = Install
-Operation = Remove
-Type = Package
-Target = *
-
-[Action]
-Description = Creating pre-transaction snapshot...
-When = PreTransaction
-Exec = /usr/bin/snapper create --type=pre --cleanup-algorithm=number --print-number
-```
-
-### VulcanOS Adaptation (Timeshift + ext4)
-
-```ini
-[Trigger]
-Operation = Upgrade
-Type = Package
-Target = linux-t2*
-
-[Action]
-Description = Creating T2 kernel snapshot...
-When = PreTransaction
-Exec = /usr/local/bin/vulcan-snapshot-pre-update
-```
-
-**Why only linux-t2:** Not every package update needs a snapshot. Focus on high-risk kernel updates that can break boot.
-
-**Script responsibility:**
-- Check if external drive mounted
-- Create Timeshift snapshot with description "Pre-update: linux-t2"
-- Exit 0 to allow update to proceed
-- Exit 1 to abort update if snapshot fails
-
-### Feature Flags
-
-**Should hook be conditional?**
-- YES: Only run if backup drive is mounted (avoid blocking updates)
-- YES: Only run for kernel packages (avoid snapshot spam)
-- NO: Don't require user confirmation (defeats automatic protection)
-
-**Should hook block on failure?**
-- MAYBE: If drive is mounted but snapshot fails → block update (safety)
-- NO: If drive not mounted → warn but proceed (don't block updates)
-
-**Sources:**
-- [snap-pac implementation](https://github.com/wesbarnett/snap-pac)
-- [Arch Wiki: Snapper](https://wiki.archlinux.org/title/Snapper)
-- [Pacman hooks documentation](https://wiki.archlinux.org/title/Pacman#Hooks)
-
----
-
-## Scheduling Patterns
-
-Automated snapshot creation intervals.
-
-### Common Schedules
-
-| Interval | Retention | Use Case |
-|----------|-----------|----------|
-| **Hourly** | Keep 24 | Active development, frequent changes |
-| **Daily** | Keep 7 | Standard desktop use |
-| **Weekly** | Keep 4 | Long-term checkpoints |
-| **Monthly** | Keep 3-12 | Historical archives |
-| **Boot** | Keep 3 | Pre-startup snapshot |
-
-### Timeshift Default
-
-Timeshift's default schedule:
-- Daily: 5 snapshots
-- Weekly: 3 snapshots
-- Monthly: 2 snapshots
-- Boot: 3 snapshots
-
-**Philosophy:** Timeshift runs hourly check, creates snapshot if due. Handles systems that aren't running 24/7.
-
-### VulcanOS Recommendation
-
-For development laptop (not always on):
-
-- **Daily:** 7 snapshots (one week history)
-- **Weekly:** 3 snapshots (rollback to last month)
-- **Boot:** 3 snapshots (recent known-good states)
-- **Manual:** Unlimited (user-created snapshots kept until manual delete)
-
-**Rationale:**
-- Daily covers short-term mistakes
-- Weekly covers longer-term "when did this break?"
-- Boot snapshots capture pre-update states
-- Manual snapshots for pre-risky-operation protection
-
-**Implementation:**
-- Systemd timer: hourly check (Timeshift built-in)
-- Cron alternative: @hourly if systemd timers unavailable
-- Config: `/etc/timeshift/timeshift.json`
-
-**Sources:**
-- [Timeshift scheduling](https://github.com/linuxmint/timeshift)
-- [Snapper timeline cleanup](https://wiki.archlinux.org/title/Snapper)
-
----
-
-## Exclusion Patterns
-
-What NOT to backup.
-
-### Standard Exclusions
-
-**Cache directories:**
-- `~/.cache/`
-- `/var/cache/`
-- `/tmp/`
-- `~/.local/share/Trash/`
-
-**Build artifacts:**
-- `node_modules/`
-- `target/` (Rust)
-- `dist/`, `build/`
-- `__pycache__/`, `*.pyc`
-
-**Virtual environments:**
-- `venv/`, `.venv/`
-- `.tox/`
-- `env/`
-
-**Large data (regeneratable):**
-- `~/Downloads/` (optional)
-- `~/.local/share/Steam/`
-- Docker images (if using Docker)
-
-**Already backed up elsewhere:**
-- Git repositories (code is in remote)
-- Synced cloud folders (Dropbox, etc.)
-
-### Sensitive Files (Exclude for Security)
-
-**Credentials:**
-- `~/.ssh/` (private keys)
-- `~/.gnupg/` (GPG keys)
-- `.env` files
-- `credentials.json`
-- `*.pem`, `*.key`
-
-**Tokens:**
-- `~/.config/*/tokens`
-- Browser cookies/sessions
-- `~/.aws/credentials`
-
-**Personal:**
-- `~/Documents/Personal/` (if contains sensitive data)
-- Password manager databases (separate backup)
-
-### VulcanOS Exclusions
-
-Per PROJECT.md: "Exclude sensitive files — no encryption layer this milestone"
-
-**Default exclusions:**
-- Standard cache/temp dirs
-- Build artifacts
-- SSH/GPG keys
-- .env files
-
-**User decision:**
-- Whether to backup ~/Downloads
-- Whether to backup large media libraries
-- Whether to backup Docker data
-
-**Implementation:**
-- Timeshift config: exclude patterns
-- Separate script for sensitive file list
-- Documentation on what's excluded and why
-
-**Sources:**
-- [Linux backup best practices](https://www.redhat.com/sysadmin/5-backup-tips)
-- [Common Linux backup mistakes](https://www.linuxinsider.com/story/essential-tips-for-reliable-linux-backups-177398.html)
-
----
-
-## Confidence Assessment
-
-| Area | Level | Reason |
-|------|-------|--------|
-| Table stakes features | **HIGH** | Well-established patterns across Timeshift, Snapper, Borg |
-| Differentiators | **MEDIUM** | Based on tool comparisons and user requests, not all validated |
-| Anti-features | **MEDIUM** | Based on performance research and best practices, some subjective |
-| VulcanOS specifics | **HIGH** | PROJECT.md constraints clear (ext4, local drive, exclude sensitive) |
-| Menu integration | **MEDIUM** | Common patterns identified, VulcanOS pattern is custom |
-| Pacman hooks | **HIGH** | snap-pac is well-documented, adaptation is straightforward |
-
-### Verification Sources
-
-**HIGH confidence (official documentation):**
-- Arch Wiki: Synchronization and backup programs
-- Arch Wiki: Snapper
-- snap-pac GitHub documentation
-- Timeshift GitHub repository
-
-**MEDIUM confidence (multiple sources agree):**
-- Timeshift vs Snapper comparisons (multiple forums)
-- Backup tool feature lists (multiple review sites)
-- Linux backup best practices (Red Hat, Ubuntu wiki)
-
-**LOW confidence (limited verification):**
-- Specific wofi menu integration pattern (custom to VulcanOS)
-- Waybar status module details (would need implementation testing)
-
----
-
-## Open Questions for Implementation
-
-**1. Timeshift CLI vs GUI:**
-- Should scripts call `timeshift --create` (CLI) or integrate with existing GUI?
-- **Recommendation:** CLI for automation, GUI for manual browsing
-
-**2. External drive auto-mount:**
-- Should backup drive be auto-mounted on connect, or manual?
-- **Recommendation:** Auto-mount with udev rule, safer than always-mounted
-
-**3. Snapshot naming:**
-- Auto-generated timestamps vs descriptive names?
-- **Recommendation:** Timeshift auto-naming, allow optional comment
-
-**4. Failed update recovery:**
-- Boot from live USB and restore, or GRUB entry?
-- **Recommendation:** Live USB initially (GRUB rsync restore is complex)
-
-**5. Status update frequency:**
-- Real-time monitoring vs on-demand check?
-- **Recommendation:** On-demand (check when menu opens, avoids polling)
-
-**6. Package list sync:**
-- Separate from snapshot, or include in snapshot?
-- **Recommendation:** Separate (git commit package list independently)
-
----
-
-## Summary for Roadmap
-
-**Phase structure implications:**
-
-1. **Foundation Phase** — Timeshift setup, basic snapshot/restore
-2. **Automation Phase** — Pacman hooks, systemd timers, retention policies
-3. **Integration Phase** — Wofi menu, status display, quick actions
-4. **Polish Phase** — Notifications, documentation, error handling
-
-**Critical path:**
-- Timeshift working manually → Pacman hook → Menu integration → Status display
-
-**Dependencies:**
-- Menu integration requires working snapshots
-- Status display requires snapshot metadata access
-- Pacman hook requires Timeshift CLI tested
-
-**Research flags:**
-- GRUB rsync boot entries (if needed) — very complex, defer
-- Diff browsing UI (if desired) — medium complexity, not critical
-
-**Confidence level:** HIGH for core features, MEDIUM for custom integrations.
-
----
-
-*Research complete. Ready for requirements definition and roadmap creation.*
+- **Dynamic Theme Generation** - Anti-feature; curate themes instead
+- **Multi-User Profiles** - VulcanOS is single-user focused
+- **Theme Marketplace** - Anti-feature; ship quality themes in dotfiles
+- **Advanced Color Theory Tools** - Let designers use external tools, import results
+- **Per-Workspace Themes** - Over-engineered; users want consistency across workspaces
+
+## Competitive Analysis
+
+| Feature | GNOME Tweaks | KDE Settings | nwg-look | VulcanOS (Proposed) |
+|---------|--------------|--------------|----------|---------------------|
+| Theme Browser | ✓ | ✓ | ✓ | ✓ (existing) |
+| Visual Preview | Limited | ✓ | Limited | ✓ (color cards) |
+| Wallpaper Integration | Separate app | Integrated | No | ✓ (unified) |
+| Per-Monitor Wallpaper | ✓ (GNOME) | ✓ | N/A | ✓ (swww) |
+| Theme Editor | No | Limited | No | ✓ (50+ vars) |
+| Suggested Pairings | No | No | No | ✓ (theme→wallpaper) |
+| Third-Party App Discovery | No | No | No | ✓ (planned) |
+| Wayland Native | ✓ | ✓ | ✓ | ✓ |
+| Profile Save/Load | No | ✓ | No | ✓ (planned) |
+
+### Competitive Advantages
+
+1. **Only tool that suggests wallpapers for themes** (GNOME, KDE, nwg-look treat them as separate concerns)
+2. **Only tool with integrated theme editor** (others require manual file editing)
+3. **Only tool targeting Hyprland/wlroots specifically** (others target GNOME/KDE/generic)
+4. **Third-party app awareness** (detect VS Code, browsers, terminals and show theme status)
+
+## Real-World Usage Patterns
+
+Based on research of GNOME Tweaks, KDE Settings, and Hyprland community patterns:
+
+### Pattern 1: "Fresh Install Setup" (Most Common)
+1. User boots VulcanOS for first time
+2. Opens appearance manager
+3. Browses built-in themes
+4. Selects favorite theme → sees suggested wallpaper → applies both
+5. **Implication:** Theme-suggested wallpaper is critical for onboarding
+
+### Pattern 2: "Wallpaper First" (Photography Enthusiasts)
+1. User has favorite wallpaper they want to use
+2. Opens appearance manager, selects wallpaper
+3. System suggests themes that match wallpaper colors
+4. User picks suggested theme
+5. **Implication:** Wallpaper-suggested themes differentiates from competitors
+
+### Pattern 3: "Theme Tweaker" (Power Users)
+1. User likes a theme but wants to adjust colors
+2. Opens theme editor
+3. Modifies accent color, saves as custom theme
+4. Applies custom theme
+5. **Implication:** Theme editor + custom theme saving is table stakes for power users
+
+### Pattern 4: "Multi-Monitor Professional" (Developers)
+1. User has 2-3 monitors
+2. Wants different wallpaper per monitor (panoramic split or individual images)
+3. Saves configuration as profile for work setup
+4. Switches to "home" profile when undocking laptop
+5. **Implication:** Profile save/load is critical for multi-monitor setups
+
+## Sources
+
+### High Confidence (Official Documentation)
+- [nwg-look GitHub Repository](https://github.com/nwg-piotr/nwg-look) - Wayland-native GTK theme manager
+- [KDE System Settings - Appearance Documentation](https://userbase.kde.org/System_Settings/Appearance) - KDE appearance management patterns
+- [Hyprland Wallpapers Wiki](https://wiki.hypr.land/Useful-Utilities/Wallpapers/) - Wayland wallpaper utilities (hyprpaper, swww)
+
+### Medium Confidence (Verified with Multiple Sources)
+- [GNOME Tweaks Features](https://linuxhint.com/install_and_use_gnome_tweaks_to_customize_linux_desktop/) - GNOME appearance customization
+- [Flatpak Desktop Integration](https://docs.flatpak.org/en/latest/desktop-integration.html) - Automatic theme detection patterns
+- [Material You Color Generation Tools](https://github.com/InioX/matugen) - Dynamic theme generation from wallpaper (anti-pattern reference)
+
+### Low Confidence (WebSearch Only, Flagged for Validation)
+- Windows 11 Themes Hub (Microsoft Store integration patterns, December 2025)
+- Community discussions on wallpaper-theme coordination strategies
+- Interior design color coordination principles (applied to digital themes)
+
+### Internal Sources (VulcanOS Codebase - High Confidence)
+- `/home/evan/VulcanOS/vulcan-theme-manager/src/models/theme.rs` - Existing Theme struct with 50+ color variables
+- `/home/evan/VulcanOS/vulcan-theme-manager/src/services/theme_applier.rs` - Theme application via vulcan-theme CLI
+- `/home/evan/VulcanOS/vulcan-wallpaper-manager/src/models/profile.rs` - Wallpaper profile storage
+- `/home/evan/VulcanOS/vulcan-wallpaper-manager/src/services/hyprpaper.rs` - swww wallpaper backend (NOT hyprpaper despite filename)
+- `/home/evan/VulcanOS/branding/BRAND-GUIDELINES.md` - VulcanOS color palette and design philosophy

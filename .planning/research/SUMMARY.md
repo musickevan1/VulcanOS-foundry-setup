@@ -1,292 +1,273 @@
 # Project Research Summary
 
-**Project:** VulcanOS Backup & Sync System
-**Domain:** Linux System Backup Integration for T2 MacBook Pro
-**Researched:** 2026-01-23
+**Project:** VulcanOS Unified Appearance Manager
+**Domain:** Desktop appearance management (theme + wallpaper coordination)
+**Researched:** 2026-01-24
 **Confidence:** HIGH
 
 ## Executive Summary
 
-VulcanOS requires a backup system that protects against the unique risks of T2 MacBook Pro kernel updates while maintaining the distribution's philosophy of simplicity and local control. Research shows the optimal approach combines **Timeshift** (system snapshots via rsync), **pacman hooks** (pre-update automation), and **desktop integration** (wofi menu + waybar status) without requiring cloud services or complex setup.
+The VulcanOS Unified Appearance Manager merges two existing GTK4/Relm4 applications (vulcan-theme-manager and vulcan-wallpaper-manager) into a single cohesive interface. This is a **subsequent milestone** project that builds on proven foundations rather than a greenfield effort. Research confirms the existing GTK4/Relm4 stack is solid and should be preserved.
 
-The recommended architecture is hook-driven and modular: pacman hooks trigger backups before risky operations (kernel updates), a backup engine manages rsync operations, and desktop components provide user visibility through VulcanOS's existing menu system. This leverages Timeshift's recent move to official Arch repos (v25.12.4) and proven ext4 snapshot patterns without requiring filesystem migration.
+**Recommended approach:** Tab-based UI merging pattern that preserves existing components while adding three new integration layers: (1) theme-wallpaper binding service, (2) shared CSS infrastructure for third-party apps, and (3) app discovery system. The critical architectural decision is to **delegate theme application to the existing vulcan-theme CLI** rather than reimplementing templating logic in Rust. This avoids duplicating 490 lines of working bash code and maintains consistency between CLI and GUI behavior.
 
-Critical risks center on T2 hardware: installing the wrong kernel makes systems completely unbootable with no keyboard/trackpad recovery path. Secondary risks include external drive disconnects during backup, unmounted /boot during updates, and untested restoration procedures. Mitigation requires pre-flight verification hooks, robust drive handling, and automated validation - all integrated into VulcanOS's existing workflows.
+**Key risks:** The most dangerous pitfall is state synchronization drift between three sources of truth (GUI state, CLI state, live system state). Prevention requires establishing the live system as the single source of truth with explicit state transitions for preview/apply operations. The second critical risk is theme-wallpaper binding coherence — when themes suggest wallpapers but users have multi-monitor profiles, conflicts arise. This requires an explicit binding mode system (theme-controlled vs profile-controlled vs user-override).
 
 ## Key Findings
 
 ### Recommended Stack
 
-For ext4-based system protection without btrfs, the stack centers on **Timeshift rsync mode** (official Arch package as of Dec 2024) combined with **timeshift-autosnap** pacman hooks for pre-update snapshots. GNU Stow remains unchanged for dotfiles (already deployed), and pacman's native package list export (`-Qqen`/`-Qqem`) handles reproducible installs.
+The existing GTK4/Relm4 foundation is validated and should be kept unchanged. Research identifies minimal stack additions for unified functionality.
 
-**Core technologies:**
-- **Timeshift 25.12.4-1** (official repo): Full system snapshots via rsync + hardlinks — mature, GUI+CLI, T2-compatible
-- **timeshift-autosnap 0.10.0-1** (AUR): Pacman hook integration — automatic pre-update snapshots with retention policies
-- **GNU Stow 2.4.1-1**: Dotfile symlinks — already in production, no changes needed
-- **pacman built-in**: Package list export — native `-Qqen`/`-Qqem` flags, git versioning
-- **rsync 3.4.1-2**: Snapshot engine — Timeshift backend, efficient hardlink-based incremental backups
+**Core technologies (existing):**
+- **GTK4 0.10.3** — GUI toolkit with excellent Wayland support, already used
+- **Relm4 0.10.1** — Elm-inspired reactive framework for component communication, already used
+- **libadwaita 0.8.1** — Modern GNOME styling for integrated appearance, already used
+- **tokio 1.x** — Async runtime for wallpaper backend (swww calls), already used
+- **serde/serde_json 1.0** — Data serialization for profiles, already used
 
-**Optional for user data:**
-- **Restic 0.18.1-1**: Encrypted backups to external/cloud — if /home needs offsite protection
-- **Borg 1.4.3-2**: Deduplicating backups — if local external drive preferred over cloud
+**New additions (minimal):**
+- **toml 0.8** — Unified config format (TOML beats JSON/YAML for readability and Rust conventions)
+- **walkdir 2.x** — Directory traversal for third-party app discovery
+- **notify 6.x** — File system watching (OPTIONAL, defer to post-MVP if users request live theme reload)
 
-**Key decision:** Timeshift in RSYNC mode (not btrfs mode) because VulcanOS uses ext4. Each snapshot is a full browsable backup sharing unchanged files via hardlinks. First snapshot takes 10-30min, incrementals take 30sec-2min.
+**Explicit rejections:**
+- **cssparser** — Not needed for MVP, envsubst template approach works well
+- **D-Bus crates** — Over-engineering for single-user desktop system
+- **Custom config parsers** — TOML + serde handles everything
 
 ### Expected Features
 
-Research identified three feature categories: table stakes (expected by all backup tools), differentiators (competitive advantages), and anti-features (explicitly avoid).
+Research confirms most table-stakes features already exist in the separate apps. Unified app adds coordination features as differentiators.
 
 **Must have (table stakes):**
-- Snapshot creation/restoration — core functionality, single command or button
-- Automated scheduling — hourly/daily/weekly intervals via systemd timers
-- Exclusion filters — skip /tmp, ~/.cache, build artifacts (node_modules, target/)
-- Retention policies — automatic cleanup (keep last N daily/weekly/monthly)
-- External drive support — backup to local SSD/HDD for offline protection
-- Boot snapshot — pre-update protection before risky kernel changes
+- Theme browser with visual preview — ✅ Already implemented
+- Apply theme system-wide (GTK, Qt, terminal, compositor) — ✅ Already implemented via vulcan-theme CLI
+- Wallpaper picker with thumbnails — ✅ Already implemented
+- Per-monitor wallpaper assignment — ✅ Already implemented via swww
+- Save/load profiles — ✅ Already implemented for wallpapers
+- Instant apply with live preview — ✅ Already implemented
 
-**Should have (competitive/VulcanOS-specific):**
-- Pre-pacman hook — automatic snapshot before kernel updates (critical for T2)
-- Quick action GUI — wofi submenu integration (Create/Restore/Status)
-- Status reporting — "Last backup: 2h ago, 5 snapshots" visible in menu/waybar
-- Notification alerts — desktop notifications via swaync on success/failure
-- Package list export — sync pacman -Qqe output to git for reproducibility
+**Should have (competitive differentiators):**
+- **Theme-suggested wallpapers** — Each theme includes recommended wallpaper (LOW complexity, existing field)
+- **Wallpaper-suggested themes** — Extract colors from wallpaper, rank themes by similarity (MEDIUM complexity, pywal/matugen pattern)
+- **Unified theme+wallpaper profiles** — Save coordinated appearance as single profile (LOW complexity, combine existing storage)
+- **Third-party app discovery** — Detect VS Code, browsers, terminals and show theme status (MEDIUM complexity, filesystem scanning)
+- **Panoramic wallpaper splitting** — ✅ Already implemented
 
 **Defer (v2+):**
-- Single file restore — can browse snapshots manually via file manager for now
-- Diff browsing — compare snapshots file-by-file (high complexity, low ROI initially)
-- GRUB boot entries — boot into old snapshot from GRUB (very complex for rsync mode)
-- Git auto-commit — automatic dotfile commits after backup (can do manually initially)
-- Cloud sync — explicitly out of scope per VulcanOS constraints
-
-**Anti-features (explicitly avoid):**
-- Cloud-only backup — support local external drives first (VulcanOS philosophy)
-- Quota tracking — performance overhead, simple disk checks sufficient for ext4
-- Setup wizards — sane defaults, optional config (Timeshift works zero-config)
-- Encryption required — exclude sensitive files instead (lower complexity)
-- GUI-only interface — always provide CLI equivalents for scripting
+- Automatic theme generation from wallpaper (anti-feature — pywal produces ugly themes)
+- Online theme marketplace (anti-feature — maintenance burden, quality issues)
+- Per-application theme overrides (anti-feature — creates visual inconsistency)
+- Animated wallpapers (performance impact, battery drain)
+- Cloud sync (privacy concerns, network dependency)
 
 ### Architecture Approach
 
-The backup system should follow a **hook-driven, event-based architecture** that integrates with VulcanOS's existing desktop environment (Hyprland + wofi + waybar) without disrupting workflows. Components communicate via state files, notifications flow through swaync, and automation triggers on package manager events.
+Tab-based merging pattern using libadwaita TabView to combine two apps without complete rewrite. The architecture preserves clean separation of concerns while adding three new service layers for integration.
 
 **Major components:**
-1. **Pacman Hooks** (`/etc/pacman.d/hooks/*.hook`) — Trigger backups on kernel/critical package updates (PreTransaction), fast metadata snapshots only
-2. **Backup Engine** (`/usr/local/bin/vulcan-backup`) — Execute rsync operations, manage state files, call Timeshift CLI or direct rsync
-3. **Menu Integration** (`dotfiles/scripts/.local/bin/vulcan-menu`) — Add backup submenu to existing VulcanOS menu with Create/Restore/List actions
-4. **Waybar Module** (`custom/backup`) — Display status (last backup time, snapshot count) with JSON output from status script
-5. **Notification Layer** (via `notify-send`) — User feedback at all stages (start, progress, completion, errors) through swaync
-6. **Configuration** (`~/.config/vulcan-backup/config.toml`) — User settings for schedules, retention, external drive paths
+1. **AppModel (new)** — Tab orchestration with message routing, coordinates existing components via Relm4 channels
+2. **theme_tab/** (existing) — Theme browser, editor, preview panel from theme-manager (moved, not rewritten)
+3. **wallpaper_tab/** (existing) — Monitor layout, wallpaper picker, profile manager from wallpaper-manager (moved, not rewritten)
+4. **binding_tab/** (new) — Theme-wallpaper binding editor, binding list
+5. **apps_tab/** (new) — Third-party app discovery browser, config editor
+6. **binding_manager service** (new) — Coordinates theme+wallpaper application atomically
+7. **css_generator service** (new) — Generates app-specific CSS from theme model
+8. **app_discovery service** (new) — Scans ~/.config/ for supported apps
 
-**Data flow:** User action (pacman -Syu) → Pacman PreTransaction hook → Backup engine → Storage backend → Notify user → Waybar updates status. Manual workflow: vulcan-menu → Backup submenu (wofi) → Action → Backup engine → Notification.
-
-**Critical patterns:** Fast PreTransaction hooks (<5 seconds), state-based UI (waybar reads files, doesn't execute), non-blocking PostTransaction operations, consistent with VulcanOS UX (wofi menus, nerd fonts, notification style).
+**Critical pattern:** CLI tool delegation. The Rust app calls `vulcan-theme set <id>` via Command::new() rather than reimplementing envsubst templating. This preserves the battle-tested bash implementation and maintains consistency.
 
 ### Critical Pitfalls
 
-**1. Wrong Kernel Installed (T2-CRITICAL)** — Pacman updates to mainline `linux` instead of `linux-t2`. System boots but no keyboard/trackpad/WiFi = completely unrecoverable without USB keyboard. **Prevention:** Add `IgnorePkg = linux linux-headers linux-lts` to `/etc/pacman.conf`, create verification hook to check kernel package name before upgrade.
+Research identified 13 pitfalls across critical/moderate/minor severity. Top 5 that could derail the project:
 
-**2. /boot Unmounted During Kernel Update** — Kernel installs to pacman database but files don't reach EFI partition. Boot fails or uses old kernel with new modules (driver mismatch). **Prevention:** PreTransaction hook with `mountpoint -q /boot` + `AbortOnFail` to halt updates if /boot not mounted.
+1. **State synchronization drift (CRITICAL)** — Three sources of truth (GUI, CLI, live system) can diverge. **Prevention:** Make live system state the single source of truth. Query actual state on startup (`swww query`, `vulcan-theme current`). Use explicit state transitions (Idle/Previewing/Applying) with stateless preview implementation (apply new + store original, cancel = restore original). Add startup reconciliation to detect and warn about inconsistencies.
 
-**3. External Drive Disconnects During Backup** — USB autosuspend or T2 controller issues cause drive to disconnect mid-rsync. Backup appears complete but is corrupted. User discovers during disaster recovery. **Prevention:** Disable USB autosuspend via udev rules for backup drive, mount with `sync` option, verify drive still connected after rsync completes.
+2. **Shell script parsing fragility (CRITICAL)** — Theme files are bash .sh scripts parsed with regex. Breaks on nested quotes, spaces in paths, multiline strings. **Prevention:** Validate before parse with `bash -n theme.sh`. Normalize on save with consistent safe format (single-quoted values, double-quoted paths). Whitelist simple `export VAR="value"` syntax only. Add parser tests with malformed themes.
 
-**4. No Fallback Kernel in GRUB** — New linux-t2 kernel has regression (WiFi breaks, suspend fails). No old kernel to boot. Forced to use live USB for every kernel issue. **Prevention:** Keep previous kernel version (`CleanMethod = KeepCurrent` in pacman.conf), configure GRUB timeout to show menu, or manually preserve working kernel to /boot/vmlinuz-linux-t2.backup.
+3. **Wallpaper backend assumption mismatch (CRITICAL)** — Code assumes swww but documentation references hyprpaper, old configs exist. Four failure modes: old config loaded, backend detection fails, transition period with both configs, future backend change requires rewrite. **Prevention:** Runtime backend detection (check which daemon is running). Backend abstraction trait (WallpaperBackend with apply/query/preload methods). Explicit backend selection in UI with detected backend shown in status bar.
 
-**5. mkinitcpio Hook Failure Goes Unnoticed** — Kernel package updates but initramfs generation fails silently (full /boot, module errors). System boots to kernel panic. **Prevention:** PostTransaction verification hook checks initramfs exists, is recent (<5min old), and is reasonable size (>10MB).
+4. **Component lifecycle memory leaks (CRITICAL)** — Relm4 Controllers for child components stored in parent without cleanup. GTK4 cairo renderer has known ~70kb leak per window. Memory grows with each preview. **Prevention:** Explicit cleanup with `Controller.take()` and drop when dialog closes. Detach read-only child components. Update colors in existing widgets rather than recreating preview panel. Resource pooling for thumbnails with LRU cache.
+
+5. **Theme-wallpaper binding coherence (CRITICAL)** — Theme files have optional THEME_WALLPAPER field. Wallpaper profiles have per-monitor paths. Conflicts arise when both exist, single vs multi-monitor mismatch, profile switching, missing wallpaper files, circular dependencies. **Prevention:** Explicit binding modes (ThemeControlled, ProfileControlled, ThemeDefaulted, UserOverride). Per-monitor theme wallpaper support in theme format. Binding state saved in profile. Clear UI indicator (lock icon when wallpaper "locked to theme"). Smart application order based on binding mode.
 
 ## Implications for Roadmap
 
-Based on research, suggested 4-phase structure prioritizing T2 safety, then automation, then integration, then polish:
+Based on research, the project naturally divides into 4 phases following dependency order and risk mitigation priorities.
 
-### Phase 1: Pre-flight Safety (T2 Kernel Protection)
-**Rationale:** T2 kernel mistakes are catastrophic (unbootable, no recovery path). Must implement safeguards before adding any backup features. This is the foundation that makes all other phases safe.
-
-**Delivers:**
-- Pacman hook to verify /boot is mounted before kernel updates
-- Pacman hook to verify correct kernel package (linux-t2, not linux)
-- GRUB configuration with fallback kernel entries and visible menu
-- PostTransaction hook to verify initramfs generation succeeded
-- Documentation on T2 kernel parameters and IgnorePkg settings
-
-**Addresses (from FEATURES.md):**
-- Boot snapshot (table stakes) — ensures system bootable before risky operations
-- Pre-pacman hook (differentiator) — T2-specific protection
-
-**Avoids (from PITFALLS.md):**
-- Pitfall 1: Wrong kernel installed (T2-CRITICAL)
-- Pitfall 2: /boot unmounted during update
-- Pitfall 5: No fallback kernel in GRUB
-- Pitfall 6: mkinitcpio failure goes unnoticed
-- Pitfall 9: GRUB updates without T2 parameters
-
-**Research flags:** Standard patterns (pacman hooks well-documented), no additional research needed.
-
-### Phase 2: Core Backup Engine (Timeshift Integration)
-**Rationale:** With safety hooks in place, implement the backup mechanism itself. Start with manual operations before adding automation. Validate Timeshift works correctly on VulcanOS before exposing to users.
+### Phase 1: Foundation Architecture (Week 1)
+**Rationale:** Must establish single source of truth pattern and backend abstraction before building unified UI. All critical pitfalls (#1, #2, #3) must be addressed in foundation to avoid rewrites later.
 
 **Delivers:**
-- Timeshift installed and configured (rsync mode, ext4)
-- vulcan-backup script wrapper around Timeshift CLI
-- Snapshot creation (manual CLI first, then interactive)
-- Snapshot listing and restoration (manual process)
-- Exclusion patterns (cache, temp, build dirs, sensitive files)
-- External drive mount detection and handling
+- New vulcan-appearance-manager crate with merged models and services
+- State management architecture with explicit transitions (Idle/Previewing/Applying)
+- Wallpaper backend abstraction trait (supports swww + hyprpaper)
+- Hardened theme parser with validation
+- Shared CSS module extracted from duplicated code
 
-**Addresses (from FEATURES.md):**
-- Snapshot creation/restoration (table stakes)
-- Exclusion filters (table stakes)
-- External drive support (table stakes)
+**Addresses features:**
+- Infrastructure for all future features (no user-facing features yet)
 
-**Uses (from STACK.md):**
-- Timeshift 25.12.4-1 (official repo)
-- rsync 3.4.1-2 (backend)
-- Configuration in ~/.config/vulcan-backup/
+**Avoids pitfalls:**
+- Pitfall #1: State synchronization drift (establishes live system as truth)
+- Pitfall #2: Shell script parsing fragility (hardens parser)
+- Pitfall #3: Wallpaper backend mismatch (abstracts backends)
+- Pitfall #13: Hardcoded paths (audit and fix /home/evan references)
 
-**Avoids (from PITFALLS.md):**
-- Pitfall 3: Backup while system running (document rsync limitations for ext4)
-- Pitfall 4: External drive disconnects (USB autosuspend disable, sync mount)
-- Pitfall 7: Pacman database lock (exclude /var/lib/pacman/db.lck)
-- Pitfall 8: Missing extended attributes (use rsync -aAXv)
-- Pitfall 12: Huge pacman cache backed up (exclude /var/cache/pacman/pkg)
+**Research needs:** NONE (standard patterns)
 
-**Research flags:** Need testing on actual T2 hardware (USB-C quirks, drive detection), otherwise standard.
-
-### Phase 3: Desktop Integration (Menu + Status)
-**Rationale:** Backup engine works, now make it accessible through VulcanOS's existing UI patterns. Users need visibility without opening terminal. Integration should feel native, not bolted-on.
+### Phase 2: Component Integration & Tab Merging (Week 1-2)
+**Rationale:** With foundation solid, merge existing components into tabbed interface. Memory profiling must happen during this phase to catch leaks early. CSS conflicts must be tested with extreme themes.
 
 **Delivers:**
-- vulcan-menu backup submenu (wofi integration)
-- Waybar custom module showing backup status
-- Status script (last backup time, snapshot count, drive status)
-- Desktop notifications via swaync (start, complete, error)
-- Quick actions: Create Backup, Restore Backup, List Backups, Configure
+- app.rs with libadwaita TabView skeleton
+- theme_tab/ with moved theme-manager components
+- wallpaper_tab/ with moved wallpaper-manager components
+- Existing functionality working in tabs (feature parity with separate apps)
+- Memory leak prevention patterns implemented
 
-**Addresses (from FEATURES.md):**
-- Quick action GUI (differentiator)
-- Status reporting (differentiator)
-- Notification alerts (differentiator)
-- Menu integration (differentiator)
+**Addresses features:**
+- Theme browser (table stakes, existing)
+- Wallpaper picker (table stakes, existing)
+- Visual theme preview (table stakes, existing)
+- Per-monitor wallpaper (table stakes, existing)
 
-**Implements (from ARCHITECTURE.md):**
-- Wofi submenu integration (follow existing VulcanOS patterns)
-- Waybar custom module (JSON return type, state files)
-- Notification layer (notify-send → swaync)
-- Script organization (dotfiles/scripts/.local/bin/)
+**Avoids pitfalls:**
+- Pitfall #4: Component lifecycle memory leaks (profile memory, implement cleanup)
+- Pitfall #6: GTK CSS cascading conflicts (namespace app CSS, test with extreme themes)
+- Pitfall #7: Config file format fragmentation (format abstraction layer)
+- Pitfall #12: No validation on theme import (validate before parse, sandbox)
 
-**Avoids (from PITFALLS.md):**
-- Pitfall 11: Backup notifications ignored (desktop notifications, not email)
-- Anti-pattern: Multiple menu systems (extend vulcan-menu, don't create new tool)
+**Research needs:** NONE (Relm4 tab patterns well-documented)
 
-**Research flags:** Standard patterns (Waybar custom modules documented, wofi patterns established in VulcanOS).
-
-### Phase 4: Automation & Validation
-**Rationale:** Manual backups work, UI is polished, now add automation for scheduled snapshots and pre-update protection. Include validation to prevent "set and forget" false security.
+### Phase 3: Theme-Wallpaper Binding System (Week 2)
+**Rationale:** Core differentiation feature. Requires Phase 1's state management foundation and Phase 2's merged UI. This phase addresses the most complex architectural challenge (binding coherence, pitfall #5).
 
 **Delivers:**
-- timeshift-autosnap pacman hook (pre-update snapshots)
-- Systemd timer for scheduled backups (daily/weekly)
-- Retention policies (keep last N snapshots)
-- Package list export automation (pacman -Qqen → git)
-- Backup validation testing (verify restore process)
-- ISO integration (copy scripts to archiso skeleton)
+- models/binding.rs with ThemeWallpaperBinding struct
+- services/binding_manager.rs with binding mode logic
+- binding_tab/ UI for creating/editing bindings
+- Modified theme_applier.rs with binding hooks
+- Unified profile format (theme_id + wallpaper_profile + binding_mode)
 
-**Addresses (from FEATURES.md):**
-- Automated scheduling (table stakes)
-- Retention policies (table stakes)
-- Pre-pacman hook (differentiator, now automated)
-- Package list export (differentiator)
+**Addresses features:**
+- Theme-suggested wallpapers (differentiator, LOW complexity)
+- Unified theme+wallpaper profiles (differentiator, LOW complexity)
+- Apply theme system-wide atomically with wallpaper (table stakes enhancement)
 
-**Uses (from STACK.md):**
-- timeshift-autosnap 0.10.0-1 (AUR)
-- cronie 1.7.2-2 (systemd timer alternative)
-- Git for package list versioning
+**Avoids pitfalls:**
+- Pitfall #5: Theme-wallpaper binding coherence (explicit binding modes)
+- Pitfall #8: Live reload race conditions (atomic writes, synchronous reload)
 
-**Avoids (from PITFALLS.md):**
-- Pitfall 10: Forgotten to test backup restoration (automated monthly VM test)
-- Anti-pattern: Blocking pacman indefinitely (fast PreTransaction, full backup PostTransaction)
-- Anti-pattern: Silent failures (notify on error with critical urgency)
+**Research needs:** NONE (data model and state patterns established in Phase 1)
 
-**Research flags:** Need validation testing procedures, otherwise standard automation patterns.
+### Phase 4: Third-Party App Discovery & Polish (Week 3)
+**Rationale:** Adds competitive differentiator (app discovery) after core functionality stable. Polish items (thumbnail performance, undo) can be prioritized based on testing feedback.
+
+**Delivers:**
+- services/app_discovery.rs with extensible discovery algorithm
+- services/css_generator.rs (start with VS Code, add incrementally)
+- apps_tab/ UI showing discovered apps and theme status
+- Thumbnail cache with async loading
+- Undo/history stack (separate for themes and wallpapers)
+
+**Addresses features:**
+- Third-party app discovery (differentiator, MEDIUM complexity)
+- Wallpaper-suggested themes (differentiator, MEDIUM complexity — color extraction)
+
+**Avoids pitfalls:**
+- Pitfall #9: Thumbnail performance (implement cache, async generation)
+- Pitfall #10: Undo complexity (separate stacks, diff-based history)
+- Pitfall #11: File picker default directory (set to known locations)
+
+**Research needs:** MEDIUM for wallpaper color extraction
+- Need research on color extraction algorithms (palette generation)
+- Need research on color similarity/matching algorithms for theme ranking
+- Investigate existing libraries (image-rs palette extraction, CIEDE2000 color distance)
+- Could use `/gsd:research-phase` if color matching proves complex
 
 ### Phase Ordering Rationale
 
-- **Phase 1 first** because T2 kernel mistakes are unrecoverable without live USB + external keyboard. Safeguards must exist before touching anything kernel-related.
-- **Phase 2 before 3** because backup engine must work correctly before exposing to users via GUI. Manual testing validates the mechanism.
-- **Phase 3 before 4** because users need to understand and test backup process manually before automation runs silently. UI provides visibility for debugging automation issues.
-- **Phase 4 last** because automation multiplies the impact of bugs. Only automate after manual process is proven reliable.
+1. **Foundation first** — Addresses all critical architectural risks (state drift, backend abstraction, parser hardening) before building UI. Prevents rewrites.
 
-**Dependency chain:** Pre-flight hooks → Backup engine → Desktop UI → Automation. Each phase validates the previous, each phase is independently useful.
+2. **Component merge second** — Once foundation solid, moving existing components is low-risk. Memory profiling during this phase catches leaks before adding complex features.
+
+3. **Binding system third** — Core differentiation feature depends on Phase 1's state management and Phase 2's merged UI. This is the complex integration challenge that defines product value.
+
+4. **Discovery and polish last** — Competitive features that can be prioritized based on user testing. Color extraction for wallpaper-suggested themes is only moderately complex research item.
+
+**Dependency chain:**
+```
+Phase 1 (Foundation)
+  ↓
+Phase 2 (Component Integration) — depends on state management, backend abstraction
+  ↓
+Phase 3 (Binding System) — depends on merged UI, state management
+  ↓
+Phase 4 (Discovery & Polish) — depends on stable core functionality
+```
 
 ### Research Flags
 
-**Phases needing deeper research during planning:**
-- None — all phases use well-documented patterns. Pacman hooks, Timeshift rsync mode, Waybar custom modules, and systemd timers are standard Arch practices with extensive documentation.
+Phases likely needing deeper research during planning:
+- **Phase 4 (wallpaper-suggested themes):** Color extraction and matching algorithms moderately complex. If color similarity proves difficult, use `/gsd:research-phase` for palette generation and CIEDE2000 color distance research.
 
-**Phases with standard patterns (skip research-phase):**
-- **Phase 1:** Pacman hooks documented in Arch Wiki + alpm-hooks(5) manual, GRUB configuration standard
-- **Phase 2:** Timeshift official documentation, rsync widely understood, ext4 standard
-- **Phase 3:** Waybar custom modules documented, wofi patterns established in VulcanOS codebase
-- **Phase 4:** timeshift-autosnap well-documented AUR package, systemd timers standard
-
-**Areas needing validation (not research):**
-- T2 hardware USB-C quirks (test on actual hardware)
-- External drive disconnect scenarios (practical testing)
-- Restore procedures (VM testing, monthly validation)
-- VulcanOS menu integration (code review against existing patterns)
+Phases with standard patterns (skip research-phase):
+- **Phase 1 (Foundation):** State management, backend abstraction, parser hardening are standard Rust patterns
+- **Phase 2 (Component Integration):** Relm4 tab merging well-documented, memory profiling is standard testing
+- **Phase 3 (Binding System):** Data model and coordination patterns established in Phase 1 architecture
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | **HIGH** | Timeshift official Arch package (Dec 2024), extensive Wiki docs, rsync proven for ext4 |
-| Features | **HIGH** | Table stakes validated across Timeshift/Snapper/Borg comparisons, differentiators from snap-pac/btrfs-assistant patterns |
-| Architecture | **HIGH** | Pacman hooks well-documented (alpm-hooks manual), Waybar/wofi patterns exist in VulcanOS codebase |
-| Pitfalls | **HIGH** | T2 kernel issues documented in t2linux wiki, backup pitfalls from Arch forums + official guides |
+| Stack | HIGH | All versions verified from docs.rs, existing stack proven in production |
+| Features | MEDIUM | Table stakes confirmed via competitive analysis, differentiators based on existing codebase analysis and domain research |
+| Architecture | HIGH | Existing codebase provides working components, tab-based merging is proven Relm4 pattern |
+| Pitfalls | HIGH | State drift, parser fragility, backend mismatch directly observed in codebase; GTK4 memory leaks confirmed by upstream bug reports |
 
-**Overall confidence:** **HIGH**
-
-All recommendations backed by official documentation (Arch Wiki, t2linux wiki) or established community consensus (Arch forums, proven tools). No experimental approaches or unverified patterns.
+**Overall confidence:** HIGH
 
 ### Gaps to Address
 
-**T2 USB-C controller quirks** — Community reports mention USB disconnects under load, but no definitive mitigation documented beyond USB autosuspend disable. **Resolution:** Test on actual hardware during Phase 2, document findings, may need kernel parameter tweaks or udev rules refinement.
+Areas where research was inconclusive or needs validation during implementation:
 
-**Rsync consistency on live ext4 system** — Research confirms rsync-while-running creates inconsistent snapshots (database files, logs), but ext4 has no native snapshot support. **Resolution:** Document limitations clearly, recommend stopping critical services (Docker, databases) before backup, or note this as known limitation of ext4 vs btrfs. For VulcanOS (desktop workstation, not server), acceptable for Phase 2, consider btrfs migration in future milestone.
+- **Color extraction algorithm selection:** Phase 4 feature (wallpaper-suggested themes) requires color palette extraction from images and color similarity matching. Research identified pywal/matugen as prior art but didn't validate specific algorithms. Consider using `/gsd:research-phase` if implementation proves complex. Alternatively, defer to v2 if color matching is harder than expected.
 
-**GRUB rsync boot entries complexity** — Research shows booting into rsync-based snapshots is significantly harder than btrfs snapshots (requires chroot restore, not direct boot). **Resolution:** Defer to post-MVP, document manual restore procedure, focus on preventing need to restore rather than optimizing restoration UX.
+- **Third-party app config format diversity:** App discovery research covered standard apps (VS Code, Firefox, Thunderbird) but actual config paths and CSS injection methods need per-app validation. Start with VS Code (JSON settings) as known-good case, expand incrementally during Phase 4.
 
-**Waybar refresh behavior** — Need to validate exec-on-event and interval interaction for status updates. **Resolution:** Follow hyprwhspr module pattern (lines 68-75 in config.jsonc), test during Phase 3.
+- **Actual memory usage thresholds:** Pitfall #4 (memory leaks) prevention strategies are general best practices. Actual memory growth rates and acceptable thresholds need profiling during Phase 2 implementation. GTK4 cairo leak is ~70kb per window (upstream confirmed) but compounding effect with Relm4 controllers needs measurement.
 
-**Package list restoration edge cases** — AUR packages may fail to reinstall if removed from AUR or dependency changes. **Resolution:** Document as known limitation, recommend review of AUR list before mass reinstall, keep pacman cache for local reinstall fallback.
+- **Thumbnail generation performance:** Pitfall #9 mitigation suggests async generation and caching, but actual batch sizes and cache eviction policies need tuning based on real wallpaper directories (100 images vs 1000 images vs 10000 images). Defer optimization to Phase 4 based on user feedback.
+
+- **Binding mode UX design:** Phase 3's binding coherence solution (ThemeControlled/ProfileControlled/ThemeDefaulted/UserOverride) is architecturally sound but UX presentation needs design iteration. Mock up UI during Phase 3 planning to validate users can understand the mental model.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- [Arch Wiki: System backup](https://wiki.archlinux.org/title/System_backup) — backup strategies, tool comparisons
-- [Arch Wiki: Timeshift](https://wiki.archlinux.org/title/Timeshift) — configuration, rsync mode, ext4 usage
-- [Arch Wiki: pacman](https://wiki.archlinux.org/title/Pacman) — hooks system, package lists
-- [alpm-hooks(5) manual](https://man.archlinux.org/man/alpm-hooks.5) — hook syntax, PreTransaction/PostTransaction
-- [t2linux wiki: Post-installation](https://wiki.t2linux.org/guides/postinstall/) — T2 kernel requirements
-- [t2linux wiki: Arch FAQ](https://wiki.t2linux.org/distributions/arch/faq/) — kernel updating, IgnorePkg
-- [Waybar Custom Module Docs](https://man.archlinux.org/man/extra/waybar/waybar-custom.5.en) — JSON format, exec-on-event
-- [Arch Linux Packages: timeshift 25.12.4-1](https://archlinux.org/packages/extra/x86_64/timeshift/) — version verification
-- [GitHub: teejee2008/timeshift](https://github.com/teejee2008/timeshift) — official repository, features
-- [GitHub: dagorret/timeshift-autosnap](https://github.com/dagorret/timeshift-autosnap) — pacman hook integration
+- [GTK4 Rust Bindings Documentation](https://gtk-rs.org/gtk4-rs/stable/latest/docs/gtk4/)
+- [Relm4 Book](https://relm4.org/book/stable/)
+- [Cargo Configuration Reference](https://doc.rust-lang.org/cargo/reference/config.html)
+- [Relm4 GitHub Repository](https://github.com/Relm4/Relm4)
+- [swww GitHub - Wayland Wallpaper Solution](https://github.com/LGFae/swww)
+- [Hyprland Wiki - Wallpapers](https://wiki.hypr.land/Useful-Utilities/Wallpapers/)
+- VulcanOS codebase (vulcan-theme-manager, vulcan-wallpaper-manager, dotfiles/themes)
 
 ### Secondary (MEDIUM confidence)
-- [AUR: timeshift-autosnap 0.10.0-1](https://aur.archlinux.org/packages/timeshift-autosnap) — package details, configuration
-- [Arch Forums: T2 Macbook kernel updates](https://bbs.archlinux.org/viewtopic.php?id=299034) — community experiences
-- [Arch Forums: Pacman hook to backup /boot](https://bbs.archlinux.org/viewtopic.php?id=289248) — hook examples
-- [Arch Forums: rsync system backup](https://bbs.archlinux.org/viewtopic.php?id=277249) — best practices, pitfalls
-- [Backup Speed Benchmark: rsync vs borg vs restic](https://grigio.org/backup-speed-benchmark/) — performance comparisons
-- [GitHub: wesbarnett/snap-pac](https://github.com/wesbarnett/snap-pac) — pattern reference for pacman hooks
-- [Hyprland Wiki: App Launchers](https://wiki.hypr.land/Useful-Utilities/App-Launchers/) — wofi integration patterns
-- [Red Hat: 5 Linux backup tips](https://www.redhat.com/sysadmin/5-backup-tips) — best practices
+- [GTK4 memory leak in cairo renderer - Issue #6404](https://gitlab.gnome.org/GNOME/gtk/-/issues/6404)
+- [Suspected memory leak in GTK4 NGL renderer - Issue #7045](https://gitlab.gnome.org/GNOME/gtk/-/issues/7045)
+- [nwg-look GitHub Repository](https://github.com/nwg-piotr/nwg-look) — Wayland GTK theme manager patterns
+- [KDE System Settings - Appearance Documentation](https://userbase.kde.org/System_Settings/Appearance)
+- [JSON vs YAML vs TOML Comparison](https://dev.to/jsontoall_tools/json-vs-yaml-vs-toml-which-configuration-format-should-you-use-in-2026-1hlb)
+- [ArchWiki: Desktop Entries](https://wiki.archlinux.org/title/Desktop_entries)
 
 ### Tertiary (LOW confidence)
-- [The Terrors of Linux on a T2 Mac](https://awpsec.medium.com/the-terrors-of-linux-on-a-t2-mac-9b66699a8693) — anecdotal T2 issues
-- [Timeshift vs Snapper comparison](https://www.compsmag.com/vs/timeshift-vs-snapper/) — feature comparison (not official)
-- [25 Best Backup Tools for Linux](https://www.tecmint.com/linux-system-backup-tools/) — general overview
+- [Material You Color Generation - matugen](https://github.com/InioX/matugen) — Reference for color extraction anti-pattern
+- [GTK CSS Theming - ArchWiki](https://wiki.archlinux.org/title/GTK) — CSS cascading issues
+- Community discussions on wallpaper-theme coordination strategies
+- Interior design color coordination principles (applied to digital themes)
 
 ---
-*Research completed: 2026-01-23*
+*Research completed: 2026-01-24*
 *Ready for roadmap: yes*
