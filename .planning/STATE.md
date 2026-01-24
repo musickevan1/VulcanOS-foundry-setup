@@ -10,29 +10,29 @@ See: .planning/PROJECT.md (updated 2026-01-23)
 ## Current Position
 
 Phase: 5 of 5 (VulcanOS Wallpaper Manager)
-Plan: 5 of ? in current phase
+Plan: 7 of ? in current phase
 Status: In progress
-Last activity: 2026-01-24 — Completed 05-05-PLAN.md (profile management)
+Last activity: 2026-01-24 — Completed 05-07-PLAN.md (desktop integration)
 
-Progress: [██████░░░░] ~30% (6 plans complete)
+Progress: [██████░░░░] ~35% (7 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 6
-- Average duration: 4.6 minutes
-- Total execution time: 0.46 hours
+- Total plans completed: 7
+- Average duration: 3.9 minutes
+- Total execution time: 0.45 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-t2-kernel-protection | 2 | 8m 39s | 4m 19s |
-| 05-vulcanos-wallpaper-manager | 4 | 19m 55s | 4m 59s |
+| 05-vulcanos-wallpaper-manager | 5 | 21m 55s | 4m 23s |
 
 **Recent Trend:**
-- Last 5 plans: 05-01 (6m 51s), 05-02 (3m 14s), 05-04 (4m 26s), 05-05 (5m 24s)
-- Trend: Consistent velocity around 4-6 minutes per plan
+- Last 5 plans: 05-02 (3m 14s), 05-04 (4m 26s), 05-05 (5m 24s), 05-07 (2m 0s)
+- Trend: Accelerating - desktop integration very efficient
 
 *Updated after each plan completion*
 
@@ -64,6 +64,8 @@ Recent decisions affecting current work:
 - Prevent deletion of built-in profiles (UI protection for known profiles)
 - Profile manager in header bar (easy access, grouped with other controls)
 - Clone macro for GTK signal handlers (proper GTK4/Rust pattern with strong references)
+- Desktop entry in Style > Wallpaper submenu (natural placement alongside appearance tools)
+- Laptop profile as skeleton default (most common fresh install scenario)
 
 **Phase 1 - Kernel Protection:**
 - Timeshift rsync for snapshots (ext4 filesystem, battle-tested tool, CLI available)
@@ -94,9 +96,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-01-24T06:32:30Z (plan 05-05 execution)
-Stopped at: Completed 05-05-PLAN.md (profile management)
+Last session: 2026-01-24T06:37:41Z (plan 05-07 execution)
+Stopped at: Completed 05-07-PLAN.md (desktop integration)
 Resume file: None
 
 ---
-*Next step: Continue with phase 5 plan 06 (CLI integration) or other phases*
+*Next step: Continue with remaining phase 5 plans or other phases*
