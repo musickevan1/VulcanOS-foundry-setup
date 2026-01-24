@@ -16,6 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [ ] **Phase 2: Core Backup Engine** - Manual snapshot and restore capabilities via Timeshift
 - [ ] **Phase 3: Desktop Integration** - Menu system and status display for backup operations
 - [ ] **Phase 4: Automation & Validation** - Scheduled backups and pre-update protection
+- [ ] **Phase 5: VulcanOS Wallpaper Manager** - GTK4/Adwaita GUI for multi-monitor wallpaper management
 
 ## Phase Details
 
@@ -86,10 +87,35 @@ Plans:
 Plans:
 - TBD (will be created during `/gsd:plan-phase 4`)
 
+### Phase 5: VulcanOS Wallpaper Manager
+**Goal**: Native GTK4/Adwaita GUI for multi-monitor wallpaper management with per-monitor assignment, profiles, and adaptive wallpaper generation
+**Depends on**: Phase 3 (Desktop Integration patterns)
+**Requirements**: WALL-01, WALL-02, WALL-03, WALL-04, WALL-05
+**Success Criteria** (what must be TRUE):
+  1. User can launch vulcan-wallpaper-manager GUI from menu or command line
+  2. GUI displays visual representation of current monitor layout with live wallpaper previews
+  3. User can assign different wallpapers to each monitor via drag-and-drop or file picker
+  4. User can save/load wallpaper profiles by name (matching hyprmon monitor profiles)
+  5. User can generate adaptive/split wallpapers that span multiple monitors seamlessly
+  6. Changes apply immediately to hyprpaper without restart
+  7. Profiles are synced to archiso skeleton for fresh installs
+  8. Wallpaper settings accessible from vulcan-menu submenu
+**Plans**: 8 plans in 6 waves
+
+Plans:
+- [ ] 05-01-PLAN.md — Project scaffold and core infrastructure (Cargo, models, hyprctl service)
+- [ ] 05-02-PLAN.md — Main app window and monitor layout visualization
+- [ ] 05-03-PLAN.md — Wallpaper picker with thumbnail grid and caching
+- [ ] 05-04-PLAN.md — Component integration and hyprpaper IPC
+- [ ] 05-05-PLAN.md — Profile management (save/load/sync)
+- [ ] 05-06-PLAN.md — Adaptive wallpaper generation (panoramic splitting)
+- [ ] 05-07-PLAN.md — Desktop integration (menu, .desktop file, archiso sync)
+- [ ] 05-08-PLAN.md — Human verification checkpoint
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4
+Phases execute in numeric order: 1 → 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -97,7 +123,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 | 2. Core Backup Engine | 0/? | Not started | - |
 | 3. Desktop Integration | 0/? | Not started | - |
 | 4. Automation & Validation | 0/? | Not started | - |
+| 5. VulcanOS Wallpaper Manager | 0/8 | Planned | - |
 
 ---
 *Roadmap created: 2026-01-23*
-*Last updated: 2026-01-23 after Phase 1 planning*
+*Last updated: 2026-01-24 after Phase 5 planning*
