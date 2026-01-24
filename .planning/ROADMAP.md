@@ -29,10 +29,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Pacman operation aborts if /boot is not mounted before kernel update
   4. User can verify initramfs was generated successfully after kernel operations
   5. GRUB menu shows previous kernel version as fallback boot option
-**Plans**: TBD
+**Plans**: 3 plans in 2 waves
 
 Plans:
-- TBD (will be created during `/gsd:plan-phase 1`)
+- [ ] 01-01-PLAN.md — Protection hooks and scripts (blocks mainline kernel, /boot check, warnings)
+- [ ] 01-02-PLAN.md — Verification and fallback (boot chain verify, GRUB fallback entries)
+- [ ] 01-03-PLAN.md — Archiso sync and end-to-end testing
 
 ### Phase 2: Core Backup Engine
 **Goal**: User can create, list, restore, and manage system snapshots manually using proven backup tools
@@ -91,11 +93,11 @@ Phases execute in numeric order: 1 → 2 → 3 → 4
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. T2 Kernel Protection | 0/? | Not started | - |
+| 1. T2 Kernel Protection | 0/3 | Planned | - |
 | 2. Core Backup Engine | 0/? | Not started | - |
 | 3. Desktop Integration | 0/? | Not started | - |
 | 4. Automation & Validation | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-01-23*
-*Last updated: 2026-01-23 after initial creation*
+*Last updated: 2026-01-23 after Phase 1 planning*
