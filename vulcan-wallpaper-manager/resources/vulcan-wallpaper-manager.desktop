@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=VulcanOS Wallpaper Manager
+GenericName=Wallpaper Manager
+Comment=Manage per-monitor wallpapers with profile support
+Exec=vulcan-wallpaper-manager
+Icon=preferences-desktop-wallpaper
+Terminal=false
+Categories=Settings;DesktopSettings;
+Keywords=wallpaper;background;monitor;display;
+StartupNotify=true
