@@ -9,6 +9,7 @@
 # Theme metadata
 export THEME_NAME="Vulcan Forge"
 export THEME_ID="vulcan-forge"
+export THEME_DESCRIPTION="Warm forge-inspired colors with orange and gold accents"
 
 # Background colors (warm charcoal scale)
 export BG_PRIMARY="#1c1917"     # Forge Black - primary background

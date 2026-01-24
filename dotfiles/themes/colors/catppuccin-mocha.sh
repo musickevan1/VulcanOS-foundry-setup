@@ -4,6 +4,7 @@
 
 export THEME_NAME="Catppuccin Mocha"
 export THEME_ID="catppuccin-mocha"
+export THEME_DESCRIPTION="Soothing pastel theme"
 
 # Background colors
 export BG_PRIMARY="#1e1e2e"

@@ -4,6 +4,7 @@
 
 export THEME_NAME="One Dark"
 export THEME_ID="onedark"
+export THEME_DESCRIPTION="Atom's iconic dark theme"
 
 # Background colors
 export BG_PRIMARY="#282c34"

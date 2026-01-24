@@ -4,6 +4,7 @@
 
 export THEME_NAME="Dracula"
 export THEME_ID="dracula"
+export THEME_DESCRIPTION="Dark theme with purple accents"
 
 # Background colors
 export BG_PRIMARY="#282a36"

@@ -4,6 +4,7 @@
 
 export THEME_NAME="Gruvbox Dark"
 export THEME_ID="gruvbox-dark"
+export THEME_DESCRIPTION="Retro groove colors"
 
 # Background colors
 export BG_PRIMARY="#282828"

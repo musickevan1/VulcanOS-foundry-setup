@@ -16,17 +16,65 @@ CURRENT_THEME_FILE="${VULCAN_CONFIG}/current-theme"
 # Ensure vulcan config directory exists
 mkdir -p "${VULCAN_CONFIG}"
 
-# Available themes
-THEMES=(
-    "vulcan-forge:Vulcan Forge:Warm forge-inspired colors with orange and gold accents"
-    "tokyonight:Tokyo Night:Soft dark theme with vibrant colors"
-    "catppuccin-mocha:Catppuccin Mocha:Soothing pastel theme"
-    "dracula:Dracula:Dark theme with purple accents"
-    "gruvbox-dark:Gruvbox Dark:Retro groove colors"
-    "nord:Nord:Arctic, bluish color palette"
-    "onedark:One Dark:Atom's iconic dark theme"
-    "rosepine:Rose Pine:All natural pine, faux fur and a bit of soho vibes"
-)
+# Dynamic theme discovery - scans colors directory for .sh files
+# Each theme file must export THEME_NAME and THEME_ID
+# Optionally exports THEME_DESCRIPTION for menu display
+discover_themes() {
+    THEMES=()
+
+    # Scan main colors directory
+    if [[ -d "${COLORS_DIR}" ]]; then
+        for theme_file in "${COLORS_DIR}"/*.sh; do
+            [[ -f "${theme_file}" ]] || continue
+
+            # Source in subshell to extract metadata without polluting environment
+            local metadata
+            metadata=$(
+                unset THEME_NAME THEME_ID THEME_DESCRIPTION
+                # shellcheck source=/dev/null
+                source "${theme_file}" 2>/dev/null
+                echo "${THEME_ID:-}:${THEME_NAME:-}:${THEME_DESCRIPTION:-No description}"
+            )
+
+            local id name desc
+            IFS=':' read -r id name desc <<< "${metadata}"
+
+            # Only add if we have valid id and name
+            if [[ -n "${id}" && -n "${name}" ]]; then
+                THEMES+=("${id}:${name}:${desc}")
+            fi
+        done
+    fi
+
+    # Scan custom themes directory
+    if [[ -d "${COLORS_DIR}/custom" ]]; then
+        for theme_file in "${COLORS_DIR}/custom"/*.sh; do
+            [[ -f "${theme_file}" ]] || continue
+
+            local metadata
+            metadata=$(
+                unset THEME_NAME THEME_ID THEME_DESCRIPTION
+                # shellcheck source=/dev/null
+                source "${theme_file}" 2>/dev/null
+                echo "${THEME_ID:-}:${THEME_NAME:-}:${THEME_DESCRIPTION:-Custom theme}"
+            )
+
+            local id name desc
+            IFS=':' read -r id name desc <<< "${metadata}"
+
+            if [[ -n "${id}" && -n "${name}" ]]; then
+                # Mark custom themes with [custom] prefix in description
+                THEMES+=("${id}:${name}:[custom] ${desc}")
+            fi
+        done
+    fi
+
+    # Sort themes alphabetically by name
+    IFS=$'\n' THEMES=($(sort -t: -k2 <<<"${THEMES[*]}")); unset IFS
+}
+
+# Initialize themes array
+discover_themes
 
 # Color output helpers (using _CLR prefix to avoid conflicts with theme variables)
 _CLR_RED='\033[0;31m'

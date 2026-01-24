@@ -4,6 +4,7 @@
 
 export THEME_NAME="Nord"
 export THEME_ID="nord"
+export THEME_DESCRIPTION="Arctic, bluish color palette"
 
 # Background colors (Polar Night)
 export BG_PRIMARY="#2e3440"

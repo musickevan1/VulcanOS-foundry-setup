@@ -4,6 +4,7 @@
 
 export THEME_NAME="Rose Pine"
 export THEME_ID="rosepine"
+export THEME_DESCRIPTION="All natural pine, faux fur and a bit of soho vibes"
 
 # Background colors
 export BG_PRIMARY="#191724"

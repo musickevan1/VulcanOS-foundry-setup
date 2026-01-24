@@ -4,6 +4,7 @@
 
 export THEME_NAME="Tokyo Night"
 export THEME_ID="tokyonight"
+export THEME_DESCRIPTION="Soft dark theme with vibrant colors"
 
 # Background colors
 export BG_PRIMARY="#1a1b26"
