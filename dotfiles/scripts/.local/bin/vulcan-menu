@@ -636,13 +636,7 @@ show_theme_selector_menu() {
 
 show_wallpaper_menu() {
     local choice
-    choice=$(printf '%s\n' \
-        "󰸉  Wallpaper Manager" \
-        "󰸉  Wallpaper Profiles" \
-        "󰥶  Browse Wallpapers" \
-        "󰷊  Random Wallpaper" \
-        "󰑘  Rotate Next" \
-        "󰁍  Back" | wofi --dmenu \
+    choice=$(echo -e "Wallpaper Manager\nWallpaper Profiles\nBrowse Wallpapers\nRandom Wallpaper\nRotate Next\nBack" | wofi --dmenu \
             --prompt "Wallpaper" \
             --cache-file /dev/null \
             --width 350 \
@@ -651,8 +645,8 @@ show_wallpaper_menu() {
             --hide-scroll \
             --no-actions 2>/dev/null)
 
-    local action
-    action=$(echo "$choice" | sed 's/^[^ ]* *//')
+    # No icon stripping needed - using plain text
+    local action="$choice"
 
     case "$action" in
         "Wallpaper Manager")

@@ -1,127 +1,86 @@
+//! Wallpaper backend service for VulcanOS
+//!
+//! Uses swww (Solution to your Wayland Wallpaper Woes) for wallpaper management.
+//! swww provides smooth transitions and per-monitor wallpaper support.
+
 use std::path::Path;
 use std::process::Command;
-use std::collections::HashSet;
-use std::sync::Mutex;
 use anyhow::{Result, Context};
 
-lazy_static::lazy_static! {
-    /// Track preloaded wallpapers to avoid redundant preloads
-    static ref PRELOADED: Mutex<HashSet<String>> = Mutex::new(HashSet::new());
-}
-
-/// Preload a wallpaper image into hyprpaper memory
-pub fn preload(path: &Path) -> Result<()> {
-    let path_str = path.to_string_lossy().to_string();
-
-    // Check if already preloaded
-    {
-        let preloaded = PRELOADED.lock().unwrap();
-        if preloaded.contains(&path_str) {
-            return Ok(());
-        }
-    }
-
-    let output = Command::new("hyprctl")
-        .args(["hyprpaper", "preload", &path_str])
-        .output()
-        .context("Failed to execute hyprctl")?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        // Don't fail if already preloaded
-        if !stderr.contains("already") {
-            anyhow::bail!("hyprpaper preload failed: {}", stderr);
-        }
-    }
-
-    // Mark as preloaded
-    {
-        let mut preloaded = PRELOADED.lock().unwrap();
-        preloaded.insert(path_str);
-    }
-
-    Ok(())
-}
-
-/// Set wallpaper for a specific monitor
-pub fn set_wallpaper(monitor: &str, path: &Path) -> Result<()> {
-    let path_str = path.to_string_lossy().to_string();
-    let arg = format!("{},{}", monitor, path_str);
-
-    let output = Command::new("hyprctl")
-        .args(["hyprpaper", "wallpaper", &arg])
-        .output()
-        .context("Failed to execute hyprctl")?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        anyhow::bail!("hyprpaper set wallpaper failed: {}", stderr);
-    }
-
-    Ok(())
-}
-
-/// Apply wallpaper to a monitor (preload + set in one call)
+/// Apply wallpaper to a specific monitor using swww
+///
+/// swww handles everything in one command - no separate preload needed.
 pub fn apply_wallpaper(monitor: &str, path: &Path) -> Result<()> {
-    preload(path)?;
-    set_wallpaper(monitor, path)?;
-    Ok(())
-}
-
-/// Unload a wallpaper from hyprpaper to free memory
-pub fn unload(path: &Path) -> Result<()> {
     let path_str = path.to_string_lossy().to_string();
 
-    let output = Command::new("hyprctl")
-        .args(["hyprpaper", "unload", &path_str])
+    let output = Command::new("swww")
+        .args([
+            "img",
+            &path_str,
+            "--outputs", monitor,
+            "--transition-type", "fade",
+            "--transition-duration", "0.5",
+        ])
         .output()
-        .context("Failed to execute hyprctl")?;
+        .context("Failed to execute swww")?;
 
-    if output.status.success() {
-        // Remove from preloaded set
-        let mut preloaded = PRELOADED.lock().unwrap();
-        preloaded.remove(&path_str);
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("swww set wallpaper failed: {}", stderr);
     }
 
     Ok(())
 }
 
-/// List currently loaded wallpapers
-pub fn list_loaded() -> Result<Vec<String>> {
-    let output = Command::new("hyprctl")
-        .args(["hyprpaper", "listloaded"])
-        .output()
-        .context("Failed to execute hyprctl")?;
-
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    let loaded: Vec<String> = stdout
-        .lines()
-        .filter(|l| !l.is_empty())
-        .map(|l| l.to_string())
-        .collect();
-
-    Ok(loaded)
+/// Set wallpaper for a specific monitor (alias for apply_wallpaper)
+pub fn set_wallpaper(monitor: &str, path: &Path) -> Result<()> {
+    apply_wallpaper(monitor, path)
 }
 
-/// List active wallpapers (monitor -> path mapping)
+/// Preload is a no-op for swww (kept for API compatibility)
+pub fn preload(_path: &Path) -> Result<()> {
+    // swww doesn't have a separate preload step
+    Ok(())
+}
+
+/// Unload is a no-op for swww (kept for API compatibility)
+pub fn unload(_path: &Path) -> Result<()> {
+    // swww manages memory automatically
+    Ok(())
+}
+
+/// List active wallpapers (monitor -> path mapping) by querying swww
 pub fn list_active() -> Result<Vec<(String, String)>> {
-    let output = Command::new("hyprctl")
-        .args(["hyprpaper", "listactive"])
+    let output = Command::new("swww")
+        .arg("query")
         .output()
-        .context("Failed to execute hyprctl")?;
+        .context("Failed to execute swww query")?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     let active: Vec<(String, String)> = stdout
         .lines()
         .filter_map(|line| {
-            let parts: Vec<&str> = line.split(" = ").collect();
+            // Format: ": DP-10: 1920x1080, scale: 1, currently displaying: image: /path/to/image.png"
+            // We need to extract monitor name and image path
+            let line = line.trim_start_matches(": ");
+            let parts: Vec<&str> = line.splitn(2, ": ").collect();
             if parts.len() == 2 {
-                Some((parts[0].to_string(), parts[1].to_string()))
-            } else {
-                None
+                let monitor = parts[0].to_string();
+                // Extract path from "1920x1080, scale: 1, currently displaying: image: /path"
+                if let Some(img_start) = parts[1].find("image: ") {
+                    let path = parts[1][img_start + 7..].to_string();
+                    return Some((monitor, path));
+                }
             }
+            None
         })
         .collect();
 
     Ok(active)
+}
+
+/// List currently loaded wallpapers (returns active wallpaper paths)
+pub fn list_loaded() -> Result<Vec<String>> {
+    let active = list_active()?;
+    Ok(active.into_iter().map(|(_, path)| path).collect())
 }
