@@ -1,0 +1,12 @@
+[Trigger]
+Type = Path
+Operation = Install
+Operation = Upgrade
+Target = usr/lib/modules/*/vmlinuz
+Target = boot/vmlinuz-*
+Target = boot/initramfs-*.img
+
+[Action]
+Description = Verifying T2 kernel boot chain integrity...
+When = PostTransaction
+Exec = /usr/local/bin/vulcan-kernel-verify
