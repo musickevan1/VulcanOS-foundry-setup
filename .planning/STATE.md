@@ -10,29 +10,29 @@ See: .planning/PROJECT.md (updated 2026-01-23)
 ## Current Position
 
 Phase: 5 of 5 (VulcanOS Wallpaper Manager)
-Plan: 2 of ? in current phase
+Plan: 4 of ? in current phase
 Status: In progress
-Last activity: 2026-01-24 — Completed 05-02-PLAN.md (main window and monitor layout)
+Last activity: 2026-01-24 — Completed 05-04-PLAN.md (component integration and wallpaper application)
 
-Progress: [████░░░░░░] ~20% (4 plans complete)
+Progress: [█████░░░░░] ~25% (5 plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
+- Total plans completed: 5
 - Average duration: 4.6 minutes
-- Total execution time: 0.31 hours
+- Total execution time: 0.38 hours
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-t2-kernel-protection | 2 | 8m 39s | 4m 19s |
-| 05-vulcanos-wallpaper-manager | 2 | 10m 05s | 5m 03s |
+| 05-vulcanos-wallpaper-manager | 3 | 14m 31s | 4m 50s |
 
 **Recent Trend:**
-- Last 5 plans: 01-01 (4m 47s), 01-02 (3m 52s), 05-01 (6m 51s), 05-02 (3m 14s)
-- Trend: Improving velocity (recent plans faster than average)
+- Last 5 plans: 01-02 (3m 52s), 05-01 (6m 51s), 05-02 (3m 14s), 05-04 (4m 26s)
+- Trend: Consistent velocity around 4-5 minutes per plan
 
 *Updated after each plan completion*
 
@@ -54,6 +54,10 @@ Recent decisions affecting current work:
 - Calculate scale factor to fit all monitors in viewport (handles multi-monitor setups)
 - Blue highlight for selected monitor (clear visual feedback)
 - GestureClick for mouse input (modern GTK4 event handling)
+- Preload tracking with lazy_static Mutex<HashSet> (avoid redundant hyprpaper preloads)
+- Vertical split pane layout (monitors top, wallpapers bottom for optimal space usage)
+- Apply button in bottom panel (contextual placement near wallpaper selection)
+- xdg-open for directory opening (respects user's file manager preference)
 
 **Phase 1 - Kernel Protection:**
 - Timeshift rsync for snapshots (ext4 filesystem, battle-tested tool, CLI available)
@@ -84,9 +88,9 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-01-24T06:15:06Z (plan 05-02 execution)
-Stopped at: Completed 05-02-PLAN.md (main window and monitor layout)
+Last session: 2026-01-24T06:23:57Z (plan 05-04 execution)
+Stopped at: Completed 05-04-PLAN.md (component integration and wallpaper application)
 Resume file: None
 
 ---
-*Next step: Continue with phase 5 plan 03 (wallpaper selection) or other phases*
+*Next step: Continue with phase 5 plan 05 (profile management) or other phases*
