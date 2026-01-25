@@ -112,8 +112,8 @@ monitor = ${FLOAT2_PRO:-desc:Invalid Vendor Codename - RTK Float2 Pro 0x01010130
 # MacBook Laptop - right bottom (after Float2 Pro at Y=1600)
 monitor = eDP-1, 3072x1920@60, 3000x1600, 1.6
 
-# Fallback
-monitor = , preferred, auto, 1
+# Disable any other monitors
+monitor = , disable
 EOF
 }
 
