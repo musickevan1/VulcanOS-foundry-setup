@@ -5,6 +5,8 @@ use std::path::PathBuf;
 use std::collections::HashMap;
 
 use crate::components::profile_manager::{ProfileManagerModel, ProfileManagerInput, ProfileManagerOutput};
+use crate::components::theme_view::{ThemeViewModel, ThemeViewMsg, ThemeViewOutput};
+use crate::components::wallpaper_view::{WallpaperViewModel, WallpaperViewMsg, WallpaperViewOutput};
 
 #[derive(Debug)]
 pub enum AppMsg {
@@ -13,10 +15,14 @@ pub enum AppMsg {
     ProfileSaved(String),
     ProfileError(String),
     ShowToast(String),
+    ThemeApplied(String),
+    WallpapersChanged(HashMap<String, PathBuf>),
 }
 
 pub struct App {
     view_stack: adw::ViewStack,
+    theme_view: Controller<ThemeViewModel>,
+    wallpaper_view: Controller<WallpaperViewModel>,
     profile_manager: Controller<ProfileManagerModel>,
     toast_overlay: adw::ToastOverlay,
 }
@@ -69,23 +75,37 @@ impl SimpleComponent for App {
         // Create ViewStack for tab navigation
         let view_stack = adw::ViewStack::new();
 
-        // Placeholder for Themes (will be replaced in Plan 3)
-        let themes_placeholder = gtk::Label::builder()
-            .label("Themes View (loading...)")
-            .build();
+        // Create theme view component
+        let theme_view = ThemeViewModel::builder()
+            .launch(())
+            .forward(sender.input_sender(), |msg| {
+                match msg {
+                    ThemeViewOutput::ShowToast(text) => AppMsg::ShowToast(text),
+                    ThemeViewOutput::ThemeApplied(id) => AppMsg::ThemeApplied(id),
+                }
+            });
+
+        // Add Themes tab to ViewStack
         view_stack.add_titled_with_icon(
-            &themes_placeholder,
+            theme_view.widget(),
             Some("themes"),
             "Themes",
             "preferences-color-symbolic"
         );
 
-        // Placeholder for Wallpapers (will be replaced in Plan 4)
-        let wallpapers_placeholder = gtk::Label::builder()
-            .label("Wallpapers View (loading...)")
-            .build();
+        // Create wallpaper view component
+        let wallpaper_view = WallpaperViewModel::builder()
+            .launch(())
+            .forward(sender.input_sender(), |msg| {
+                match msg {
+                    WallpaperViewOutput::ShowToast(text) => AppMsg::ShowToast(text),
+                    WallpaperViewOutput::WallpapersChanged(wps) => AppMsg::WallpapersChanged(wps),
+                }
+            });
+
+        // Add Wallpapers tab to ViewStack
         view_stack.add_titled_with_icon(
-            &wallpapers_placeholder,
+            wallpaper_view.widget(),
             Some("wallpapers"),
             "Wallpapers",
             "preferences-desktop-wallpaper-symbolic"
@@ -106,6 +126,8 @@ impl SimpleComponent for App {
 
         let model = App {
             view_stack,
+            theme_view,
+            wallpaper_view,
             profile_manager,
             toast_overlay: toast_overlay.clone(),
         };
@@ -118,13 +140,13 @@ impl SimpleComponent for App {
     fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
         match msg {
             AppMsg::Refresh => {
-                // Refresh current view (will be forwarded to active view in later plans)
-                println!("Refresh requested");
+                // Forward refresh to wallpaper view
+                self.wallpaper_view.emit(WallpaperViewMsg::RefreshMonitors);
             }
 
             AppMsg::ProfileApply(wallpapers) => {
-                // Apply profile (will be forwarded to wallpaper view in Plan 4)
-                println!("Applying profile with {} wallpapers", wallpapers.len());
+                // Forward profile application to wallpaper view
+                self.wallpaper_view.emit(WallpaperViewMsg::ApplyProfile(wallpapers));
             }
 
             AppMsg::ProfileSaved(name) => {
@@ -140,6 +162,16 @@ impl SimpleComponent for App {
             AppMsg::ShowToast(message) => {
                 let toast = adw::Toast::new(&message);
                 self.toast_overlay.add_toast(toast);
+            }
+
+            AppMsg::ThemeApplied(theme_id) => {
+                let toast = adw::Toast::new(&format!("Applied theme: {}", theme_id));
+                self.toast_overlay.add_toast(toast);
+            }
+
+            AppMsg::WallpapersChanged(wallpapers) => {
+                // Notify profile manager of wallpaper changes
+                self.profile_manager.emit(ProfileManagerInput::UpdateWallpapers(wallpapers));
             }
         }
     }
