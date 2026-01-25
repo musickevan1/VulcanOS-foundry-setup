@@ -116,6 +116,24 @@ pub fn delete_profile(name: &str) -> Result<()> {
     Ok(())
 }
 
+/// Ensure all known profile files exist (creates empty profiles if missing)
+pub fn ensure_known_profiles() {
+    if let Ok(dir) = ensure_profile_dir() {
+        for name in KNOWN_PROFILES {
+            let path = dir.join(format!("{}.toml", name));
+            if !path.exists() {
+                // Create empty profile
+                let profile = WallpaperProfile {
+                    name: name.to_string(),
+                    monitor_wallpapers: HashMap::new(),
+                    description: format!("VulcanOS {} profile", name),
+                };
+                let _ = save_profile(&profile);
+            }
+        }
+    }
+}
+
 /// Get the current profile name based on monitor count
 /// This matches the logic in vulcan-wallpaper-menu
 pub fn detect_current_profile() -> Option<String> {

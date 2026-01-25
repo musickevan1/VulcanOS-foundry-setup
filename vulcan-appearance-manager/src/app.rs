@@ -236,6 +236,10 @@ impl SimpleComponent for App {
                             self.profile_manager.emit(ProfileManagerInput::UpdateWallpapers(
                                 self.monitor_wallpapers.clone()
                             ));
+                            // Update monitor layout visualization
+                            self.monitor_layout.emit(MonitorLayoutInput::UpdateWallpapers(
+                                self.monitor_wallpapers.clone()
+                            ));
                         }
                         Err(e) => {
                             eprintln!("Failed to apply wallpaper: {}", e);
@@ -248,6 +252,10 @@ impl SimpleComponent for App {
                 if let Ok(monitors) = hyprctl::get_monitors() {
                     self.monitors = monitors.clone();
                     self.monitor_layout.emit(MonitorLayoutInput::UpdateMonitors(monitors));
+                    // Also refresh wallpaper state on layout
+                    self.monitor_layout.emit(MonitorLayoutInput::UpdateWallpapers(
+                        self.monitor_wallpapers.clone()
+                    ));
                 }
                 self.wallpaper_picker.emit(WallpaperPickerInput::Refresh);
             }
@@ -269,7 +277,10 @@ impl SimpleComponent for App {
                         eprintln!("Failed to apply to {}: {}", monitor, e);
                     }
                 }
-                self.monitor_wallpapers.extend(wallpapers);
+                // Update internal state
+                self.monitor_wallpapers = wallpapers.clone();
+                // Update monitor layout visualization
+                self.monitor_layout.emit(MonitorLayoutInput::UpdateWallpapers(wallpapers));
             }
 
             AppMsg::ProfileSaved(name) => {
@@ -321,6 +332,11 @@ impl SimpleComponent for App {
 
                 // Notify profile manager of the new wallpapers
                 self.profile_manager.emit(ProfileManagerInput::UpdateWallpapers(
+                    self.monitor_wallpapers.clone()
+                ));
+
+                // Update monitor layout visualization
+                self.monitor_layout.emit(MonitorLayoutInput::UpdateWallpapers(
                     self.monitor_wallpapers.clone()
                 ));
 

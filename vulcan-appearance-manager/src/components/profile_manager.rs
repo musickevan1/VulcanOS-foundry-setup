@@ -36,6 +36,8 @@ pub struct ProfileManagerModel {
     profiles: Vec<String>,
     selected_profile: Option<String>,
     current_wallpapers: HashMap<String, PathBuf>,
+    /// Flag to prevent infinite loops when updating dropdown programmatically
+    updating_dropdown: bool,
 }
 
 #[relm4::component(pub)]
@@ -51,14 +53,17 @@ impl SimpleComponent for ProfileManagerModel {
             set_spacing: 8,
             set_margin_all: 4,
 
-            // Profile dropdown
-            #[name = "profile_dropdown"]
-            gtk::DropDown {
+            // Profile dropdown - use ComboBoxText for simpler handling
+            #[name = "profile_combo"]
+            gtk::ComboBoxText {
                 set_tooltip_text: Some("Select profile"),
-                set_hexpand: true,
+                set_hexpand: false,
 
-                #[watch]
-                set_model: Some(&gtk::StringList::new(&model.profiles.iter().map(|s| s.as_str()).collect::<Vec<_>>())),
+                connect_changed[sender] => move |combo| {
+                    if let Some(text) = combo.active_text() {
+                        sender.input(ProfileManagerInput::ProfileSelected(text.to_string()));
+                    }
+                },
             },
 
             // Load button
@@ -93,33 +98,32 @@ impl SimpleComponent for ProfileManagerModel {
         _root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
+        // Ensure known profiles exist as files
+        profile_storage::ensure_known_profiles();
+
         let profiles = profile_storage::list_profiles().unwrap_or_default();
+        let detected = profile_storage::detect_current_profile();
 
         let model = ProfileManagerModel {
-            profiles,
-            selected_profile: profile_storage::detect_current_profile(),
+            profiles: profiles.clone(),
+            selected_profile: detected.clone(),
             current_wallpapers: HashMap::new(),
+            updating_dropdown: false,
         };
 
         let widgets = view_output!();
 
-        // Connect dropdown signal
-        widgets.profile_dropdown.connect_selected_notify(
-            clone!(
-                #[strong]
-                sender,
-                move |dropdown| {
-                    if let Some(model) = dropdown.model() {
-                        if let Some(item) = model.item(dropdown.selected()) {
-                            if let Some(string_obj) = item.downcast_ref::<gtk::StringObject>() {
-                                let name = string_obj.string().to_string();
-                                sender.input(ProfileManagerInput::ProfileSelected(name));
-                            }
-                        }
-                    }
-                }
-            )
-        );
+        // Populate combo box
+        for profile in &profiles {
+            widgets.profile_combo.append_text(profile);
+        }
+
+        // Set active item if detected
+        if let Some(ref detected_name) = detected {
+            if let Some(idx) = profiles.iter().position(|p| p == detected_name) {
+                widgets.profile_combo.set_active(Some(idx as u32));
+            }
+        }
 
         ComponentParts { model, widgets }
     }
@@ -131,7 +135,19 @@ impl SimpleComponent for ProfileManagerModel {
             }
 
             ProfileManagerInput::ProfileSelected(name) => {
-                self.selected_profile = Some(name);
+                self.selected_profile = Some(name.clone());
+                // Auto-load the selected profile
+                match profile_storage::load_profile(&name) {
+                    Ok(profile) => {
+                        let _ = sender.output(ProfileManagerOutput::ApplyProfile(
+                            profile.monitor_wallpapers
+                        ));
+                        println!("Auto-loaded profile: {}", name);
+                    }
+                    Err(e) => {
+                        eprintln!("Failed to load profile {}: {}", name, e);
+                    }
+                }
             }
 
             ProfileManagerInput::SaveProfile => {

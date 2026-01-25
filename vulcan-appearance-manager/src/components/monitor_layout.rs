@@ -3,13 +3,16 @@ use relm4::prelude::*;
 use relm4::gtk::glib::clone;
 use std::cell::RefCell;
 use std::rc::Rc;
+use std::collections::HashMap;
+use std::path::PathBuf;
 
 use crate::models::Monitor;
 
 #[derive(Debug)]
 pub enum MonitorLayoutInput {
     UpdateMonitors(Vec<Monitor>),
-    Click(f64, f64),
+    UpdateWallpapers(HashMap<String, PathBuf>),
+    Click(f64, f64, f64, f64), // click_x, click_y, widget_width, widget_height
 }
 
 #[derive(Debug)]
@@ -19,7 +22,11 @@ pub enum MonitorLayoutOutput {
 
 pub struct MonitorLayoutModel {
     monitors: Rc<RefCell<Vec<Monitor>>>,
-    selected: Option<String>,
+    selected: Rc<RefCell<Option<String>>>,
+    /// Map of monitor name -> assigned wallpaper path
+    wallpapers: Rc<RefCell<HashMap<String, PathBuf>>>,
+    /// Drawing area reference for manual redraws
+    drawing_area: Rc<RefCell<Option<gtk::DrawingArea>>>,
 }
 
 #[relm4::component(pub)]
@@ -35,15 +42,6 @@ impl SimpleComponent for MonitorLayoutModel {
             set_content_height: 300,
             set_hexpand: true,
             set_vexpand: true,
-
-            #[watch]
-            set_draw_func: {
-                let monitors = model.monitors.clone();
-                let selected = model.selected.clone();
-                move |_area, cr, width, height| {
-                    draw_monitors(cr, width, height, &monitors.borrow(), selected.as_deref());
-                }
-            },
         }
     }
 
@@ -52,21 +50,50 @@ impl SimpleComponent for MonitorLayoutModel {
         _root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
+        let monitors_rc = Rc::new(RefCell::new(monitors));
+        let selected_rc = Rc::new(RefCell::new(None::<String>));
+        let wallpapers_rc = Rc::new(RefCell::new(HashMap::new()));
+        let drawing_area_rc = Rc::new(RefCell::new(None::<gtk::DrawingArea>));
+
         let model = MonitorLayoutModel {
-            monitors: Rc::new(RefCell::new(monitors)),
-            selected: None,
+            monitors: monitors_rc.clone(),
+            selected: selected_rc.clone(),
+            wallpapers: wallpapers_rc.clone(),
+            drawing_area: drawing_area_rc.clone(),
         };
 
         let widgets = view_output!();
 
+        // Store drawing area reference
+        *drawing_area_rc.borrow_mut() = Some(widgets.drawing_area.clone());
+
+        // Set up draw function with cloned Rcs
+        let monitors_for_draw = monitors_rc.clone();
+        let selected_for_draw = selected_rc.clone();
+        let wallpapers_for_draw = wallpapers_rc.clone();
+        widgets.drawing_area.set_draw_func(move |_area, cr, width, height| {
+            draw_monitors(
+                cr, width, height,
+                &monitors_for_draw.borrow(),
+                selected_for_draw.borrow().as_deref(),
+                &wallpapers_for_draw.borrow()
+            );
+        });
+
         // Add click gesture controller
         let gesture = gtk::GestureClick::new();
+        let drawing_area_ref = widgets.drawing_area.clone();
         gesture.connect_pressed(clone!(
             #[strong]
             sender,
+            #[strong]
+            drawing_area_ref,
             move |gesture, _n, x, y| {
                 gesture.set_state(gtk::EventSequenceState::Claimed);
-                sender.input(MonitorLayoutInput::Click(x, y));
+                // Get actual widget dimensions for accurate hit testing
+                let width = drawing_area_ref.width() as f64;
+                let height = drawing_area_ref.height() as f64;
+                sender.input(MonitorLayoutInput::Click(x, y, width, height));
             }
         ));
         widgets.drawing_area.add_controller(gesture);
@@ -78,14 +105,28 @@ impl SimpleComponent for MonitorLayoutModel {
         match msg {
             MonitorLayoutInput::UpdateMonitors(monitors) => {
                 *self.monitors.borrow_mut() = monitors;
+                self.queue_draw();
             }
-            MonitorLayoutInput::Click(x, y) => {
-                // Find which monitor was clicked
-                if let Some(name) = find_monitor_at(&self.monitors.borrow(), x, y, 600.0, 300.0) {
-                    self.selected = Some(name.clone());
+            MonitorLayoutInput::UpdateWallpapers(wallpapers) => {
+                *self.wallpapers.borrow_mut() = wallpapers;
+                self.queue_draw();
+            }
+            MonitorLayoutInput::Click(x, y, width, height) => {
+                // Find which monitor was clicked using actual widget dimensions
+                if let Some(name) = find_monitor_at(&self.monitors.borrow(), x, y, width, height) {
+                    *self.selected.borrow_mut() = Some(name.clone());
+                    self.queue_draw();
                     let _ = sender.output(MonitorLayoutOutput::Selected(name));
                 }
             }
+        }
+    }
+}
+
+impl MonitorLayoutModel {
+    fn queue_draw(&self) {
+        if let Some(ref area) = *self.drawing_area.borrow() {
+            area.queue_draw();
         }
     }
 }
@@ -139,12 +180,13 @@ fn draw_monitors(
     height: i32,
     monitors: &[Monitor],
     selected: Option<&str>,
+    wallpapers: &HashMap<String, PathBuf>,
 ) {
     let width = width as f64;
     let height = height as f64;
 
-    // Clear background
-    cr.set_source_rgb(0.15, 0.15, 0.18);
+    // Clear background - Vulcan obsidian
+    cr.set_source_rgb(0.11, 0.098, 0.09); // #1c1917
     cr.paint().ok();
 
     let (scale, offset_x, offset_y) = calculate_scale(monitors, width, height);
@@ -161,21 +203,33 @@ fn draw_monitors(
         // Draw monitor rectangle
         cr.rectangle(x, y, w, h);
 
-        // Fill color based on selection
+        // Fill color based on selection and wallpaper assignment
+        let has_wallpaper = wallpapers.contains_key(&mon.name);
+
         if selected == Some(&mon.name) {
-            cr.set_source_rgb(0.4, 0.6, 0.9); // Selected: blue
+            // Selected monitor - bright ember with border highlight
+            cr.set_source_rgb(0.976, 0.451, 0.086); // Vulcan ember #f97316
+        } else if has_wallpaper {
+            // Has wallpaper assigned - dimmer ember
+            cr.set_source_rgb(0.918, 0.345, 0.047); // Vulcan molten #ea580c
         } else {
-            cr.set_source_rgb(0.25, 0.28, 0.35); // Normal: dark gray
+            // No wallpaper - dark charcoal
+            cr.set_source_rgb(0.16, 0.15, 0.14); // Vulcan charcoal #292524
         }
         cr.fill_preserve().ok();
 
-        // Border
-        cr.set_source_rgb(0.5, 0.55, 0.65);
-        cr.set_line_width(2.0);
+        // Border - highlight selected with thicker ember border
+        if selected == Some(&mon.name) {
+            cr.set_source_rgb(0.984, 0.749, 0.141); // Vulcan gold #fbbf24
+            cr.set_line_width(3.0);
+        } else {
+            cr.set_source_rgb(0.267, 0.251, 0.235); // Vulcan ash #44403c
+            cr.set_line_width(2.0);
+        }
         cr.stroke().ok();
 
         // Monitor name label
-        cr.set_source_rgb(0.9, 0.9, 0.9);
+        cr.set_source_rgb(0.98, 0.98, 0.97); // Vulcan white #fafaf9
         cr.set_font_size(12.0);
 
         let text = &mon.name;

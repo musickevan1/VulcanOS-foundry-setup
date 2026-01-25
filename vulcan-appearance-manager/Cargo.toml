@@ -1,8 +1,8 @@
 [package]
-name = "vulcan-wallpaper-manager"
+name = "vulcan-appearance-manager"
 version = "0.1.0"
 edition = "2021"
-description = "VulcanOS multi-monitor wallpaper manager with GTK4/Adwaita"
+description = "VulcanOS unified appearance manager - themes and wallpapers"
 authors = ["VulcanOS"]
 
 [dependencies]
@@ -27,6 +27,9 @@ dirs = "5"
 
 # Async runtime
 tokio = { version = "1", features = ["rt", "process"] }
+
+# Regex for parsing theme files
+regex = "1"
 
 # Lazy statics
 lazy_static = "1.4"
