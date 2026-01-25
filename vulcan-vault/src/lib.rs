@@ -40,7 +40,10 @@ pub mod mcp;
 pub mod rag;
 pub mod memory;
 
-pub use models::{Note, NoteType, NoteStatus, Chunk, ChunkConfig, Memory, MemoryType};
+#[cfg(feature = "tui")]
+pub mod ui;
+
+pub use models::{Note, NoteType, NoteStatus, Chunk, ChunkConfig, Memory, MemoryType, PrpPhase, PhaseStatus};
 pub use store::{Store, SqliteStore, StoreError, SearchResult, LinkInfo, VaultStats};
 pub use rag::{RagPipeline, RagError, RagResult, Chunker, EmbeddingService, EmbeddingError};
 pub use memory::{

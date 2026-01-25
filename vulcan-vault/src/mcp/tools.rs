@@ -229,7 +229,12 @@ pub fn get_tool_definitions() -> Vec<ToolDefinition> {
                     "context": { "type": "string", "description": "Context to search" },
                     "memory_type": { "type": "string", "enum": ["decision", "lesson", "preference", "session"] },
                     "min_confidence": { "type": "number", "default": 0.3 },
-                    "limit": { "type": "integer", "default": 10 }
+                    "limit": { "type": "integer", "default": 10 },
+                    "semantic": {
+                        "type": "boolean",
+                        "default": false,
+                        "description": "Use semantic (embedding-based) search instead of keyword matching. Requires Ollama with nomic-embed-text."
+                    }
                 },
                 "required": ["context"]
             }),
@@ -287,6 +292,99 @@ pub fn get_tool_definitions() -> Vec<ToolDefinition> {
                 "required": ["query"]
             }),
         },
+
+        // Context Engineering Tools
+        ToolDefinition {
+            name: "get_session_context".to_string(),
+            description: "Get comprehensive context for the current work session. Returns in-progress tasks, high-priority pending tasks, relevant memories, and project notes. Use at session start for context preflight.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "project": { "type": "string", "description": "Optional: limit context to a specific project" },
+                    "depth": {
+                        "type": "string",
+                        "enum": ["shallow", "deep"],
+                        "default": "shallow",
+                        "description": "shallow: active tasks + recent memories; deep: includes related notes and full task context"
+                    },
+                    "include_memories": { "type": "boolean", "default": true, "description": "Include relevant memories" }
+                }
+            }),
+        },
+        ToolDefinition {
+            name: "create_prp".to_string(),
+            description: "Create a PRP (Product Requirements Prompt) - a structured implementation spec. PRPs combine Value (why), Scope (what), Success Criteria (how to measure), and Implementation Phases.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "title": { "type": "string", "description": "PRP title" },
+                    "project": { "type": "string", "description": "Project this PRP belongs to" },
+                    "value": { "type": "string", "description": "Why are we building this?" },
+                    "scope": { "type": "string", "description": "What exactly are we building?" },
+                    "success_criteria": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "description": "How do we measure success?"
+                    },
+                    "phases": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "name": { "type": "string" },
+                                "description": { "type": "string" },
+                                "effort": { "type": "string", "enum": ["small", "medium", "large"] }
+                            },
+                            "required": ["name", "description"]
+                        },
+                        "description": "Implementation phases"
+                    },
+                    "content": { "type": "string", "description": "Additional markdown content" }
+                },
+                "required": ["title", "project", "value", "scope"]
+            }),
+        },
+        ToolDefinition {
+            name: "save_checkpoint".to_string(),
+            description: "Save a context checkpoint - captures current session state for later restoration. Use before major changes or when you want to preserve a decision point.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "name": { "type": "string", "description": "Checkpoint name/label (e.g., 'before-refactor')" },
+                    "session_id": { "type": "string", "description": "Current session ID" },
+                    "context_summary": { "type": "string", "description": "Summary of current context and decisions made" },
+                    "active_tasks": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "description": "List of active task IDs at this checkpoint"
+                    },
+                    "parent_checkpoint": { "type": "string", "description": "Optional: parent checkpoint ID for branching" }
+                },
+                "required": ["name", "session_id", "context_summary"]
+            }),
+        },
+        ToolDefinition {
+            name: "list_checkpoints".to_string(),
+            description: "List available context checkpoints, optionally filtered by session".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "session_id": { "type": "string", "description": "Filter by session ID" },
+                    "limit": { "type": "integer", "default": 20 }
+                }
+            }),
+        },
+        ToolDefinition {
+            name: "get_checkpoint".to_string(),
+            description: "Get a specific checkpoint by ID, including its full context".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string", "description": "Checkpoint note ID" }
+                },
+                "required": ["id"]
+            }),
+        },
     ]
 }
 
@@ -306,13 +404,19 @@ pub async fn call_tool(store: &SqliteStore, name: &str, args: Value) -> Result<V
         "get_notes_by_ids" => get_notes_by_ids(store, args),
         "get_project_context" => get_project_context(store, args),
         "list_projects" => list_projects(store),
-        "record_lesson" => record_memory(store, args, MemoryType::Lesson),
-        "record_decision" => record_memory(store, args, MemoryType::Decision),
-        "record_preference" => record_memory(store, args, MemoryType::Preference),
-        "recall_memories" => recall_memories(store, args),
+        "record_lesson" => record_memory(store, args, MemoryType::Lesson).await,
+        "record_decision" => record_memory(store, args, MemoryType::Decision).await,
+        "record_preference" => record_memory(store, args, MemoryType::Preference).await,
+        "recall_memories" => recall_memories(store, args).await,
         "reinforce_memory" => reinforce_memory(store, args),
         "get_stats" => get_stats(store),
         "semantic_search" => semantic_search(store, args).await,
+        // Context engineering tools
+        "get_session_context" => get_session_context(store, args),
+        "create_prp" => create_prp(store, args),
+        "save_checkpoint" => save_checkpoint(store, args),
+        "list_checkpoints" => list_checkpoints(store, args),
+        "get_checkpoint" => get_checkpoint(store, args),
         _ => Err(anyhow::anyhow!("Unknown tool: {}", name)),
     }
 }
@@ -343,6 +447,18 @@ fn create_note(store: &SqliteStore, args: Value) -> Result<Value> {
         NoteType::Learning => Note::learning_note(title, "topics"),
         NoteType::Memory => Note::memory_note(title, "lessons"),
         NoteType::Meta => Note::new(title, NoteType::Meta, format!("Meta/{}.md", slug(title))),
+        NoteType::Prp => {
+            let proj = project.ok_or_else(|| anyhow::anyhow!("PRP notes require project field"))?;
+            let value = args.get("prp_value").and_then(|v| v.as_str()).unwrap_or("TBD");
+            let scope = args.get("prp_scope").and_then(|v| v.as_str()).unwrap_or("TBD");
+            Note::prp_note(title, proj, value, scope)
+        }
+        NoteType::Checkpoint => {
+            let session_id = args.get("session_id").and_then(|v| v.as_str())
+                .ok_or_else(|| anyhow::anyhow!("Checkpoint notes require session_id field"))?;
+            let context_summary = args.get("checkpoint_context").and_then(|v| v.as_str()).unwrap_or("");
+            Note::checkpoint_note(title, session_id, context_summary)
+        }
     };
 
     note.content = content.to_string();
@@ -726,7 +842,7 @@ fn list_projects(store: &SqliteStore) -> Result<Value> {
     }))
 }
 
-fn record_memory(store: &SqliteStore, args: Value, memory_type: MemoryType) -> Result<Value> {
+async fn record_memory(store: &SqliteStore, args: Value, memory_type: MemoryType) -> Result<Value> {
     let title = args.get("title").and_then(|v| v.as_str())
         .ok_or_else(|| anyhow::anyhow!("Missing title"))?;
     let content = args.get("content").and_then(|v| v.as_str())
@@ -742,24 +858,42 @@ fn record_memory(store: &SqliteStore, args: Value, memory_type: MemoryType) -> R
             .collect();
     }
 
+    // Save memory first (always succeeds if store is working)
     store.save_memory(&memory)?;
+
+    // Attempt to generate and save embedding (non-blocking on failure)
+    let embedding_status = match generate_and_save_embedding(store, &memory).await {
+        Ok(()) => "with embedding",
+        Err(e) => {
+            tracing::warn!("Failed to generate embedding for memory {}: {}", memory.id, e);
+            "without embedding (Ollama unavailable)"
+        }
+    };
 
     Ok(json!({
         "content": [{
             "type": "text",
-            "text": format!("Recorded {}: {} ({})", memory.memory_type, memory.title, memory.id)
+            "text": format!("Recorded {}: {} ({}) [{}]",
+                memory.memory_type, memory.title, memory.id, embedding_status)
         }]
     }))
 }
 
-fn recall_memories(store: &SqliteStore, args: Value) -> Result<Value> {
+async fn recall_memories(store: &SqliteStore, args: Value) -> Result<Value> {
     let context = args.get("context").and_then(|v| v.as_str())
         .ok_or_else(|| anyhow::anyhow!("Missing context"))?;
     let memory_type = args.get("memory_type").and_then(|v| v.as_str());
     let min_confidence = args.get("min_confidence").and_then(|v| v.as_f64()).unwrap_or(0.3) as f32;
     let limit = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(10) as usize;
+    let semantic = args.get("semantic").and_then(|v| v.as_bool()).unwrap_or(false);
 
-    let memories = store.search_memories(context, memory_type, min_confidence, limit)?;
+    let memories = if semantic {
+        // Use semantic search via embeddings
+        recall_memories_semantic(store, context, memory_type, min_confidence, limit).await?
+    } else {
+        // Use existing keyword-based search
+        store.search_memories(context, memory_type, min_confidence, limit)?
+    };
 
     let result: Vec<Value> = memories.iter()
         .map(|m| json!({
@@ -783,6 +917,41 @@ fn recall_memories(store: &SqliteStore, args: Value) -> Result<Value> {
             }
         }]
     }))
+}
+
+/// Perform semantic search on memories using embeddings
+async fn recall_memories_semantic(
+    store: &SqliteStore,
+    context: &str,
+    memory_type: Option<&str>,
+    min_confidence: f32,
+    limit: usize,
+) -> Result<Vec<Memory>> {
+    let embedder = EmbeddingService::new();
+
+    // Generate embedding for the search context
+    let embedding = embedder.embed(context).await
+        .map_err(|e| anyhow::anyhow!(
+            "Semantic search requires Ollama with nomic-embed-text. Error: {}", e
+        ))?;
+
+    // Search by embedding similarity (request more to account for filtering)
+    let results = store.search_memories_semantic(&embedding, min_confidence, limit * 2)?;
+
+    // Filter by memory type if specified, and take limit
+    let filtered: Vec<Memory> = results.into_iter()
+        .map(|(memory, _distance)| memory)
+        .filter(|m| {
+            if let Some(mt) = memory_type {
+                m.memory_type.to_string().to_lowercase() == mt.to_lowercase()
+            } else {
+                true
+            }
+        })
+        .take(limit)
+        .collect();
+
+    Ok(filtered)
 }
 
 fn reinforce_memory(store: &SqliteStore, args: Value) -> Result<Value> {
@@ -829,6 +998,23 @@ fn get_stats(store: &SqliteStore) -> Result<Value> {
 
 // Helper functions
 
+/// Generate embedding for a memory and save it to the store
+/// Returns Ok(()) on success, Err on failure (non-fatal - caller should handle gracefully)
+async fn generate_and_save_embedding(store: &SqliteStore, memory: &Memory) -> Result<()> {
+    let embedder = EmbeddingService::new();
+
+    // Combine title, content, and context for richer embedding
+    let embedding_text = format!("{} {} {}", memory.title, memory.content, memory.context);
+
+    let embedding = embedder.embed(&embedding_text).await
+        .map_err(|e| anyhow::anyhow!("Embedding generation failed: {}", e))?;
+
+    store.save_memory_embedding(&memory.id, &embedding)
+        .map_err(|e| anyhow::anyhow!("Failed to save embedding: {}", e))?;
+
+    Ok(())
+}
+
 fn parse_note_type(s: &str) -> Result<NoteType> {
     match s.to_lowercase().as_str() {
         "project" => Ok(NoteType::Project),
@@ -836,6 +1022,8 @@ fn parse_note_type(s: &str) -> Result<NoteType> {
         "learning" => Ok(NoteType::Learning),
         "memory" => Ok(NoteType::Memory),
         "meta" => Ok(NoteType::Meta),
+        "prp" => Ok(NoteType::Prp),
+        "checkpoint" => Ok(NoteType::Checkpoint),
         _ => Err(anyhow::anyhow!("Unknown note type: {}", s)),
     }
 }
@@ -869,8 +1057,8 @@ async fn semantic_search(store: &SqliteStore, args: Value) -> Result<Value> {
                 .collect()
         });
 
-    // Tags filter (TODO: requires SearchResult to include tags, not yet implemented)
-    let _tags: Option<Vec<String>> = args.get("tags")
+    // Tags filter: match notes that have ANY of the requested tags
+    let tags: Option<Vec<String>> = args.get("tags")
         .and_then(|v| v.as_array())
         .map(|arr| {
             arr.iter()
@@ -898,7 +1086,8 @@ async fn semantic_search(store: &SqliteStore, args: Value) -> Result<Value> {
 
     // Perform vector search
     let note_types_ref: Option<&[NoteType]> = note_types.as_deref();
-    let results = store.vector_search(&embedding, note_types_ref, project, fetch_limit)?;
+    let tags_ref: Option<&[String]> = tags.as_deref();
+    let results = store.vector_search(&embedding, note_types_ref, project, tags_ref, fetch_limit)?;
 
     if results.is_empty() {
         return Ok(json!({
@@ -927,6 +1116,7 @@ async fn semantic_search(store: &SqliteStore, args: Value) -> Result<Value> {
                 "note_path": r.note_path,
                 "note_type": r.note_type.to_string(),
                 "project": r.project,
+                "tags": r.tags,
                 "heading": r.heading,
                 "content": r.content,
                 "similarity": format!("{:.2}", similarity),
@@ -948,6 +1138,294 @@ async fn semantic_search(store: &SqliteStore, args: Value) -> Result<Value> {
         "content": [{
             "type": "text",
             "text": serde_json::to_string_pretty(&formatted)?
+        }]
+    }))
+}
+
+// ============================================================================
+// Context Engineering Tools
+// ============================================================================
+
+/// Get comprehensive context for the current work session
+fn get_session_context(store: &SqliteStore, args: Value) -> Result<Value> {
+    let project = args.get("project").and_then(|v| v.as_str());
+    let depth = args.get("depth").and_then(|v| v.as_str()).unwrap_or("shallow");
+    let include_memories = args.get("include_memories").and_then(|v| v.as_bool()).unwrap_or(true);
+
+    let mut context = json!({
+        "project": project,
+        "depth": depth,
+    });
+
+    // Get project notes if project specified
+    if let Some(proj) = project {
+        let project_notes: Vec<Value> = store.list_notes(Some(NoteType::Project), Some(proj), 10)?
+            .into_iter()
+            .map(|n| json!({
+                "id": n.id,
+                "title": n.title,
+                "path": n.path,
+            }))
+            .collect();
+        context["project_notes"] = json!(project_notes);
+
+        // Get PRPs for the project
+        let prps: Vec<Value> = store.list_notes(Some(NoteType::Prp), Some(proj), 5)?
+            .into_iter()
+            .map(|n| json!({
+                "id": n.id,
+                "title": n.title,
+                "value": n.prp_value,
+                "scope": n.prp_scope,
+                "phases_count": n.implementation_phases.len(),
+            }))
+            .collect();
+        context["active_prps"] = json!(prps);
+    }
+
+    // Get recent memories if requested
+    if include_memories {
+        // Search for high-confidence memories with broad context
+        let context_query = project.unwrap_or("development");
+        let memories = store.search_memories(context_query, None, 0.3, 10)?;
+        let recent_memories: Vec<Value> = memories.into_iter()
+            .take(5)
+            .map(|m| json!({
+                "id": m.id,
+                "memory_type": m.memory_type.to_string(),
+                "title": m.title,
+                "context": m.context,
+                "confidence": m.confidence,
+            }))
+            .collect();
+        context["recent_memories"] = json!(recent_memories);
+    }
+
+    // Get recent checkpoints
+    let checkpoints: Vec<Value> = store.list_notes(Some(NoteType::Checkpoint), None, 5)?
+        .into_iter()
+        .map(|n| json!({
+            "id": n.id,
+            "name": n.checkpoint_name,
+            "session_id": n.session_id,
+            "created": n.created.to_rfc3339(),
+        }))
+        .collect();
+    context["recent_checkpoints"] = json!(checkpoints);
+
+    // Deep mode: include more context
+    if depth == "deep" {
+        // Get task-linked notes
+        let task_notes: Vec<Value> = store.list_notes(Some(NoteType::Task), project, 10)?
+            .into_iter()
+            .filter(|n| n.auto_fetch)
+            .map(|n| json!({
+                "id": n.id,
+                "title": n.title,
+                "task_id": n.task_id,
+                "context_type": n.context_type,
+            }))
+            .collect();
+        context["auto_fetch_notes"] = json!(task_notes);
+    }
+
+    Ok(json!({
+        "content": [{
+            "type": "text",
+            "text": serde_json::to_string_pretty(&context)?
+        }]
+    }))
+}
+
+/// Create a PRP (Product Requirements Prompt)
+fn create_prp(store: &SqliteStore, args: Value) -> Result<Value> {
+    use crate::PrpPhase;
+
+    let title = args.get("title").and_then(|v| v.as_str())
+        .ok_or_else(|| anyhow::anyhow!("Missing title"))?;
+    let project = args.get("project").and_then(|v| v.as_str())
+        .ok_or_else(|| anyhow::anyhow!("Missing project"))?;
+    let value = args.get("value").and_then(|v| v.as_str())
+        .ok_or_else(|| anyhow::anyhow!("Missing value"))?;
+    let scope = args.get("scope").and_then(|v| v.as_str())
+        .ok_or_else(|| anyhow::anyhow!("Missing scope"))?;
+
+    let mut note = Note::prp_note(title, project, value, scope);
+
+    // Parse success criteria
+    if let Some(criteria) = args.get("success_criteria").and_then(|v| v.as_array()) {
+        note.success_criteria = criteria.iter()
+            .filter_map(|v| v.as_str().map(String::from))
+            .collect();
+    }
+
+    // Parse implementation phases
+    if let Some(phases) = args.get("phases").and_then(|v| v.as_array()) {
+        note.implementation_phases = phases.iter()
+            .filter_map(|p| {
+                let name = p.get("name")?.as_str()?;
+                let desc = p.get("description")?.as_str()?;
+                let mut phase = PrpPhase::new(name, desc);
+                phase.effort = p.get("effort").and_then(|v| v.as_str()).map(String::from);
+                Some(phase)
+            })
+            .collect();
+    }
+
+    // Set content
+    if let Some(content) = args.get("content").and_then(|v| v.as_str()) {
+        note.content = content.to_string();
+    } else {
+        // Generate default content from structured fields
+        let mut content = String::new();
+        content.push_str(&format!("# {}\n\n", title));
+        content.push_str("## Value\n");
+        content.push_str(&format!("{}\n\n", value));
+        content.push_str("## Scope\n");
+        content.push_str(&format!("{}\n\n", scope));
+
+        if !note.success_criteria.is_empty() {
+            content.push_str("## Success Criteria\n");
+            for criterion in &note.success_criteria {
+                content.push_str(&format!("- [ ] {}\n", criterion));
+            }
+            content.push_str("\n");
+        }
+
+        if !note.implementation_phases.is_empty() {
+            content.push_str("## Implementation Phases\n\n");
+            for (i, phase) in note.implementation_phases.iter().enumerate() {
+                let effort = phase.effort.as_deref().unwrap_or("medium");
+                content.push_str(&format!("### Phase {}: {} [{}]\n", i + 1, phase.name, effort));
+                content.push_str(&format!("{}\n\n", phase.description));
+            }
+        }
+
+        note.content = content;
+    }
+
+    let note_id = note.id.clone();
+    store.save_note(&note)?;
+
+    Ok(json!({
+        "content": [{
+            "type": "text",
+            "text": format!("Created PRP: {} (id: {})", title, note_id)
+        }]
+    }))
+}
+
+/// Save a context checkpoint
+fn save_checkpoint(store: &SqliteStore, args: Value) -> Result<Value> {
+    let name = args.get("name").and_then(|v| v.as_str())
+        .ok_or_else(|| anyhow::anyhow!("Missing name"))?;
+    let session_id = args.get("session_id").and_then(|v| v.as_str())
+        .ok_or_else(|| anyhow::anyhow!("Missing session_id"))?;
+    let context_summary = args.get("context_summary").and_then(|v| v.as_str())
+        .ok_or_else(|| anyhow::anyhow!("Missing context_summary"))?;
+
+    let mut note = Note::checkpoint_note(name, session_id, context_summary);
+
+    // Parse active tasks
+    if let Some(tasks) = args.get("active_tasks").and_then(|v| v.as_array()) {
+        note.checkpoint_tasks = tasks.iter()
+            .filter_map(|v| v.as_str().map(String::from))
+            .collect();
+    }
+
+    // Set parent checkpoint for branching
+    if let Some(parent) = args.get("parent_checkpoint").and_then(|v| v.as_str()) {
+        note.parent_checkpoint = Some(parent.to_string());
+    }
+
+    // Generate content
+    let mut content = String::new();
+    content.push_str(&format!("# Checkpoint: {}\n\n", name));
+    content.push_str(&format!("**Session:** {}\n\n", session_id));
+    content.push_str("## Context Summary\n\n");
+    content.push_str(context_summary);
+    content.push_str("\n\n");
+
+    if !note.checkpoint_tasks.is_empty() {
+        content.push_str("## Active Tasks\n\n");
+        for task_id in &note.checkpoint_tasks {
+            content.push_str(&format!("- {}\n", task_id));
+        }
+    }
+
+    note.content = content;
+
+    let note_id = note.id.clone();
+    store.save_note(&note)?;
+
+    Ok(json!({
+        "content": [{
+            "type": "text",
+            "text": format!("Checkpoint saved: {} (id: {})", name, note_id)
+        }]
+    }))
+}
+
+/// List available checkpoints
+fn list_checkpoints(store: &SqliteStore, args: Value) -> Result<Value> {
+    let session_id = args.get("session_id").and_then(|v| v.as_str());
+    let limit = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(20) as usize;
+
+    let checkpoints: Vec<Value> = store.list_notes(Some(NoteType::Checkpoint), None, limit)?
+        .into_iter()
+        .filter(|n| {
+            if let Some(sid) = session_id {
+                n.session_id.as_deref() == Some(sid)
+            } else {
+                true
+            }
+        })
+        .map(|n| json!({
+            "id": n.id,
+            "name": n.checkpoint_name,
+            "session_id": n.session_id,
+            "created": n.created.to_rfc3339(),
+            "parent": n.parent_checkpoint,
+            "tasks_count": n.checkpoint_tasks.len(),
+        }))
+        .collect();
+
+    Ok(json!({
+        "content": [{
+            "type": "text",
+            "text": serde_json::to_string_pretty(&json!({
+                "checkpoints": checkpoints,
+                "count": checkpoints.len()
+            }))?
+        }]
+    }))
+}
+
+/// Get a specific checkpoint by ID
+fn get_checkpoint(store: &SqliteStore, args: Value) -> Result<Value> {
+    let id = args.get("id").and_then(|v| v.as_str())
+        .ok_or_else(|| anyhow::anyhow!("Missing id"))?;
+
+    let note = store.get_note(id)?
+        .ok_or_else(|| anyhow::anyhow!("Checkpoint not found: {}", id))?;
+
+    if note.note_type != NoteType::Checkpoint {
+        return Err(anyhow::anyhow!("Note {} is not a checkpoint", id));
+    }
+
+    Ok(json!({
+        "content": [{
+            "type": "text",
+            "text": serde_json::to_string_pretty(&json!({
+                "id": note.id,
+                "name": note.checkpoint_name,
+                "session_id": note.session_id,
+                "created": note.created.to_rfc3339(),
+                "context": note.checkpoint_context,
+                "active_tasks": note.checkpoint_tasks,
+                "parent_checkpoint": note.parent_checkpoint,
+                "content": note.content,
+            }))?
         }]
     }))
 }

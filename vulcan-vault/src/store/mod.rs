@@ -71,6 +71,7 @@ pub trait Store: Send + Sync {
         embedding: &[f32],
         note_types: Option<&[NoteType]>,
         project: Option<&str>,
+        tags: Option<&[String]>,
         limit: usize,
     ) -> StoreResult<Vec<SearchResult>>;
 
@@ -154,6 +155,8 @@ pub struct SearchResult {
     pub note_type: NoteType,
     /// Project (if any)
     pub project: Option<String>,
+    /// Note tags
+    pub tags: Vec<String>,
     /// Chunk content
     pub content: String,
     /// Section heading

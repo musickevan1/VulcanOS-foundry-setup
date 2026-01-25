@@ -191,6 +191,47 @@ impl SqliteStore {
             [],
         )?;
 
+        // Run migrations for new columns
+        self.run_migrations(&conn)?;
+
+        Ok(())
+    }
+
+    /// Run database migrations to add new columns
+    /// Uses ALTER TABLE ADD COLUMN which is idempotent-safe via PRAGMA table_info check
+    fn run_migrations(&self, conn: &Connection) -> StoreResult<()> {
+        // Get existing columns
+        let mut stmt = conn.prepare("PRAGMA table_info(notes)")?;
+        let existing_columns: Vec<String> = stmt.query_map([], |row| {
+            row.get::<_, String>(1) // column name is index 1
+        })?.filter_map(|r| r.ok()).collect();
+
+        // PRP columns
+        let prp_columns = [
+            ("prp_value", "TEXT"),
+            ("prp_scope", "TEXT"),
+            ("success_criteria", "TEXT DEFAULT '[]'"),
+            ("implementation_phases", "TEXT DEFAULT '[]'"),
+            ("linked_tasks", "TEXT DEFAULT '[]'"),
+        ];
+
+        // Checkpoint columns
+        let checkpoint_columns = [
+            ("checkpoint_name", "TEXT"),
+            ("checkpoint_context", "TEXT"),
+            ("checkpoint_tasks", "TEXT DEFAULT '[]'"),
+            ("parent_checkpoint", "TEXT"),
+        ];
+
+        // Add missing columns
+        for (col_name, col_type) in prp_columns.iter().chain(checkpoint_columns.iter()) {
+            if !existing_columns.contains(&col_name.to_string()) {
+                let sql = format!("ALTER TABLE notes ADD COLUMN {} {}", col_name, col_type);
+                conn.execute(&sql, [])?;
+                tracing::info!("Migration: added column {} to notes table", col_name);
+            }
+        }
+
         Ok(())
     }
 
@@ -216,10 +257,13 @@ impl Store for SqliteStore {
                 tags, aliases, project, task_id, context_type, auto_fetch,
                 category, source, course, confidence, review_date,
                 memory_type, context, agent, session_id, times_applied,
-                last_applied, content_hash
+                last_applied, content_hash,
+                prp_value, prp_scope, success_criteria, implementation_phases, linked_tasks,
+                checkpoint_name, checkpoint_context, checkpoint_tasks, parent_checkpoint
             ) VALUES (
                 ?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13,
-                ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25
+                ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25,
+                ?26, ?27, ?28, ?29, ?30, ?31, ?32, ?33, ?34
             )
             "#,
             params![
@@ -248,6 +292,17 @@ impl Store for SqliteStore {
                 note.times_applied,
                 note.last_applied.map(|d| d.to_rfc3339()),
                 note.content_hash,
+                // PRP fields
+                note.prp_value,
+                note.prp_scope,
+                Self::to_json_array(&note.success_criteria),
+                serde_json::to_string(&note.implementation_phases).unwrap_or_else(|_| "[]".to_string()),
+                Self::to_json_array(&note.linked_tasks),
+                // Checkpoint fields
+                note.checkpoint_name,
+                note.checkpoint_context,
+                Self::to_json_array(&note.checkpoint_tasks),
+                note.parent_checkpoint,
             ],
         )?;
 
@@ -477,6 +532,7 @@ impl Store for SqliteStore {
         embedding: &[f32],
         note_types: Option<&[NoteType]>,
         project: Option<&str>,
+        tags: Option<&[String]>,
         limit: usize,
     ) -> StoreResult<Vec<SearchResult>> {
         if embedding.len() != EMBEDDING_DIM {
@@ -498,6 +554,7 @@ impl Store for SqliteStore {
                 n.title,
                 n.note_type,
                 n.project,
+                n.tags,
                 cm.content,
                 cm.heading,
                 vec_distance_cosine(c.embedding, ?1) as distance
@@ -525,6 +582,20 @@ impl Store for SqliteStore {
             params_vec.push(Box::new(p.to_string()));
         }
 
+        // Tag filtering: match notes that have ANY of the requested tags
+        if let Some(tag_list) = tags {
+            if !tag_list.is_empty() {
+                let placeholders = tag_list.iter().map(|_| "?").collect::<Vec<_>>().join(",");
+                sql.push_str(&format!(
+                    " AND EXISTS (SELECT 1 FROM json_each(n.tags) WHERE json_each.value IN ({}))",
+                    placeholders
+                ));
+                for tag in tag_list {
+                    params_vec.push(Box::new(tag.clone()));
+                }
+            }
+        }
+
         sql.push_str(" ORDER BY distance ASC LIMIT ?");
         params_vec.push(Box::new(limit as i64));
 
@@ -543,6 +614,10 @@ impl Store for SqliteStore {
                     _ => NoteType::Meta,
                 };
 
+                // Parse tags from JSON array
+                let tags_json: String = row.get(6)?;
+                let tags: Vec<String> = serde_json::from_str(&tags_json).unwrap_or_default();
+
                 Ok(SearchResult {
                     chunk_id: row.get(0)?,
                     note_id: row.get(1)?,
@@ -550,9 +625,10 @@ impl Store for SqliteStore {
                     note_title: row.get(3)?,
                     note_type,
                     project: row.get(5)?,
-                    content: row.get(6)?,
-                    heading: row.get(7)?,
-                    distance: row.get(8)?,
+                    tags,
+                    content: row.get(7)?,
+                    heading: row.get(8)?,
+                    distance: row.get(9)?,
                 })
             })?
             .collect::<Result<Vec<_>, _>>()?;
@@ -978,6 +1054,33 @@ impl SqliteStore {
                     .map(|d| d.with_timezone(&chrono::Utc))
                     .ok()
             }),
+            // PRP fields (stored as JSON in extended_data or individual columns)
+            prp_value: row.get("prp_value").ok().flatten(),
+            prp_scope: row.get("prp_scope").ok().flatten(),
+            success_criteria: row.get::<_, Option<String>>("success_criteria")
+                .ok()
+                .flatten()
+                .map(|s| Self::from_json_array(&s))
+                .unwrap_or_default(),
+            implementation_phases: row.get::<_, Option<String>>("implementation_phases")
+                .ok()
+                .flatten()
+                .and_then(|s| serde_json::from_str(&s).ok())
+                .unwrap_or_default(),
+            linked_tasks: row.get::<_, Option<String>>("linked_tasks")
+                .ok()
+                .flatten()
+                .map(|s| Self::from_json_array(&s))
+                .unwrap_or_default(),
+            // Checkpoint fields
+            checkpoint_name: row.get("checkpoint_name").ok().flatten(),
+            checkpoint_context: row.get("checkpoint_context").ok().flatten(),
+            checkpoint_tasks: row.get::<_, Option<String>>("checkpoint_tasks")
+                .ok()
+                .flatten()
+                .map(|s| Self::from_json_array(&s))
+                .unwrap_or_default(),
+            parent_checkpoint: row.get("parent_checkpoint").ok().flatten(),
             content: String::new(), // Content is loaded from file, not DB
             content_hash: row.get("content_hash")?,
         })
@@ -1029,6 +1132,17 @@ impl SqliteStore {
 mod tests {
     use super::*;
 
+    /// Create a synthetic embedding for testing (deterministic based on seed)
+    fn synthetic_embedding(seed: u32) -> Vec<f32> {
+        (0..EMBEDDING_DIM)
+            .map(|i| {
+                // Simple deterministic pseudo-random values
+                let x = (seed as f32 * 0.1 + i as f32 * 0.01).sin();
+                x
+            })
+            .collect()
+    }
+
     #[test]
     fn test_store_creation() {
         let store = SqliteStore::in_memory();
@@ -1042,9 +1156,9 @@ mod tests {
         let note = Note::project_note("Test Note", "test-project");
         store.save_note(&note).unwrap();
 
-        let retrieved = store.get_note(&note.id).unwrap();
-        assert!(retrieved.is_some());
-        assert_eq!(retrieved.unwrap().title, "Test Note");
+        let loaded = store.get_note(&note.id).unwrap();
+        assert!(loaded.is_some());
+        assert_eq!(loaded.unwrap().title, "Test Note");
 
         store.delete_note(&note.id).unwrap();
         assert!(store.get_note(&note.id).unwrap().is_none());
@@ -1063,12 +1177,269 @@ mod tests {
 
         store.save_memory(&memory).unwrap();
 
-        let retrieved = store.get_memory(&memory.id).unwrap();
-        assert!(retrieved.is_some());
+        let loaded = store.get_memory(&memory.id).unwrap();
+        assert!(loaded.is_some());
 
         let results = store
             .search_memories("testing", None, 0.5, 10)
             .unwrap();
         assert!(!results.is_empty());
+    }
+
+    #[test]
+    fn test_chunk_storage_and_loading() {
+        let store = SqliteStore::in_memory().unwrap();
+
+        // Create a note first
+        let note = Note::project_note("Chunked Note", "test-project");
+        store.save_note(&note).unwrap();
+
+        // Create chunks with embeddings
+        let chunks = vec![
+            Chunk {
+                id: uuid::Uuid::new_v4().to_string(),
+                note_id: note.id.clone(),
+                note_path: note.path.clone(),
+                content: "First chunk content".to_string(),
+                heading: Some("Introduction".to_string()),
+                chunk_index: 0,
+                char_start: 0,
+                char_end: 19,
+                embedding: Some(synthetic_embedding(1)),
+            },
+            Chunk {
+                id: uuid::Uuid::new_v4().to_string(),
+                note_id: note.id.clone(),
+                note_path: note.path.clone(),
+                content: "Second chunk content".to_string(),
+                heading: Some("Details".to_string()),
+                chunk_index: 1,
+                char_start: 20,
+                char_end: 40,
+                embedding: Some(synthetic_embedding(2)),
+            },
+        ];
+
+        // Save chunks
+        store.save_chunks(&note.id, &chunks).unwrap();
+
+        // Load chunks
+        let loaded = store.get_chunks(&note.id).unwrap();
+        assert_eq!(loaded.len(), 2);
+        assert_eq!(loaded[0].content, "First chunk content");
+        assert_eq!(loaded[1].content, "Second chunk content");
+        assert_eq!(loaded[0].heading, Some("Introduction".to_string()));
+    }
+
+    #[test]
+    fn test_vector_search_basic() {
+        let store = SqliteStore::in_memory().unwrap();
+
+        // Create notes with different content
+        let note1 = Note::project_note("Rust Programming", "vulcan");
+        let note2 = Note::project_note("Python Scripting", "vulcan");
+        store.save_note(&note1).unwrap();
+        store.save_note(&note2).unwrap();
+
+        // Create chunks with distinct embeddings
+        let chunks1 = vec![Chunk {
+            id: uuid::Uuid::new_v4().to_string(),
+            note_id: note1.id.clone(),
+            note_path: note1.path.clone(),
+            content: "Rust is a systems programming language".to_string(),
+            heading: None,
+            chunk_index: 0,
+            char_start: 0,
+            char_end: 38,
+            embedding: Some(synthetic_embedding(100)), // seed 100
+        }];
+
+        let chunks2 = vec![Chunk {
+            id: uuid::Uuid::new_v4().to_string(),
+            note_id: note2.id.clone(),
+            note_path: note2.path.clone(),
+            content: "Python is great for scripting".to_string(),
+            heading: None,
+            chunk_index: 0,
+            char_start: 0,
+            char_end: 29,
+            embedding: Some(synthetic_embedding(200)), // seed 200
+        }];
+
+        store.save_chunks(&note1.id, &chunks1).unwrap();
+        store.save_chunks(&note2.id, &chunks2).unwrap();
+
+        // Search with embedding similar to note1
+        let query_embedding = synthetic_embedding(100);
+        let results = store
+            .vector_search(&query_embedding, None, None, None, 10)
+            .unwrap();
+
+        assert!(!results.is_empty());
+        // First result should be the Rust note (closest to seed 100)
+        assert_eq!(results[0].note_title, "Rust Programming");
+    }
+
+    #[test]
+    fn test_vector_search_with_project_filter() {
+        let store = SqliteStore::in_memory().unwrap();
+
+        // Create notes in different projects
+        let mut note1 = Note::project_note("Project A Note", "project-a");
+        note1.project = Some("project-a".to_string());
+        let mut note2 = Note::project_note("Project B Note", "project-b");
+        note2.project = Some("project-b".to_string());
+        store.save_note(&note1).unwrap();
+        store.save_note(&note2).unwrap();
+
+        // Add chunks
+        let chunks1 = vec![Chunk {
+            id: uuid::Uuid::new_v4().to_string(),
+            note_id: note1.id.clone(),
+            note_path: note1.path.clone(),
+            content: "Content for project A".to_string(),
+            heading: None,
+            chunk_index: 0,
+            char_start: 0,
+            char_end: 21,
+            embedding: Some(synthetic_embedding(1)),
+        }];
+
+        let chunks2 = vec![Chunk {
+            id: uuid::Uuid::new_v4().to_string(),
+            note_id: note2.id.clone(),
+            note_path: note2.path.clone(),
+            content: "Content for project B".to_string(),
+            heading: None,
+            chunk_index: 0,
+            char_start: 0,
+            char_end: 21,
+            embedding: Some(synthetic_embedding(1)), // Same embedding
+        }];
+
+        store.save_chunks(&note1.id, &chunks1).unwrap();
+        store.save_chunks(&note2.id, &chunks2).unwrap();
+
+        // Search with project filter
+        let query = synthetic_embedding(1);
+        let results = store
+            .vector_search(&query, None, Some("project-a"), None, 10)
+            .unwrap();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].project, Some("project-a".to_string()));
+    }
+
+    #[test]
+    fn test_vector_search_with_tag_filter() {
+        let store = SqliteStore::in_memory().unwrap();
+
+        // Create notes with different tags
+        let mut note1 = Note::project_note("Tagged Note 1", "test");
+        note1.tags = vec!["rust".to_string(), "systems".to_string()];
+        let mut note2 = Note::project_note("Tagged Note 2", "test");
+        note2.tags = vec!["python".to_string(), "scripting".to_string()];
+        let mut note3 = Note::project_note("Tagged Note 3", "test");
+        note3.tags = vec!["rust".to_string(), "web".to_string()];
+
+        store.save_note(&note1).unwrap();
+        store.save_note(&note2).unwrap();
+        store.save_note(&note3).unwrap();
+
+        // Add chunks with same embedding (to test filtering, not similarity)
+        for note in [&note1, &note2, &note3] {
+            let chunk = Chunk {
+                id: uuid::Uuid::new_v4().to_string(),
+                note_id: note.id.clone(),
+                note_path: note.path.clone(),
+                content: format!("Content for {}", note.title),
+                heading: None,
+                chunk_index: 0,
+                char_start: 0,
+                char_end: 20,
+                embedding: Some(synthetic_embedding(1)),
+            };
+            store.save_chunks(&note.id, &[chunk]).unwrap();
+        }
+
+        // Search with tag filter for "rust"
+        let query = synthetic_embedding(1);
+        let tags = vec!["rust".to_string()];
+        let results = store
+            .vector_search(&query, None, None, Some(&tags), 10)
+            .unwrap();
+
+        // Should only match note1 and note3 (both have "rust" tag)
+        assert_eq!(results.len(), 2);
+        let titles: Vec<_> = results.iter().map(|r| r.note_title.as_str()).collect();
+        assert!(titles.contains(&"Tagged Note 1"));
+        assert!(titles.contains(&"Tagged Note 3"));
+        assert!(!titles.contains(&"Tagged Note 2"));
+    }
+
+    #[test]
+    fn test_search_result_includes_tags() {
+        let store = SqliteStore::in_memory().unwrap();
+
+        // Create note with tags
+        let mut note = Note::project_note("Note with Tags", "test");
+        note.tags = vec!["important".to_string(), "review".to_string()];
+        store.save_note(&note).unwrap();
+
+        // Add chunk
+        let chunk = Chunk {
+            id: uuid::Uuid::new_v4().to_string(),
+            note_id: note.id.clone(),
+            note_path: note.path.clone(),
+            content: "Tagged content".to_string(),
+            heading: None,
+            chunk_index: 0,
+            char_start: 0,
+            char_end: 14,
+            embedding: Some(synthetic_embedding(1)),
+        };
+        store.save_chunks(&note.id, &[chunk]).unwrap();
+
+        // Search and verify tags are returned
+        let query = synthetic_embedding(1);
+        let results = store
+            .vector_search(&query, None, None, None, 10)
+            .unwrap();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].tags, vec!["important", "review"]);
+    }
+
+    #[test]
+    fn test_chunk_deletion_on_note_delete() {
+        let store = SqliteStore::in_memory().unwrap();
+
+        // Create note and chunks
+        let note = Note::project_note("Deletable Note", "test");
+        store.save_note(&note).unwrap();
+
+        let chunks = vec![Chunk {
+            id: uuid::Uuid::new_v4().to_string(),
+            note_id: note.id.clone(),
+            note_path: note.path.clone(),
+            content: "Will be deleted".to_string(),
+            heading: None,
+            chunk_index: 0,
+            char_start: 0,
+            char_end: 15,
+            embedding: Some(synthetic_embedding(1)),
+        }];
+        store.save_chunks(&note.id, &chunks).unwrap();
+
+        // Verify chunks exist
+        let loaded = store.get_chunks(&note.id).unwrap();
+        assert_eq!(loaded.len(), 1);
+
+        // Delete note (should cascade to chunks)
+        store.delete_note(&note.id).unwrap();
+
+        // Verify chunks are gone
+        let loaded = store.get_chunks(&note.id).unwrap();
+        assert_eq!(loaded.len(), 0);
     }
 }

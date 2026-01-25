@@ -20,6 +20,10 @@ pub enum NoteType {
     /// Cross-cutting metadata (tags, glossary)
     #[default]
     Meta,
+    /// Product Requirements Prompt (structured implementation spec)
+    Prp,
+    /// Context checkpoint (conversation state snapshot)
+    Checkpoint,
 }
 
 
@@ -31,6 +35,8 @@ impl std::fmt::Display for NoteType {
             NoteType::Learning => write!(f, "learning"),
             NoteType::Memory => write!(f, "memory"),
             NoteType::Meta => write!(f, "meta"),
+            NoteType::Prp => write!(f, "prp"),
+            NoteType::Checkpoint => write!(f, "checkpoint"),
         }
     }
 }
@@ -43,6 +49,48 @@ pub enum NoteStatus {
     Active,
     Draft,
     Archived,
+}
+
+/// Status of a PRP implementation phase
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum PhaseStatus {
+    #[default]
+    Pending,
+    InProgress,
+    Completed,
+    Blocked,
+}
+
+/// Implementation phase for PRP notes
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PrpPhase {
+    /// Phase name/title
+    pub name: String,
+    /// Phase description
+    pub description: String,
+    /// Current status
+    #[serde(default)]
+    pub status: PhaseStatus,
+    /// Linked task ID (if spawned as vulcan-todo task)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub task_id: Option<String>,
+    /// Estimated effort (e.g., "small", "medium", "large")
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub effort: Option<String>,
+}
+
+impl PrpPhase {
+    /// Create a new phase
+    pub fn new(name: impl Into<String>, description: impl Into<String>) -> Self {
+        Self {
+            name: name.into(),
+            description: description.into(),
+            status: PhaseStatus::Pending,
+            task_id: None,
+            effort: None,
+        }
+    }
 }
 
 /// A note in the vault with YAML frontmatter metadata
@@ -140,6 +188,44 @@ pub struct Note {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub last_applied: Option<DateTime<Utc>>,
 
+    // === PRP-specific fields ===
+    /// Why are we building this? (PRP notes)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prp_value: Option<String>,
+
+    /// What exactly are we building? (PRP notes)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prp_scope: Option<String>,
+
+    /// How do we measure success? (PRP notes)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub success_criteria: Vec<String>,
+
+    /// Implementation phases with status (PRP notes)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub implementation_phases: Vec<PrpPhase>,
+
+    /// Linked task IDs for this PRP (PRP notes)
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub linked_tasks: Vec<String>,
+
+    // === Checkpoint-specific fields ===
+    /// Checkpoint name/label
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub checkpoint_name: Option<String>,
+
+    /// Session context at checkpoint time
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub checkpoint_context: Option<String>,
+
+    /// Active task IDs at checkpoint
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub checkpoint_tasks: Vec<String>,
+
+    /// Parent checkpoint ID (for branching)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_checkpoint: Option<String>,
+
     // === Content ===
     /// The markdown content (body after frontmatter)
     #[serde(skip)]
@@ -179,6 +265,17 @@ impl Note {
             session_id: None,
             times_applied: 0,
             last_applied: None,
+            // PRP fields
+            prp_value: None,
+            prp_scope: None,
+            success_criteria: Vec::new(),
+            implementation_phases: Vec::new(),
+            linked_tasks: Vec::new(),
+            // Checkpoint fields
+            checkpoint_name: None,
+            checkpoint_context: None,
+            checkpoint_tasks: Vec::new(),
+            parent_checkpoint: None,
             content: String::new(),
             content_hash: None,
         }
@@ -223,6 +320,50 @@ impl Note {
         let mut note = Self::new(&title, NoteType::Memory, path);
         note.memory_type = Some(memory_type);
         note.confidence = Some(0.8);
+        note
+    }
+
+    /// Create a PRP (Product Requirements Prompt) note
+    ///
+    /// PRPs are structured implementation specs combining:
+    /// - Value: Why are we building this?
+    /// - Scope: What exactly are we building?
+    /// - Success criteria: How do we measure success?
+    /// - Implementation phases: Ordered steps with status
+    pub fn prp_note(
+        title: impl Into<String>,
+        project: impl Into<String>,
+        value: impl Into<String>,
+        scope: impl Into<String>,
+    ) -> Self {
+        let title = title.into();
+        let project = project.into();
+        let path = format!("PRPs/{}/{}.md", &project, slug(&title));
+        let mut note = Self::new(&title, NoteType::Prp, path);
+        note.project = Some(project);
+        note.prp_value = Some(value.into());
+        note.prp_scope = Some(scope.into());
+        note
+    }
+
+    /// Create a context checkpoint note
+    ///
+    /// Checkpoints capture conversation state for later restoration:
+    /// - Session context summary
+    /// - Active task IDs
+    /// - Parent checkpoint (for branching)
+    pub fn checkpoint_note(
+        name: impl Into<String>,
+        session_id: impl Into<String>,
+        context_summary: impl Into<String>,
+    ) -> Self {
+        let name = name.into();
+        let session_id = session_id.into();
+        let path = format!("Checkpoints/{}/{}.md", &session_id[..8.min(session_id.len())], slug(&name));
+        let mut note = Self::new(&name, NoteType::Checkpoint, path);
+        note.session_id = Some(session_id);
+        note.checkpoint_name = Some(name);
+        note.checkpoint_context = Some(context_summary.into());
         note
     }
 
@@ -295,5 +436,42 @@ mod tests {
     fn test_slug() {
         assert_eq!(slug("Hello World!"), "hello-world");
         assert_eq!(slug("VulcanOS Architecture"), "vulcanos-architecture");
+    }
+
+    #[test]
+    fn test_prp_note() {
+        let note = Note::prp_note(
+            "Add PRP Support",
+            "vulcan-vault",
+            "Enable structured implementation specs for better AI alignment",
+            "Add PrpPhase struct, NoteType::Prp variant, and prp_note constructor",
+        );
+        assert_eq!(note.note_type, NoteType::Prp);
+        assert_eq!(note.project, Some("vulcan-vault".to_string()));
+        assert!(note.prp_value.is_some());
+        assert!(note.prp_scope.is_some());
+        assert!(note.path.starts_with("PRPs/vulcan-vault/"));
+    }
+
+    #[test]
+    fn test_prp_phase() {
+        let mut phase = PrpPhase::new("Design", "Create the data model");
+        assert_eq!(phase.status, PhaseStatus::Pending);
+        phase.status = PhaseStatus::InProgress;
+        assert_eq!(phase.status, PhaseStatus::InProgress);
+    }
+
+    #[test]
+    fn test_checkpoint_note() {
+        let note = Note::checkpoint_note(
+            "before-refactor",
+            "session-12345678-abcd",
+            "Working on PRP implementation, added NoteType variants",
+        );
+        assert_eq!(note.note_type, NoteType::Checkpoint);
+        assert_eq!(note.checkpoint_name, Some("before-refactor".to_string()));
+        assert!(note.checkpoint_context.is_some());
+        assert!(note.path.starts_with("Checkpoints/"));
+        assert!(note.path.contains("before-refactor"));
     }
 }

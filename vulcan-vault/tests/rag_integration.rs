@@ -149,7 +149,7 @@ fn test_vector_search() {
     store.save_chunks(&note2.id, &chunks2).unwrap();
 
     // Search with Rust-like embedding should find Rust note first
-    let results = store.vector_search(&rust_embedding, None, None, 10).unwrap();
+    let results = store.vector_search(&rust_embedding, None, None, None, 10).unwrap();
 
     assert!(!results.is_empty());
     assert_eq!(results[0].note_title, "Rust Guide");
@@ -195,7 +195,7 @@ fn test_vector_search_with_filters() {
 
     // Search with project filter
     let results = store
-        .vector_search(&embedding, None, Some("my-project"), 10)
+        .vector_search(&embedding, None, Some("my-project"), None, 10)
         .unwrap();
 
     assert_eq!(results.len(), 1);
@@ -203,7 +203,7 @@ fn test_vector_search_with_filters() {
 
     // Search with note type filter
     let results = store
-        .vector_search(&embedding, Some(&[NoteType::Learning]), None, 10)
+        .vector_search(&embedding, Some(&[NoteType::Learning]), None, None, 10)
         .unwrap();
 
     assert_eq!(results.len(), 1);

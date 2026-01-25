@@ -9,6 +9,6 @@ mod note;
 mod chunk;
 mod memory;
 
-pub use note::{Note, NoteType, NoteStatus};
+pub use note::{Note, NoteType, NoteStatus, PrpPhase, PhaseStatus};
 pub use chunk::{Chunk, ChunkConfig};
 pub use memory::{Memory, MemoryType};

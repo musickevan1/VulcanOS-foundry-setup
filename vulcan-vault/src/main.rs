@@ -106,6 +106,10 @@ enum Commands {
         #[arg(short, long, default_value = "10")]
         limit: usize,
     },
+
+    /// Launch interactive TUI
+    #[cfg(feature = "tui")]
+    Tui,
 }
 
 #[tokio::main]
@@ -315,6 +319,13 @@ async fn main() -> Result<()> {
             }
         }
 
+        #[cfg(feature = "tui")]
+        Some(Commands::Tui) => {
+            use std::sync::Arc;
+            let store = Arc::new(store);
+            vulcan_vault::ui::run_tui(store)?;
+        }
+
         None => {
             println!("vulcan-vault - VulcanOS Knowledge Vault\n");
             println!("Run with --help for usage information.");
@@ -406,6 +417,8 @@ fn parse_note_type(s: &str) -> Option<vulcan_vault::NoteType> {
         "learning" => Some(vulcan_vault::NoteType::Learning),
         "memory" => Some(vulcan_vault::NoteType::Memory),
         "meta" => Some(vulcan_vault::NoteType::Meta),
+        "prp" => Some(vulcan_vault::NoteType::Prp),
+        "checkpoint" => Some(vulcan_vault::NoteType::Checkpoint),
         _ => None,
     }
 }
