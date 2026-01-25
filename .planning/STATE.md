@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 ## Current Position
 
 Phase: 6 of 10 (Foundation Architecture)
-Plan: 3 of 5 in current phase
+Plan: 4 of 5 in current phase
 Status: In progress
-Last activity: 2026-01-25 — Completed 06-03-PLAN.md (explicit state machine)
+Last activity: 2026-01-25 — Completed 06-04-PLAN.md (wallpaper backend abstraction)
 
-Progress: [████████░░░░░░░░░░░░░░░░░░] 16% (14/86 total plans from v1.0 complete)
+Progress: [████████░░░░░░░░░░░░░░░░░░] 17% (15/86 total plans from v1.0 complete)
 
 ## Performance Metrics
 
@@ -29,10 +29,10 @@ Progress: [████████░░░░░░░░░░░░░░░
 |-------|-------|-------|----------|
 | 1. T2 Kernel Protection | 3 | ~2h | ~40 min |
 | 5. VulcanOS Wallpaper Manager | 8 | ~6h | ~45 min |
-| 6. Foundation Architecture | 3 | 6min | 2 min |
+| 6. Foundation Architecture | 4 | 8min | 2 min |
 
 **Recent Trend:**
-- Last completed: Phase 6 Plan 3 (06-03)
+- Last completed: Phase 6 Plan 4 (06-04)
 - Trend: Stable (Phase 6 extremely fast - pure refactoring and foundation work)
 
 ## Accumulated Context
@@ -67,6 +67,12 @@ Progress: [████████░░░░░░░░░░░░░░░
 - Error state stores recovery path (always Idle for v2.0)
 - PreviewSnapshot captures both wallpaper state and theme ID for revert
 
+**From Phase 6 Plan 4 (06-04):**
+- WallpaperBackend trait abstracts swww and hyprpaper operations
+- detect_backend() prefers swww over hyprpaper (smoother transitions)
+- Synchronous Command API (matches existing pattern, GTK single-threaded)
+- Parsing logic extracted for testability
+
 ### Previous Milestone Summary
 
 **v1.0 VulcanOS Foundation** (Phase 5 shipped 2026-01-24):
@@ -80,6 +86,7 @@ Progress: [████████░░░░░░░░░░░░░░░
 - Plan 1: Unified vulcan-appearance-manager crate (wallpaper + theme models/services merged)
 - Plan 2: Brand CSS module refactor (VulcanOS theme colors shared constant)
 - Plan 3: Explicit state machine (Idle/Previewing/Applying/Error states with validated transitions)
+- Plan 4: WallpaperBackend trait abstraction (swww + hyprpaper support)
 
 ### Pending Todos
 
@@ -93,13 +100,13 @@ None - unified crate foundation stable and ready for subsequent Phase 6 plans.
 **Note from research:** Critical pitfalls to address in remaining Phase 6 plans:
 - State synchronization drift (establish live system as truth)
 - Shell script parsing fragility (validate before parse)
-- Wallpaper backend assumption mismatch (abstract swww/hyprpaper)
+- ~~Wallpaper backend assumption mismatch~~ ✓ RESOLVED (06-04: WallpaperBackend trait)
 - Component lifecycle memory leaks (explicit cleanup patterns)
 
 ## Session Continuity
 
-Last session: 2026-01-25 (Phase 6 Plan 3 execution)
-Stopped at: Completed 06-03-PLAN.md - explicit state machine with validated transitions
+Last session: 2026-01-25 (Phase 6 Plan 4 execution)
+Stopped at: Completed 06-04-PLAN.md - wallpaper backend abstraction with swww + hyprpaper support
 Resume file: None
 
-**Next action:** Continue with Phase 6 Plans 4-5 (wallpaper backend abstraction and live system sync)
+**Next action:** Continue with Phase 6 Plan 5 (live system sync) before Phase 7 UI integration
