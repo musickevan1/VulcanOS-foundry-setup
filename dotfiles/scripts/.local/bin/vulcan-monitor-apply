@@ -87,16 +87,24 @@ generate_console() {
 # VulcanOS Monitor Profile: CONSOLE (Auto-generated)
 # Generated: $(date)
 #
-# Layout: Desktop minus center top horizontal (same positions)
+# Layout: Desktop minus center top, DP-12 shifted up to close gap
+# ┌─────────┐  ┌─────────┐  ┌─────────┐
+# │ LEFT    │  │ CENTER  │  │ FLOAT2  │
+# │ VERT    │  │ BOTTOM  │  │  PRO    │
+# │ (rot90) │  └─────────┘  ├─────────┤
+# │         │               │ eDP-1   │
+# │         │               │ MACBOOK │
+# └─────────┘               └─────────┘
 
 # Left vertical monitor - rotated 90° clockwise
-monitor = ${LEFT_VERTICAL}, 1920x1080@60, 0x120, 1, transform, 1
+# 1080x1920 logical, top-aligned with center
+monitor = ${LEFT_VERTICAL}, 1920x1080@60, 0x0, 1, transform, 1
 
 # Center top - DISABLED
 monitor = ${CENTER_TOP}, disable
 
-# Center bottom (curved Sceptre) - same position as desktop
-monitor = ${CENTER_BOTTOM}, 1920x1080@60, 1080x1080, 1
+# Center bottom (curved Sceptre) - shifted up to y=0
+monitor = ${CENTER_BOTTOM}, 1920x1080@60, 1080x0, 1
 
 # Float2 Pro - right top, 120Hz
 monitor = ${FLOAT2_PRO:-desc:Invalid Vendor Codename - RTK Float2 Pro 0x01010130}, 2560x1600@120, 3000x0, 1
