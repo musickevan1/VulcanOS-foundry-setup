@@ -82,34 +82,26 @@ EOF
 }
 
 # Generate console profile (4 monitors - no center top)
+# Identical to desktop but center top is disabled
 generate_console() {
     cat << EOF
 # VulcanOS Monitor Profile: CONSOLE (Auto-generated)
 # Generated: $(date)
-#
-# Layout: Desktop minus center top, DP-12 shifted up to close gap
-# ┌─────────┐  ┌─────────┐  ┌─────────┐
-# │ LEFT    │  │ CENTER  │  │ FLOAT2  │
-# │ VERT    │  │ BOTTOM  │  │  PRO    │
-# │ (rot90) │  └─────────┘  ├─────────┤
-# │         │               │ eDP-1   │
-# │         │               │ MACBOOK │
-# └─────────┘               └─────────┘
+# Desktop layout with center top monitor disabled
 
 # Left vertical monitor - rotated 90° clockwise
-# 1080x1920 logical, top-aligned with center
-monitor = ${LEFT_VERTICAL}, 1920x1080@60, 0x0, 1, transform, 1
+monitor = ${LEFT_VERTICAL}, 1920x1080@60, 0x120, 1, transform, 1
 
-# Center top - DISABLED
+# Center top horizontal - DISABLED
 monitor = ${CENTER_TOP}, disable
 
-# Center bottom (curved Sceptre) - shifted up to y=0
-monitor = ${CENTER_BOTTOM}, 1920x1080@60, 1080x0, 1
+# Center bottom (curved Sceptre)
+monitor = ${CENTER_BOTTOM}, 1920x1080@60, 1080x1080, 1
 
-# Float2 Pro - right top, 120Hz
+# Float2 Pro - right top, 120Hz portable monitor (2560x1600 = 1600 tall)
 monitor = ${FLOAT2_PRO:-desc:Invalid Vendor Codename - RTK Float2 Pro 0x01010130}, 2560x1600@120, 3000x0, 1
 
-# MacBook Laptop - right bottom (after Float2 Pro at Y=1600)
+# MacBook Laptop - right bottom, native HiDPI
 monitor = eDP-1, 3072x1920@60, 3000x1600, 1.6
 
 # Disable any other monitors
