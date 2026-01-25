@@ -1,0 +1,167 @@
+/**
+ * VulcanOS Color Palette
+ * Official brand colors - import this file for consistent theming
+ *
+ * Usage in CSS:  @import "vulcan-palette.css";
+ * Usage in HTML: <link rel="stylesheet" href="vulcan-palette.css">
+ */
+
+:root {
+  /* ═══════════════════════════════════════════════════════════════════════════
+   * PRIMARY ACCENT COLORS
+   * The warm forge palette - oranges and golds
+   * ═══════════════════════════════════════════════════════════════════════════ */
+  --vulcan-ember: #f97316;           /* Primary accent - buttons, active states */
+  --vulcan-ember-rgb: 249, 115, 22;
+
+  --vulcan-gold: #fbbf24;            /* Secondary accent - highlights, links */
+  --vulcan-gold-rgb: 251, 191, 36;
+
+  --vulcan-molten: #ea580c;          /* Hover/pressed states */
+  --vulcan-molten-rgb: 234, 88, 12;
+
+  --vulcan-flame: #dc2626;           /* Intense emphasis (use sparingly) */
+  --vulcan-flame-rgb: 220, 38, 38;
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+   * BACKGROUND COLORS
+   * Dark forge workshop palette
+   * ═══════════════════════════════════════════════════════════════════════════ */
+  --vulcan-obsidian: #1c1917;        /* Primary background */
+  --vulcan-obsidian-rgb: 28, 25, 23;
+
+  --vulcan-charcoal: #292524;        /* Elevated surfaces, cards, modals */
+  --vulcan-charcoal-rgb: 41, 37, 36;
+
+  --vulcan-ash: #44403c;             /* Borders, dividers, subtle elements */
+  --vulcan-ash-rgb: 68, 64, 60;
+
+  --vulcan-smoke: #57534e;           /* Disabled backgrounds */
+  --vulcan-smoke-rgb: 87, 83, 78;
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+   * TEXT COLORS
+   * ═══════════════════════════════════════════════════════════════════════════ */
+  --vulcan-white: #fafaf9;           /* Primary text */
+  --vulcan-white-rgb: 250, 250, 249;
+
+  --vulcan-stone: #a8a29e;           /* Secondary text, muted */
+  --vulcan-stone-rgb: 168, 162, 158;
+
+  --vulcan-gray: #78716c;            /* Disabled text, placeholders */
+  --vulcan-gray-rgb: 120, 113, 108;
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+   * SEMANTIC COLORS
+   * Status and feedback colors
+   * ═══════════════════════════════════════════════════════════════════════════ */
+  --vulcan-success: #22c55e;         /* Green - success, online, positive */
+  --vulcan-success-rgb: 34, 197, 94;
+  --vulcan-success-bright: #4ade80;
+
+  --vulcan-warning: #fbbf24;         /* Yellow/Gold - warnings (reuses gold) */
+  --vulcan-warning-rgb: 251, 191, 36;
+  --vulcan-warning-bright: #fcd34d;
+
+  --vulcan-error: #ef4444;           /* Red - errors, critical, destructive */
+  --vulcan-error-rgb: 239, 68, 68;
+  --vulcan-error-bright: #f87171;
+
+  --vulcan-info: #3b82f6;            /* Blue - informational, links */
+  --vulcan-info-rgb: 59, 130, 246;
+  --vulcan-info-bright: #60a5fa;
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+   * TERMINAL ANSI COLORS (16-color palette)
+   * For terminal emulators and syntax highlighting
+   * ═══════════════════════════════════════════════════════════════════════════ */
+  --ansi-black: #1c1917;
+  --ansi-black-bright: #44403c;
+
+  --ansi-red: #ef4444;
+  --ansi-red-bright: #f87171;
+
+  --ansi-green: #22c55e;
+  --ansi-green-bright: #4ade80;
+
+  --ansi-yellow: #fbbf24;
+  --ansi-yellow-bright: #fcd34d;
+
+  --ansi-blue: #3b82f6;
+  --ansi-blue-bright: #60a5fa;
+
+  --ansi-magenta: #a855f7;
+  --ansi-magenta-bright: #c084fc;
+
+  --ansi-cyan: #06b6d4;
+  --ansi-cyan-bright: #22d3ee;
+
+  --ansi-white: #a8a29e;
+  --ansi-white-bright: #fafaf9;
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+   * GRADIENTS
+   * ═══════════════════════════════════════════════════════════════════════════ */
+  --vulcan-gradient-forge: linear-gradient(to top, #fbbf24, #f97316, #ea580c);
+  --vulcan-gradient-ember: linear-gradient(135deg, #f97316, #ea580c);
+  --vulcan-gradient-surface: linear-gradient(180deg, #292524, #1c1917);
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+   * TYPOGRAPHY
+   * ═══════════════════════════════════════════════════════════════════════════ */
+  --font-mono: "JetBrainsMono Nerd Font", "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+  --font-sans: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+  /* Font sizes */
+  --text-xs: 11px;
+  --text-sm: 12px;
+  --text-base: 13px;
+  --text-md: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 28px;
+  --text-3xl: 42px;
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+   * SPACING & BORDERS
+   * ═══════════════════════════════════════════════════════════════════════════ */
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-full: 9999px;
+
+  --border-width: 1px;
+  --border-color: var(--vulcan-ash);
+
+  /* ═══════════════════════════════════════════════════════════════════════════
+   * SHADOWS
+   * ═══════════════════════════════════════════════════════════════════════════ */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.5);
+  --shadow-glow: 0 0 20px rgba(249, 115, 22, 0.3);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+ * UTILITY CLASSES
+ * ═══════════════════════════════════════════════════════════════════════════════ */
+
+/* Background colors */
+.bg-obsidian { background-color: var(--vulcan-obsidian); }
+.bg-charcoal { background-color: var(--vulcan-charcoal); }
+.bg-ash { background-color: var(--vulcan-ash); }
+.bg-ember { background-color: var(--vulcan-ember); }
+.bg-gold { background-color: var(--vulcan-gold); }
+
+/* Text colors */
+.text-white { color: var(--vulcan-white); }
+.text-stone { color: var(--vulcan-stone); }
+.text-gray { color: var(--vulcan-gray); }
+.text-ember { color: var(--vulcan-ember); }
+.text-gold { color: var(--vulcan-gold); }
+
+/* Semantic text */
+.text-success { color: var(--vulcan-success); }
+.text-warning { color: var(--vulcan-warning); }
+.text-error { color: var(--vulcan-error); }
+.text-info { color: var(--vulcan-info); }
