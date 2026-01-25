@@ -1,0 +1,59 @@
+#!/bin/bash
+# Play notification sounds with optional overrides
+# Usage: vulcan-notify-sound <name> [fallback]
+
+set -euo pipefail
+
+# Configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+usage() {
+    echo "Usage: $(basename "$0") <name> [fallback]"
+    echo ""
+    echo "Arguments:"
+    echo "  name       Sound name (matches ~/.config/vulcan/sounds/<name>.*)"
+    echo "  fallback   Optional fallback sound file"
+    exit 0
+}
+
+main() {
+    if [[ ${1:-} == "-h" || ${1:-} == "--help" ]]; then
+        usage
+    fi
+
+    local sound_name="${1:-}"
+    local fallback="${2:-}"
+
+    if [[ -z "$sound_name" ]]; then
+        usage
+    fi
+
+    local config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/vulcan/sounds"
+    local sound_file=""
+
+    for ext in oga ogg wav mp3; do
+        local candidate="${config_dir}/${sound_name}.${ext}"
+        if [[ -f "$candidate" ]]; then
+            sound_file="$candidate"
+            break
+        fi
+    done
+
+    if [[ -z "$sound_file" && -n "$fallback" && -f "$fallback" ]]; then
+        sound_file="$fallback"
+    fi
+
+    if [[ -z "$sound_file" ]]; then
+        exit 0
+    fi
+
+    if command -v pw-play &> /dev/null; then
+        pw-play "$sound_file" &> /dev/null || true
+    elif command -v paplay &> /dev/null; then
+        paplay "$sound_file" &> /dev/null || true
+    elif command -v aplay &> /dev/null; then
+        aplay "$sound_file" &> /dev/null || true
+    fi
+}
+
+main "$@"

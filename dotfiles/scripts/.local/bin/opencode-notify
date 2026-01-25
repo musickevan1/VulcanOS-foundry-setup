@@ -1,0 +1,149 @@
+#!/bin/bash
+# Wrap OpenCode with notification hooks
+# Usage: opencode-notify [opencode args]
+
+set -euo pipefail
+
+# Configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+usage() {
+    echo "Usage: $(basename "$0") [opencode args]"
+    echo ""
+    echo "Wraps opencode to emit notifications for:"
+    echo "  - Action required (question asked)"
+    echo "  - Errors"
+    echo "  - Session completion"
+    exit 0
+}
+
+notify() {
+    local title="$1"
+    local body="$2"
+    local urgency="${3:-normal}"
+
+    if command -v notify-send &> /dev/null; then
+        notify-send -a "OpenCode" -i "applications-development" -u "$urgency" "$title" "$body"
+    fi
+}
+
+latest_log() {
+    local log_dir="$1"
+    ls -1t "$log_dir"/*.log 2>/dev/null | head -n 1
+}
+
+wait_for_new_log() {
+    local log_dir="$1"
+    local previous="$2"
+    local timeout=5
+    local start
+
+    start=$(date +%s)
+
+    while true; do
+        local current
+        current=$(latest_log "$log_dir")
+        if [[ -n "$current" && "$current" != "$previous" ]]; then
+            echo "$current"
+            return 0
+        fi
+
+        if (( $(date +%s) - start >= timeout )); then
+            return 1
+        fi
+
+        sleep 0.2
+    done
+}
+
+run_log_watcher() {
+    local log_file="$1"
+    local session_info_file="$2"
+
+    local last_action_ts=0
+    local action_cooldown=30
+
+    while IFS= read -r line; do
+        if [[ "$line" == *"service=session"*" id="*" title="*" time="* ]]; then
+            if [[ "$line" =~ service=session\ id=([^[:space:]]+).*title=([^[:space:]].*)\ time= ]]; then
+                local session_id="${BASH_REMATCH[1]}"
+                local session_title="${BASH_REMATCH[2]}"
+                local short_id="${session_id#ses_}"
+                short_id="${short_id:0:4}"
+                echo "OC ${short_id}: ${session_title}" > "$session_info_file"
+            fi
+        fi
+
+        if [[ "$line" == *"service=question"*" asking"* || "$line" == *"bus type=question.asked"* ]]; then
+            local now
+            now=$(date +%s)
+            if (( now - last_action_ts >= action_cooldown )); then
+                local label="OpenCode"
+                if [[ -s "$session_info_file" ]]; then
+                    read -r label < "$session_info_file"
+                fi
+                notify "OpenCode action required" "$label"
+                last_action_ts="$now"
+            fi
+        fi
+
+        if [[ "$line" == ERROR* ]]; then
+            local label="OpenCode"
+            if [[ -s "$session_info_file" ]]; then
+                read -r label < "$session_info_file"
+            fi
+            notify "OpenCode error" "$label" "critical"
+        fi
+    done < <(tail -n 200 -F "$log_file")
+}
+
+main() {
+    if [[ ${1:-} == "-h" || ${1:-} == "--help" ]]; then
+        usage
+    fi
+
+    local opencode_bin="${OPENCODE_BIN:-opencode}"
+    local log_dir="${XDG_DATA_HOME:-$HOME/.local/share}/opencode/log"
+    local session_info_file
+
+    session_info_file=$(mktemp)
+
+    if [[ ! -d "$log_dir" ]]; then
+        "$opencode_bin" "$@"
+        exit $?
+    fi
+
+    local previous_log
+    previous_log=$(latest_log "$log_dir")
+
+    local watcher_pid=""
+
+    start_watcher() {
+        local log_file=""
+        if log_file=$(wait_for_new_log "$log_dir" "$previous_log"); then
+            run_log_watcher "$log_file" "$session_info_file"
+        fi
+    }
+
+    start_watcher &
+    watcher_pid=$!
+
+    "$opencode_bin" "$@"
+    local status=$?
+
+    if [[ -n "$watcher_pid" ]]; then
+        kill "$watcher_pid" 2>/dev/null || true
+    fi
+
+    local label="OpenCode"
+    if [[ -s "$session_info_file" ]]; then
+        read -r label < "$session_info_file"
+    fi
+
+    notify "OpenCode session complete" "$label" "low"
+    rm -f "$session_info_file"
+
+    return "$status"
+}
+
+main "$@"

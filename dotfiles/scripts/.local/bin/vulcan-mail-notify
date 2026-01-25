@@ -1,0 +1,56 @@
+#!/bin/bash
+# Notify about new mail events
+# Usage: vulcan-mail-notify --label "Label" [--account "Gmail"]
+
+set -euo pipefail
+
+# Configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+usage() {
+    echo "Usage: $(basename "$0") --label <label> [--account <name>]"
+    echo ""
+    echo "Options:";
+    echo "  --label      Label name to display"
+    echo "  --account    Account name (default: Gmail)"
+    echo "  -h, --help   Show this help message"
+    exit 0
+}
+
+main() {
+    local label=""
+    local account="Gmail"
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --label)
+                label="${2:-}"
+                shift 2
+                ;;
+            --account)
+                account="${2:-}"
+                shift 2
+                ;;
+            -h|--help)
+                usage
+                ;;
+            *)
+                echo "Unknown option: $1" >&2
+                usage
+                ;;
+        esac
+    done
+
+    if [[ -z "$label" ]]; then
+        usage
+    fi
+
+    local summary="Mail (${account})"
+    local body="New email in ${label}"
+
+    if command -v notify-send &> /dev/null; then
+        notify-send -a "Mail" -i "mail-message-new" "$summary" "$body"
+    fi
+}
+
+main "$@"

@@ -1,0 +1,27 @@
+# Go IMAP Notify config for Gmail
+# Fill in username/passwordCMD before enabling the service.
+# Example passwordCMD (app password via pass):
+# passwordCMD: "bash -lc 'pass show email/gmail-app-password'"
+
+configurations:
+  - host: imap.gmail.com
+    port: 993
+    tls: true
+    tlsOptions:
+      rejectUnauthorized: true
+      starttls: false
+    idleLogoutTimeout: 15
+    alias: Gmail
+    username: "evanmusick.dev@gmail.com"
+    passwordCMD: "bash -lc 'pass show email/gmail-app-password'"
+    xoAuth2: false
+    boxes:
+      - mailbox: "💼 Business / Clients"
+        onNewMail: "vulcan-mail-notify --label \"💼 Business / Clients\" --account \"Gmail\""
+        onNewMailPost: SKIP
+      - mailbox: "🛠️ Dev & Infrastructure"
+        onNewMail: "vulcan-mail-notify --label \"🛠️ Dev & Infrastructure\" --account \"Gmail\""
+        onNewMailPost: SKIP
+      - mailbox: "🤖 AI & Research"
+        onNewMail: "vulcan-mail-notify --label \"🤖 AI & Research\" --account \"Gmail\""
+        onNewMailPost: SKIP

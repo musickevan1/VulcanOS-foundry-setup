@@ -1,0 +1,517 @@
+#!/bin/bash
+# =============================================================================
+# VulcanOS Wallpaper Menu
+# Profile-aware wallpaper selector with wofi interface
+# =============================================================================
+
+set -e
+
+WALLPAPER_BASE="${HOME}/Pictures/Wallpapers"
+PROFILES_DIR="${WALLPAPER_BASE}/profiles"
+CURRENT_PROFILE_FILE="${HOME}/.cache/vulcan-current-profile"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Colors for terminal output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+CYAN='\033[0;36m'
+NC='\033[0m'
+
+# Available profiles (matches hyprmon-desc profiles)
+PROFILES=("desktop" "console" "campus" "laptop" "presentation")
+
+# =============================================================================
+# Helper Functions
+# =============================================================================
+
+get_current_profile() {
+    if [ -f "$CURRENT_PROFILE_FILE" ]; then
+        cat "$CURRENT_PROFILE_FILE"
+    else
+        # Try to detect based on monitor count
+        local mon_count
+        mon_count=$(hyprctl monitors -j | jq 'length')
+        case $mon_count in
+            5) echo "desktop" ;;
+            4) echo "console" ;;
+            2) echo "campus" ;;
+            1) echo "laptop" ;;
+            *) echo "desktop" ;;
+        esac
+    fi
+}
+
+set_current_profile() {
+    echo "$1" > "$CURRENT_PROFILE_FILE"
+}
+
+ensure_directories() {
+    for profile in "${PROFILES[@]}"; do
+        mkdir -p "${PROFILES_DIR}/${profile}"
+    done
+    mkdir -p "${WALLPAPER_BASE}/spanning"
+}
+
+get_wallpapers_for_profile() {
+    local profile="$1"
+    local profile_dir="${PROFILES_DIR}/${profile}"
+
+    if [ -d "$profile_dir" ]; then
+        # List directories (each wallpaper set is a directory)
+        find "$profile_dir" -maxdepth 1 -mindepth 1 -type d -printf '%f\n' 2>/dev/null | sort
+    fi
+}
+
+get_wallpaper_preview() {
+    local profile="$1"
+    local wallpaper="$2"
+    local preview_file="${PROFILES_DIR}/${profile}/${wallpaper}/preview.png"
+
+    if [ -f "$preview_file" ]; then
+        echo "$preview_file"
+    else
+        # Return first image found as preview
+        find "${PROFILES_DIR}/${profile}/${wallpaper}" -maxdepth 1 -name "*.png" -o -name "*.jpg" | head -1
+    fi
+}
+
+apply_wallpaper_set() {
+    local profile="$1"
+    local wallpaper="$2"
+    local wallpaper_dir="${PROFILES_DIR}/${profile}/${wallpaper}"
+
+    if [ ! -d "$wallpaper_dir" ]; then
+        echo -e "${RED}Error: Wallpaper set not found: ${wallpaper_dir}${NC}"
+        return 1
+    fi
+
+    # Check if swww-daemon is running
+    if ! pgrep -x swww-daemon > /dev/null; then
+        swww-daemon &
+        disown
+        sleep 0.5
+    fi
+
+    # Get monitor list based on profile
+    local monitors
+    case $profile in
+        desktop)
+            monitors=("DP-10" "DP-12" "DP-14" "DP-5" "eDP-1")
+            ;;
+        console)
+            monitors=("DP-10" "DP-14" "DP-5" "eDP-1")
+            ;;
+        campus)
+            monitors=("DP-5" "eDP-1")  # Adjust based on actual campus setup
+            ;;
+        laptop)
+            monitors=("eDP-1")
+            ;;
+        presentation)
+            monitors=("eDP-1" "HDMI-A-1")  # Adjust as needed
+            ;;
+    esac
+
+    # Apply wallpapers
+    for monitor in "${monitors[@]}"; do
+        local wallpaper_file="${wallpaper_dir}/${wallpaper}-${monitor}.png"
+
+        # Fallback to generic file if monitor-specific doesn't exist
+        if [ ! -f "$wallpaper_file" ]; then
+            wallpaper_file=$(find "$wallpaper_dir" -maxdepth 1 \( -name "*.png" -o -name "*.jpg" \) | head -1)
+        fi
+
+        if [ -f "$wallpaper_file" ]; then
+            swww img -o "$monitor" "$wallpaper_file" \
+                --transition-type wipe \
+                --transition-duration 1 \
+                --transition-angle 30 &
+        fi
+    done
+    wait
+
+    # Save as current wallpaper for this profile
+    echo "$wallpaper" > "${PROFILES_DIR}/${profile}/.current"
+
+    echo -e "${GREEN}Applied wallpaper: ${wallpaper} for profile: ${profile}${NC}"
+}
+
+# =============================================================================
+# Menu Functions
+# =============================================================================
+
+show_wofi_menu() {
+    local current_profile
+    current_profile=$(get_current_profile)
+
+    # Build menu options
+    local menu_items=""
+    local index=1
+
+    for profile in "${PROFILES[@]}"; do
+        local profile_upper
+        profile_upper=$(echo "$profile" | tr '[:lower:]' '[:upper:]')
+        local marker=""
+        [ "$profile" = "$current_profile" ] && marker=" ●"
+
+        menu_items+="━━━ ${profile_upper}${marker} ━━━\n"
+
+        local wallpapers
+        wallpapers=$(get_wallpapers_for_profile "$profile")
+
+        if [ -z "$wallpapers" ]; then
+            menu_items+="  (no wallpapers)\n"
+        else
+            while IFS= read -r wp; do
+                # Check if this is the current wallpaper for this profile
+                local current_wp=""
+                [ -f "${PROFILES_DIR}/${profile}/.current" ] && current_wp=$(cat "${PROFILES_DIR}/${profile}/.current")
+                local wp_marker=""
+                [ "$wp" = "$current_wp" ] && wp_marker=" ✓"
+
+                menu_items+="${profile}|${wp}|  ${wp}${wp_marker}\n"
+            done <<< "$wallpapers"
+        fi
+
+        menu_items+="\n"
+        ((index++))
+    done
+
+    # Add utility options
+    menu_items+="━━━ ACTIONS ━━━\n"
+    menu_items+="action|add|  ⊕ Add new wallpaper...\n"
+    menu_items+="action|import|  ↓ Import panoramic image...\n"
+    menu_items+="action|refresh|  ↻ Refresh current\n"
+
+    # Show wofi menu
+    local selection
+    selection=$(echo -e "$menu_items" | wofi --dmenu \
+        --prompt "Wallpaper" \
+        --width 400 \
+        --height 500 \
+        --cache-file /dev/null \
+        --insensitive \
+        --allow-markup \
+        2>/dev/null)
+
+    if [ -z "$selection" ]; then
+        exit 0
+    fi
+
+    # Parse selection
+    if [[ "$selection" == *"|"* ]]; then
+        local sel_type sel_value sel_display
+        IFS='|' read -r sel_type sel_value sel_display <<< "$selection"
+
+        case "$sel_type" in
+            action)
+                handle_action "$sel_value"
+                ;;
+            *)
+                # It's a profile|wallpaper selection
+                apply_wallpaper_set "$sel_type" "$sel_value"
+                ;;
+        esac
+    fi
+}
+
+handle_action() {
+    local action="$1"
+
+    case "$action" in
+        add)
+            show_add_wallpaper_dialog
+            ;;
+        import)
+            show_import_dialog
+            ;;
+        refresh)
+            local profile
+            profile=$(get_current_profile)
+            local current_wp=""
+            [ -f "${PROFILES_DIR}/${profile}/.current" ] && current_wp=$(cat "${PROFILES_DIR}/${profile}/.current")
+            if [ -n "$current_wp" ]; then
+                apply_wallpaper_set "$profile" "$current_wp"
+            fi
+            ;;
+    esac
+}
+
+show_add_wallpaper_dialog() {
+    # Select profile
+    local profile
+    profile=$(printf '%s\n' "${PROFILES[@]}" | wofi --dmenu --prompt "Select profile" 2>/dev/null)
+
+    [ -z "$profile" ] && return
+
+    # Get wallpaper name
+    local wp_name
+    wp_name=$(echo "" | wofi --dmenu --prompt "Wallpaper name (e.g., volcanic-forge)" 2>/dev/null)
+
+    [ -z "$wp_name" ] && return
+
+    # Create directory
+    local wp_dir="${PROFILES_DIR}/${profile}/${wp_name}"
+    mkdir -p "$wp_dir"
+
+    notify-send "VulcanOS Wallpaper" "Created: ${wp_dir}\n\nAdd your wallpaper images there:\n- ${wp_name}-DP-10.png\n- ${wp_name}-DP-12.png\n- etc."
+
+    # Open file manager to the directory
+    if command -v thunar &> /dev/null; then
+        thunar "$wp_dir" &
+    elif command -v nautilus &> /dev/null; then
+        nautilus "$wp_dir" &
+    fi
+}
+
+show_import_dialog() {
+    # Select a panoramic image
+    local image_file
+    image_file=$(zenity --file-selection --title="Select panoramic image" \
+        --file-filter="Images | *.png *.jpg *.jpeg" 2>/dev/null)
+
+    [ -z "$image_file" ] && return
+
+    # Select target profile
+    local profile
+    profile=$(printf '%s\n' "${PROFILES[@]}" | wofi --dmenu --prompt "Target profile" 2>/dev/null)
+
+    [ -z "$profile" ] && return
+
+    # Get wallpaper name
+    local wp_name
+    wp_name=$(echo "" | wofi --dmenu --prompt "Wallpaper name" 2>/dev/null)
+
+    [ -z "$wp_name" ] && return
+
+    # Run the splitter
+    notify-send "VulcanOS Wallpaper" "Splitting image for ${profile}..."
+
+    # Create output directory
+    local wp_dir="${PROFILES_DIR}/${profile}/${wp_name}"
+    mkdir -p "$wp_dir"
+
+    # Use the split script (we'll need to modify it to accept output dir)
+    if [ -x "${HOME}/VulcanOS/scripts/split-wallpaper.sh" ]; then
+        "${HOME}/VulcanOS/scripts/split-wallpaper.sh" "$image_file" "$wp_name"
+        # Move files to profile directory
+        mv "${WALLPAPER_BASE}/spanning/${wp_name}-"*.png "$wp_dir/" 2>/dev/null || true
+
+        # Create preview (copy one of the images)
+        cp "$wp_dir/${wp_name}-DP-14.png" "$wp_dir/preview.png" 2>/dev/null || true
+
+        notify-send "VulcanOS Wallpaper" "Imported: ${wp_name}\nReady to use!"
+
+        # Apply it
+        apply_wallpaper_set "$profile" "$wp_name"
+    else
+        notify-send "VulcanOS Wallpaper" "Error: split-wallpaper.sh not found"
+    fi
+}
+
+# =============================================================================
+# CLI Interface
+# =============================================================================
+
+show_cli_menu() {
+    ensure_directories
+
+    local current_profile
+    current_profile=$(get_current_profile)
+
+    echo -e "${CYAN}VulcanOS Wallpaper Selector${NC}"
+    echo -e "Current profile: ${GREEN}${current_profile}${NC}"
+    echo ""
+
+    local index=1
+    declare -A menu_map
+
+    for profile in "${PROFILES[@]}"; do
+        local profile_upper
+        profile_upper=$(echo "$profile" | tr '[:lower:]' '[:upper:]')
+        local marker=""
+        [ "$profile" = "$current_profile" ] && marker=" ${GREEN}●${NC}"
+
+        echo -e "${YELLOW}━━━ ${profile_upper}${marker} ━━━${NC}"
+
+        local wallpapers
+        wallpapers=$(get_wallpapers_for_profile "$profile")
+
+        if [ -z "$wallpapers" ]; then
+            echo -e "  ${RED}(no wallpapers installed)${NC}"
+        else
+            while IFS= read -r wp; do
+                local current_wp=""
+                [ -f "${PROFILES_DIR}/${profile}/.current" ] && current_wp=$(cat "${PROFILES_DIR}/${profile}/.current")
+                local wp_marker=""
+                [ "$wp" = "$current_wp" ] && wp_marker=" ${GREEN}✓${NC}"
+
+                echo -e "  [${index}] ${wp}${wp_marker}"
+                menu_map[$index]="${profile}|${wp}"
+                ((index++))
+            done <<< "$wallpapers"
+        fi
+        echo ""
+    done
+
+    echo -e "${YELLOW}━━━ ACTIONS ━━━${NC}"
+    echo "  [a] Add new wallpaper set"
+    echo "  [i] Import panoramic image"
+    echo "  [q] Quit"
+    echo ""
+
+    read -p "Select option: " choice
+
+    case "$choice" in
+        [0-9]*)
+            if [ -n "${menu_map[$choice]}" ]; then
+                IFS='|' read -r profile wallpaper <<< "${menu_map[$choice]}"
+                apply_wallpaper_set "$profile" "$wallpaper"
+            else
+                echo -e "${RED}Invalid selection${NC}"
+            fi
+            ;;
+        a|A)
+            cli_add_wallpaper
+            ;;
+        i|I)
+            cli_import_wallpaper
+            ;;
+        q|Q)
+            exit 0
+            ;;
+        *)
+            echo -e "${RED}Invalid option${NC}"
+            ;;
+    esac
+}
+
+cli_add_wallpaper() {
+    echo ""
+    echo "Select profile:"
+    select profile in "${PROFILES[@]}"; do
+        [ -n "$profile" ] && break
+    done
+
+    read -p "Wallpaper name: " wp_name
+
+    local wp_dir="${PROFILES_DIR}/${profile}/${wp_name}"
+    mkdir -p "$wp_dir"
+
+    echo -e "${GREEN}Created: ${wp_dir}${NC}"
+    echo ""
+    echo "Add your wallpaper images:"
+    echo "  - ${wp_name}-DP-10.png (vertical monitor)"
+    echo "  - ${wp_name}-DP-12.png (center top)"
+    echo "  - ${wp_name}-DP-14.png (center bottom)"
+    echo "  - ${wp_name}-DP-5.png (right top)"
+    echo "  - ${wp_name}-eDP-1.png (MacBook)"
+}
+
+cli_import_wallpaper() {
+    echo ""
+    read -p "Path to panoramic image: " image_file
+
+    if [ ! -f "$image_file" ]; then
+        echo -e "${RED}File not found: ${image_file}${NC}"
+        return 1
+    fi
+
+    echo "Select profile:"
+    select profile in "${PROFILES[@]}"; do
+        [ -n "$profile" ] && break
+    done
+
+    read -p "Wallpaper name: " wp_name
+
+    local wp_dir="${PROFILES_DIR}/${profile}/${wp_name}"
+    mkdir -p "$wp_dir"
+
+    echo -e "${CYAN}Splitting image...${NC}"
+
+    if [ -x "${HOME}/VulcanOS/scripts/split-wallpaper.sh" ]; then
+        echo "y" | "${HOME}/VulcanOS/scripts/split-wallpaper.sh" "$image_file" "$wp_name"
+        mv "${WALLPAPER_BASE}/spanning/${wp_name}-"*.png "$wp_dir/" 2>/dev/null || true
+
+        echo -e "${GREEN}Imported successfully!${NC}"
+
+        read -p "Apply now? [Y/n] " apply
+        if [[ ! "$apply" =~ ^[Nn] ]]; then
+            apply_wallpaper_set "$profile" "$wp_name"
+        fi
+    else
+        echo -e "${RED}Error: split-wallpaper.sh not found${NC}"
+    fi
+}
+
+# =============================================================================
+# Main
+# =============================================================================
+
+usage() {
+    echo "VulcanOS Wallpaper Menu"
+    echo ""
+    echo "Usage: $(basename "$0") [command] [args]"
+    echo ""
+    echo "Commands:"
+    echo "  menu, -m        Show interactive wofi menu (default)"
+    echo "  cli             Show CLI menu"
+    echo "  list            List all wallpapers"
+    echo "  apply <profile> <wallpaper>  Apply a wallpaper"
+    echo "  current         Show current wallpaper"
+    echo "  init            Initialize directory structure"
+    echo ""
+    echo "Examples:"
+    echo "  $(basename "$0")                    # Show wofi menu"
+    echo "  $(basename "$0") cli                # Show CLI menu"
+    echo "  $(basename "$0") apply desktop volcanic-forge"
+}
+
+ensure_directories
+
+case "${1:-menu}" in
+    menu|-m|--menu)
+        show_wofi_menu
+        ;;
+    cli)
+        show_cli_menu
+        ;;
+    list)
+        for profile in "${PROFILES[@]}"; do
+            echo "=== ${profile} ==="
+            get_wallpapers_for_profile "$profile" | sed 's/^/  /'
+            echo ""
+        done
+        ;;
+    apply)
+        if [ -z "$2" ] || [ -z "$3" ]; then
+            echo "Usage: $0 apply <profile> <wallpaper>"
+            exit 1
+        fi
+        apply_wallpaper_set "$2" "$3"
+        ;;
+    current)
+        profile=$(get_current_profile)
+        echo "Profile: $profile"
+        if [ -f "${PROFILES_DIR}/${profile}/.current" ]; then
+            echo "Wallpaper: $(cat "${PROFILES_DIR}/${profile}/.current")"
+        else
+            echo "Wallpaper: (none set)"
+        fi
+        ;;
+    init)
+        ensure_directories
+        echo "Initialized wallpaper directories:"
+        for profile in "${PROFILES[@]}"; do
+            echo "  ${PROFILES_DIR}/${profile}/"
+        done
+        ;;
+    -h|--help|help)
+        usage
+        ;;
+    *)
+        usage
+        exit 1
+        ;;
+esac

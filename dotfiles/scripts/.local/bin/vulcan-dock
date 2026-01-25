@@ -1,0 +1,8 @@
+#!/bin/bash
+# VulcanOS Dock Toggle - Simple show/hide
+PID=$(pgrep -f "nwg-dock-hyprland" | head -1)
+if [ -n "$PID" ]; then
+    kill -35 "$PID"
+else
+    nwg-dock-hyprland -r -i 48 -mb 10 -l top -c 'wofi --show drun --allow-images --prompt "Launch"' &
+fi
