@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 ## Current Position
 
 Phase: 7 of 10 (Component Integration)
-Plan: 2 of 4 in current phase
+Plan: 3 of 4 in current phase
 Status: In progress
-Last activity: 2026-01-25 — Completed 07-02-PLAN.md (theme UI component migration)
+Last activity: 2026-01-25 — Completed 07-03-PLAN.md (ThemeView container integration)
 
-Progress: [████████░░░░░░░░░░░░░░░░░░] 20% (18/86 total plans from v1.0 complete)
+Progress: [████████░░░░░░░░░░░░░░░░░░] 22% (19/86 total plans from v1.0 complete)
 
 ## Performance Metrics
 
@@ -30,7 +30,7 @@ Progress: [████████░░░░░░░░░░░░░░░
 | 1. T2 Kernel Protection | 3 | ~2h | ~40 min |
 | 5. VulcanOS Wallpaper Manager | 8 | ~6h | ~45 min |
 | 6. Foundation Architecture | 5 | 17min | 3.4 min |
-| 7. Component Integration | 2/4 | 7min | 3.5 min |
+| 7. Component Integration | 3/4 | 10min | 3.3 min |
 
 **Recent Trend:**
 - Last completed: Phase 7 Plan 1 (07-01)
@@ -84,6 +84,12 @@ Progress: [████████░░░░░░░░░░░░░░░
 - Continue using gtk::ColorButton despite deprecation (deferred ColorDialogButton migration)
 - Message forwarding closure for ThemeCardOutput → ThemeBrowserOutput conversion
 
+**From Phase 7 Plan 3 (07-03):**
+- Container component pattern: ThemeView owns all child controllers (browser, preview, editor)
+- Modal dialog lifecycle management: Explicit window.close() on save/cancel
+- Three-level message forwarding: Card → Browser → ThemeView → App
+- FileDialog for theme imports with .sh file filtering
+
 ### Previous Milestone Summary
 
 **v1.0 VulcanOS Foundation** (Phase 5 shipped 2026-01-24):
@@ -103,6 +109,7 @@ Progress: [████████░░░░░░░░░░░░░░░
 **v2.0 Component Integration - Phase 7 IN PROGRESS:**
 - Plan 1: Unified app shell (ViewStack + ViewSwitcher navigation, placeholder views, profile manager in header) ✓
 - Plan 2: Theme UI component migration (theme_card, theme_browser, preview_panel, theme_editor) ✓
+- Plan 3: ThemeView container integration (horizontal paned layout, message forwarding, modal editor) ✓
 
 ### Pending Todos
 
@@ -110,16 +117,15 @@ None yet (v2.0 milestone just initialized).
 
 ### Blockers/Concerns
 
-**Phase 7 In Progress:**
-Theme UI components migrated (theme_card, theme_browser, preview_panel, theme_editor). Next steps:
-- Plan 3: Theme View Integration (compose theme components into ThemeView container)
-- Plan 4: Final integration (connect ThemeView to app.rs ViewStack, wire up all messages)
-- No current blockers - all theme components compile and are ready for composition
+**Phase 7 Near Complete:**
+ThemeView container integrated with all child components. Themes tab fully functional. Next step:
+- Plan 4: Wallpaper View Integration (final plan in Phase 7)
+- No current blockers - theme functionality complete and operational
 
 ## Session Continuity
 
-Last session: 2026-01-25 (Phase 7 Plan 2 execution)
-Stopped at: Completed 07-02-PLAN.md - theme UI component migration (theme_card, theme_browser, preview_panel, theme_editor)
+Last session: 2026-01-25 (Phase 7 Plan 3 execution)
+Stopped at: Completed 07-03-PLAN.md - ThemeView container integration (horizontal paned layout, all theme operations functional)
 Resume file: None
 
-**Next action:** Continue Phase 7 with Plan 3 (Theme View Integration) to compose theme components into container.
+**Next action:** Continue Phase 7 with Plan 4 (Wallpaper View Integration) - final plan in phase, then Phase 7 complete.
