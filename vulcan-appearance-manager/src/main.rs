@@ -2,6 +2,7 @@ mod app;
 mod components;
 mod models;
 mod services;
+mod state;
 
 use relm4::RelmApp;
 use app::App;
