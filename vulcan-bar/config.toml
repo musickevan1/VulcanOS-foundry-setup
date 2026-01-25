@@ -1,0 +1,137 @@
+# VulcanBar Configuration
+# Waybar-style Touch Bar for T2 MacBook Pro
+# 4-page layout with tap-to-switch and swipe gestures
+
+[general]
+font = "JetBrainsMono Nerd Font:style=Bold"
+font-size = 28.0
+enable-pixel-shift = true
+show-button-outlines = true
+adaptive-brightness = true
+active-brightness = 128
+spacing = 12
+
+# ─────────────────────────────────────────────────
+# Multi-Page Configuration
+# ─────────────────────────────────────────────────
+
+[pages]
+default = "main"
+enable-swipe = true
+transition-duration-ms = 200
+
+# Page 1: Main - Primary workspace view
+[[pages.list]]
+name = "main"
+[pages.list.layout]
+left = ["workspaces"]
+center = ["window-title"]
+right = ["clock", "bluetooth", "network", "audio", "cpu", "memory", "battery"]
+
+# Page 2: Media - Playback controls and volume
+[[pages.list]]
+name = "media"
+[pages.list.layout]
+left = ["home"]
+center = ["media", "volume", "brightness"]
+right = ["battery"]
+
+# Page 3: System - Resource monitoring
+[[pages.list]]
+name = "system"
+[pages.list.layout]
+left = ["home"]
+center = ["cpu", "memory"]
+right = ["battery", "clock"]
+
+# Page 4: Connectivity - Network and Bluetooth
+[[pages.list]]
+name = "connectivity"
+[pages.list.layout]
+left = ["home"]
+center = ["network", "bluetooth"]
+right = ["clock", "battery"]
+
+# ─────────────────────────────────────────────────
+# Gesture Thresholds
+# ─────────────────────────────────────────────────
+
+[gestures]
+swipe-threshold-px = 50
+swipe-velocity-threshold = 100.0
+long-press-duration-ms = 500
+
+# ─────────────────────────────────────────────────
+# Module Configurations
+# ─────────────────────────────────────────────────
+
+[modules.clock]
+format = "%H:%M"
+format-alt = "%a %b %d"
+interval = 60
+
+[modules.battery]
+display = "both"
+interval = 30
+low-threshold = 20
+critical-threshold = 10
+
+[modules.brightness]
+display = "both"
+interval = 5
+
+[modules.volume]
+display = "both"
+on-click = "toggle-mute"
+
+[modules.workspaces]
+persistent-workspaces = 5
+active-only = false
+format = "{id}"
+
+[modules.cpu]
+interval = 2000
+format = "{icon} {usage}%"
+icon = "󰻠"
+on-click-page = "system"
+
+[modules.memory]
+interval = 5000
+format = "{icon} {percentage}%"
+icon = "󰍛"
+on-click-page = "system"
+
+[modules.network]
+interval = 10
+format-wifi = "󰤨 {essid}"
+format-ethernet = "󰈀 Wired"
+format-disconnected = "󰤭"
+on-click-page = "connectivity"
+
+[modules.bluetooth]
+interval = 10
+format = "󰂯"
+format-disabled = "󰂲"
+format-connected = "󰂱 {num_connections}"
+on-click-page = "connectivity"
+
+[modules.audio]
+interval = 1000
+format = "{icon} {volume}%"
+format-muted = "{icon} Muted"
+on-click-page = "media"
+
+[modules.media]
+interval = 1000
+format-playing = "󰐊 {title}"
+format-paused = "󰏤 {title}"
+format-stopped = "󰝛 No Media"
+truncate-length = 25
+
+[modules.home]
+icon = "󰋜"
+target-page = "main"
+
+[modules.window-title]
+max-length = 40
+interval = 500
