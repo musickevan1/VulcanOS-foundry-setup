@@ -36,7 +36,7 @@ Requirements for this milestone. Each maps to roadmap phases.
 - [ ] **INFRA-05**: Theme changes propagate to kitty terminal colors
 - [ ] **INFRA-06**: Theme changes propagate to alacritty terminal colors
 - [ ] **INFRA-07**: Appearance Manager GUI uses current theme colors (self-theming)
-- [ ] **INFRA-08**: Shared CSS/variables file serves as single source of truth
+- [x] **INFRA-08**: Shared CSS/variables file serves as single source of truth
 
 ### Preset Themes & Wallpapers
 
@@ -117,7 +117,7 @@ Which phases cover which requirements. Updated during roadmap creation.
 | INFRA-05 | Phase 9 | Pending |
 | INFRA-06 | Phase 9 | Pending |
 | INFRA-07 | Phase 9 | Pending |
-| INFRA-08 | Phase 6 | Pending |
+| INFRA-08 | Phase 6 | Complete |
 | PRESET-01 | Phase 10 | Pending |
 | PRESET-02 | Phase 10 | Pending |
 | PRESET-03 | Phase 10 | Pending |
@@ -146,4 +146,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-01-24*
-*Last updated: 2026-01-24 after roadmap creation*
+*Last updated: 2026-01-25 after Phase 6 completion*

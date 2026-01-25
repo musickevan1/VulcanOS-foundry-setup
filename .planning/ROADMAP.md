@@ -88,11 +88,11 @@ Plans:
 **Plans**: 5 plans
 
 Plans:
-- [ ] 06-01-PLAN.md — Rename crate and merge theme models/services
-- [ ] 06-02-PLAN.md — Shared brand CSS module
-- [ ] 06-03-PLAN.md — Explicit state machine (AppState)
-- [ ] 06-04-PLAN.md — Wallpaper backend trait abstraction
-- [ ] 06-05-PLAN.md — Theme parser hardening and validation
+- [x] 06-01-PLAN.md — Rename crate and merge theme models/services
+- [x] 06-02-PLAN.md — Shared brand CSS module
+- [x] 06-03-PLAN.md — Explicit state machine (AppState)
+- [x] 06-04-PLAN.md — Wallpaper backend trait abstraction
+- [x] 06-05-PLAN.md — Theme parser hardening and validation
 
 #### Phase 7: Component Integration
 **Goal**: Tab-based UI merges existing theme and wallpaper components into single cohesive application
@@ -180,7 +180,7 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 3. Desktop Integration | v1.0 | 0/? | Deferred | - |
 | 4. Automation & Validation | v1.0 | 0/? | Deferred | - |
 | 5. VulcanOS Wallpaper Manager | v1.0 | 8/8 | Complete | 2026-01-24 |
-| 6. Foundation Architecture | v2.0 | 0/5 | Planned | - |
+| 6. Foundation Architecture | v2.0 | 5/5 | Complete | 2026-01-25 |
 | 7. Component Integration | v2.0 | 0/? | Not started | - |
 | 8. Theme-Wallpaper Binding | v2.0 | 0/? | Not started | - |
 | 9. Theming Infrastructure | v2.0 | 0/? | Not started | - |
@@ -188,4 +188,4 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 
 ---
 *Roadmap created: 2026-01-23*
-*Last updated: 2026-01-24 after Phase 6 planning*
+*Last updated: 2026-01-25 after Phase 6 execution*
