@@ -33,3 +33,6 @@ regex = "1"
 
 # Lazy statics
 lazy_static = "1.4"
+
+# Const string concatenation for CSS module
+const_format = "0.2"
