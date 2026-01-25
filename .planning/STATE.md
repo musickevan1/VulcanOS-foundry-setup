@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 ## Current Position
 
 Phase: 6 of 10 (Foundation Architecture)
-Plan: 1 of ? in current phase
+Plan: 3 of 5 in current phase
 Status: In progress
-Last activity: 2026-01-25 — Completed 06-01-PLAN.md (unified crate foundation)
+Last activity: 2026-01-25 — Completed 06-03-PLAN.md (explicit state machine)
 
-Progress: [████████░░░░░░░░░░░░░░░░░░] 14% (12/86 total plans from v1.0 complete)
+Progress: [████████░░░░░░░░░░░░░░░░░░] 16% (14/86 total plans from v1.0 complete)
 
 ## Performance Metrics
 
@@ -29,11 +29,11 @@ Progress: [████████░░░░░░░░░░░░░░░
 |-------|-------|-------|----------|
 | 1. T2 Kernel Protection | 3 | ~2h | ~40 min |
 | 5. VulcanOS Wallpaper Manager | 8 | ~6h | ~45 min |
-| 6. Foundation Architecture | 1 | 2min | 2 min |
+| 6. Foundation Architecture | 3 | 6min | 2 min |
 
 **Recent Trend:**
-- Last completed: Phase 6 Plan 1 (06-01)
-- Trend: Stable (Phase 6 extremely fast due to pure file moves, no new logic)
+- Last completed: Phase 6 Plan 3 (06-03)
+- Trend: Stable (Phase 6 extremely fast - pure refactoring and foundation work)
 
 ## Accumulated Context
 
@@ -61,6 +61,12 @@ Progress: [████████░░░░░░░░░░░░░░░
 - Theme-manager components NOT moved yet (Phase 7 UI work)
 - Old vulcan-theme-manager directory preserved for reference during Phase 7
 
+**From Phase 6 Plan 3 (06-03):**
+- Plain Rust enum state machine (not typestate) for Relm4 compatibility
+- Invalid transitions return Result::Err instead of panicking
+- Error state stores recovery path (always Idle for v2.0)
+- PreviewSnapshot captures both wallpaper state and theme ID for revert
+
 ### Previous Milestone Summary
 
 **v1.0 VulcanOS Foundation** (Phase 5 shipped 2026-01-24):
@@ -72,6 +78,8 @@ Progress: [████████░░░░░░░░░░░░░░░
 
 **v2.0 Foundation Architecture - Phase 6 in progress:**
 - Plan 1: Unified vulcan-appearance-manager crate (wallpaper + theme models/services merged)
+- Plan 2: Brand CSS module refactor (VulcanOS theme colors shared constant)
+- Plan 3: Explicit state machine (Idle/Previewing/Applying/Error states with validated transitions)
 
 ### Pending Todos
 
@@ -90,8 +98,8 @@ None - unified crate foundation stable and ready for subsequent Phase 6 plans.
 
 ## Session Continuity
 
-Last session: 2026-01-25 (Phase 6 Plan 1 execution)
-Stopped at: Completed 06-01-PLAN.md - unified crate foundation established
+Last session: 2026-01-25 (Phase 6 Plan 3 execution)
+Stopped at: Completed 06-03-PLAN.md - explicit state machine with validated transitions
 Resume file: None
 
-**Next action:** Continue with remaining Phase 6 plans (if any) or proceed to Phase 7 UI work.
+**Next action:** Continue with Phase 6 Plans 4-5 (wallpaper backend abstraction and live system sync)
