@@ -1,0 +1,16 @@
+{
+  "description": "VulcanOS Ralph Loop integration - quality gate enforcement on session exit",
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/ralph-stop-hook.sh",
+            "timeout": 120
+          }
+        ]
+      }
+    ]
+  }
+}
