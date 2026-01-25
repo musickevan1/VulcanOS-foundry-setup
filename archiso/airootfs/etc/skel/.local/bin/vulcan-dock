@@ -1,0 +1,34 @@
+#!/bin/bash
+# VulcanOS Dock Toggle
+# Shows/hides nwg-dock-hyprland on the currently focused monitor
+
+DOCK_CMD="nwg-dock-hyprland"
+
+# Get focused monitor name from Hyprland
+get_focused_monitor() {
+    hyprctl monitors -j | jq -r '.[] | select(.focused==true) | .name'
+}
+
+# Check if dock is visible (running and not hidden)
+# We use a state file since the dock daemon doesn't expose visibility state
+STATE_FILE="/tmp/vulcan-dock-visible"
+
+if pgrep -f "$DOCK_CMD -d" > /dev/null; then
+    if [[ -f "$STATE_FILE" ]]; then
+        # Dock is visible - hide it
+        pkill -37 -f "$DOCK_CMD -d"  # Signal 37 = hide
+        rm -f "$STATE_FILE"
+    else
+        # Dock daemon running but hidden - kill and restart on focused monitor
+        pkill -9 -f "$DOCK_CMD -d"
+        sleep 0.1
+        MONITOR=$(get_focused_monitor)
+        $DOCK_CMD -d -i 48 -mb 10 -hd 0 -c "wofi --show drun" -o "$MONITOR" &
+        touch "$STATE_FILE"
+    fi
+else
+    # No dock running - start on focused monitor
+    MONITOR=$(get_focused_monitor)
+    $DOCK_CMD -d -i 48 -mb 10 -hd 0 -c "wofi --show drun" -o "$MONITOR" &
+    touch "$STATE_FILE"
+fi

@@ -1,0 +1,123 @@
+#!/bin/bash
+# VulcanOS Server Mode
+# Turns displays off, locks the system, and prevents suspend
+# Perfect for running VulcanOS as a headless server (e.g., for Tailscale/SSH access)
+#
+# Usage: vulcan-server-mode [--help]
+#
+# Behavior:
+#   - Screen locks (hyprlock)
+#   - Displays turn off after brief delay
+#   - Suspend/idle is inhibited while locked
+#   - If displays wake but no unlock within 10s, they turn off again
+#
+# Exiting server mode:
+#   - Press any key to wake displays
+#   - Enter password at lock screen within 10 seconds
+#   - Suspend inhibit automatically releases when unlocked
+
+set -euo pipefail
+
+# How long to wait before turning displays off again (seconds)
+IDLE_TIMEOUT=10
+
+show_help() {
+    cat << 'EOF'
+VulcanOS Server Mode
+
+Enters a "server mode" where:
+  - Screen is locked (requires password to unlock)
+  - Displays are turned off (DPMS)
+  - System suspend/idle is inhibited (stays awake for remote access)
+  - If displays wake but no unlock within 10s, they turn off again
+
+This is useful when you want to use your machine as a headless server
+while still being able to physically access it later.
+
+USAGE:
+    vulcan-server-mode [OPTIONS]
+
+OPTIONS:
+    --help, -h    Show this help message
+
+KEYBINDING:
+    Super+/       Enter server mode (configurable in bindings.conf)
+
+EXITING SERVER MODE:
+    1. Press any key or move mouse to wake displays
+    2. Enter your password at the lock screen (within 10 seconds)
+    3. Suspend inhibit automatically releases
+
+REMOTE ACCESS:
+    While in server mode, the system remains fully accessible via:
+    - SSH
+    - Tailscale
+    - Any other network services
+
+EOF
+}
+
+# Turn off displays
+dpms_off() {
+    hyprctl dispatch dpms off >/dev/null 2>&1
+}
+
+# Check if hyprlock is still running
+hyprlock_running() {
+    pgrep -x hyprlock >/dev/null 2>&1
+}
+
+main() {
+    # Handle help flag
+    if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
+        show_help
+        exit 0
+    fi
+
+    # Verify we're running under Hyprland
+    if [[ -z "${HYPRLAND_INSTANCE_SIGNATURE:-}" ]]; then
+        echo "Error: Not running under Hyprland" >&2
+        exit 1
+    fi
+
+    # Check if already in server mode
+    if hyprlock_running; then
+        notify-send -t 2000 -u low "Server Mode" "Already in server mode"
+        exit 0
+    fi
+
+    # Brief notification
+    notify-send -t 1500 -u low "Server Mode" "Entering server mode..."
+
+    # Launch hyprlock with suspend inhibit in background
+    systemd-inhibit \
+        --what=idle:sleep:handle-lid-switch \
+        --who="VulcanOS Server Mode" \
+        --why="System in server mode - awaiting physical unlock" \
+        --mode=block \
+        hyprlock &
+
+    HYPRLOCK_PID=$!
+
+    # Wait for hyprlock to initialize
+    sleep 0.5
+
+    # Turn off displays
+    dpms_off
+
+    # Monitor loop: keep displays off while locked
+    # If user wakes displays but doesn't unlock, turn them off again
+    while hyprlock_running; do
+        sleep "$IDLE_TIMEOUT"
+
+        # If hyprlock is still running, ensure displays are off
+        if hyprlock_running; then
+            dpms_off
+        fi
+    done
+
+    # hyprlock exited (user unlocked) - we're done
+    exit 0
+}
+
+main "$@"
