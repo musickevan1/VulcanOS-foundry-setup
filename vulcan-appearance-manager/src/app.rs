@@ -1,6 +1,6 @@
-use gtk::prelude::*;
 use relm4::prelude::*;
 use adw::prelude::*;
+use gtk::prelude::*;
 use std::path::PathBuf;
 use std::collections::HashMap;
 
@@ -75,6 +75,38 @@ impl SimpleComponent for App {
         // Create ViewStack for tab navigation
         let view_stack = adw::ViewStack::new();
 
+        // Add keyboard shortcuts for tab navigation
+        let shortcut_controller = gtk::ShortcutController::new();
+        shortcut_controller.set_scope(gtk::ShortcutScope::Managed);
+
+        // Clone view_stack for closures
+        let view_stack_clone1 = view_stack.clone();
+        let view_stack_clone2 = view_stack.clone();
+
+        // Ctrl+1 for Themes
+        let themes_action = gtk::CallbackAction::new(move |_, _| {
+            view_stack_clone1.set_visible_child_name("themes");
+            gtk::glib::Propagation::Stop
+        });
+        let themes_shortcut = gtk::Shortcut::new(
+            gtk::ShortcutTrigger::parse_string("<Control>1"),
+            Some(themes_action),
+        );
+
+        // Ctrl+2 for Wallpapers
+        let wallpapers_action = gtk::CallbackAction::new(move |_, _| {
+            view_stack_clone2.set_visible_child_name("wallpapers");
+            gtk::glib::Propagation::Stop
+        });
+        let wallpapers_shortcut = gtk::Shortcut::new(
+            gtk::ShortcutTrigger::parse_string("<Control>2"),
+            Some(wallpapers_action),
+        );
+
+        shortcut_controller.add_shortcut(themes_shortcut);
+        shortcut_controller.add_shortcut(wallpapers_shortcut);
+        root.add_controller(shortcut_controller);
+
         // Create theme view component
         let theme_view = ThemeViewModel::builder()
             .launch(())
@@ -140,8 +172,12 @@ impl SimpleComponent for App {
     fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
         match msg {
             AppMsg::Refresh => {
-                // Forward refresh to wallpaper view
-                self.wallpaper_view.emit(WallpaperViewMsg::RefreshMonitors);
+                // Determine active view and refresh appropriately
+                if self.view_stack.visible_child_name().as_deref() == Some("themes") {
+                    self.theme_view.emit(ThemeViewMsg::Refresh);
+                } else {
+                    self.wallpaper_view.emit(WallpaperViewMsg::RefreshMonitors);
+                }
             }
 
             AppMsg::ProfileApply(wallpapers) => {
@@ -161,6 +197,7 @@ impl SimpleComponent for App {
 
             AppMsg::ShowToast(message) => {
                 let toast = adw::Toast::new(&message);
+                toast.set_timeout(3);
                 self.toast_overlay.add_toast(toast);
             }
 
