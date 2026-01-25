@@ -1,0 +1,200 @@
+#!/bin/bash
+# vulcan-monitor-apply - Apply monitor profile using saved mapping
+# Uses the mapping from vulcan-monitor-identify to handle DP port changes
+#
+# Usage: vulcan-monitor-apply [profile]
+#   profile: desktop (default), console, laptop, campus
+
+set -euo pipefail
+
+CACHE_DIR="$HOME/.cache/vulcan-monitors"
+MAPPING_FILE="$CACHE_DIR/sceptre-mapping"
+BOOT_ID_FILE="$CACHE_DIR/boot-id"
+MONITORS_CONF="$HOME/.config/hypr/monitors.conf"
+
+PROFILE="${1:-desktop}"
+
+# Check for valid mapping
+check_mapping() {
+    if [[ ! -f "$MAPPING_FILE" ]]; then
+        echo "Error: No monitor mapping found."
+        echo "Run 'vulcan-monitor-identify' first."
+        exit 1
+    fi
+
+    local current_boot_id
+    current_boot_id=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null || echo "unknown")
+
+    if [[ -f "$BOOT_ID_FILE" ]]; then
+        local saved_boot_id
+        saved_boot_id=$(cat "$BOOT_ID_FILE")
+        if [[ "$saved_boot_id" != "$current_boot_id" ]]; then
+            echo "Warning: Mapping is from a previous boot session."
+            echo "Run 'vulcan-monitor-identify' to update."
+            exit 1
+        fi
+    fi
+}
+
+# Load mapping
+load_mapping() {
+    # shellcheck source=/dev/null
+    source "$MAPPING_FILE"
+}
+
+# Generate desktop profile (5 monitors)
+generate_desktop() {
+    cat << EOF
+# VulcanOS Monitor Profile: DESKTOP (Auto-generated)
+# Generated: $(date)
+# Boot ID: $(cat /proc/sys/kernel/random/boot_id 2>/dev/null || echo "unknown")
+#
+# Layout:
+# ┌─────────┐  ┌─────────┐  ┌─────────┐
+# │ LEFT    │  │ CENTER  │  │ FLOAT2  │
+# │ VERT    │  │   TOP   │  │  PRO    │
+# │ (rot90) │  ├─────────┤  ├─────────┤
+# │         │  │ CENTER  │  │ eDP-1   │
+# │         │  │ BOTTOM  │  │ MACBOOK │
+# └─────────┘  └─────────┘  └─────────┘
+
+# Left vertical monitor - rotated 90° clockwise
+# 1920x1080 rotated = 1080 wide x 1920 tall
+monitor = ${LEFT_VERTICAL}, 1920x1080@60, 0x120, 1, transform, 1
+
+# Center top horizontal
+monitor = ${CENTER_TOP}, 1920x1080@60, 1080x0, 1
+
+# Center bottom (curved Sceptre)
+monitor = ${CENTER_BOTTOM}, 1920x1080@60, 1080x1080, 1
+
+# Float2 Pro - right top, 120Hz portable monitor (2560x1600 = 1600 tall)
+monitor = ${FLOAT2_PRO:-desc:Invalid Vendor Codename - RTK Float2 Pro 0x01010130}, 2560x1600@120, 3000x0, 1
+
+# MacBook Laptop - right bottom, native HiDPI
+# 3072x1920 @ scale 1.6 = 1920x1200 logical
+# Starts at Y=1600 (after Float2 Pro ends)
+monitor = eDP-1, 3072x1920@60, 3000x1600, 1.6
+
+# Fallback for any additional monitors
+monitor = , preferred, auto, 1
+EOF
+}
+
+# Generate console profile (4 monitors - no center top)
+generate_console() {
+    cat << EOF
+# VulcanOS Monitor Profile: CONSOLE (Auto-generated)
+# Generated: $(date)
+#
+# Layout: Desktop minus center top horizontal (same positions)
+
+# Left vertical monitor - rotated 90° clockwise
+monitor = ${LEFT_VERTICAL}, 1920x1080@60, 0x120, 1, transform, 1
+
+# Center top - DISABLED
+monitor = ${CENTER_TOP}, disable
+
+# Center bottom (curved Sceptre) - same position as desktop
+monitor = ${CENTER_BOTTOM}, 1920x1080@60, 1080x1080, 1
+
+# Float2 Pro - right top, 120Hz
+monitor = ${FLOAT2_PRO:-desc:Invalid Vendor Codename - RTK Float2 Pro 0x01010130}, 2560x1600@120, 3000x0, 1
+
+# MacBook Laptop - right bottom (after Float2 Pro at Y=1600)
+monitor = eDP-1, 3072x1920@60, 3000x1600, 1.6
+
+# Fallback
+monitor = , preferred, auto, 1
+EOF
+}
+
+# Generate laptop profile (just the MacBook)
+generate_laptop() {
+    cat << EOF
+# VulcanOS Monitor Profile: LAPTOP (Auto-generated)
+# Just the MacBook display
+
+# Disable all external monitors
+monitor = ${LEFT_VERTICAL:-DP-1}, disable
+monitor = ${CENTER_TOP:-DP-2}, disable
+monitor = ${CENTER_BOTTOM:-DP-3}, disable
+monitor = ${FLOAT2_PRO:-DP-4}, disable
+
+# MacBook Laptop only
+monitor = eDP-1, 3072x1920@60, 0x0, 1.6
+
+# Fallback
+monitor = , disable
+EOF
+}
+
+# Generate campus profile (MacBook + Float2 Pro)
+generate_campus() {
+    cat << EOF
+# VulcanOS Monitor Profile: CAMPUS (Auto-generated)
+# MacBook + Float2 Pro for portable setup
+
+# Disable Sceptre monitors
+monitor = ${LEFT_VERTICAL:-DP-1}, disable
+monitor = ${CENTER_TOP:-DP-2}, disable
+monitor = ${CENTER_BOTTOM:-DP-3}, disable
+
+# Float2 Pro - primary external
+monitor = ${FLOAT2_PRO:-desc:Invalid Vendor Codename - RTK Float2 Pro 0x01010130}, 2560x1600@120, 0x0, 1
+
+# MacBook Laptop - to the right
+monitor = eDP-1, 3072x1920@60, 2560x200, 1.6
+
+# Fallback
+monitor = , disable
+EOF
+}
+
+# Main
+main() {
+    check_mapping
+    load_mapping
+
+    echo "Applying profile: $PROFILE"
+    echo "Using monitor mapping:"
+    echo "  Left vertical:  ${LEFT_VERTICAL:-not set}"
+    echo "  Center top:     ${CENTER_TOP:-not set}"
+    echo "  Center bottom:  ${CENTER_BOTTOM:-not set}"
+    echo "  Float2 Pro:     ${FLOAT2_PRO:-not set}"
+    echo ""
+
+    # Backup current config
+    if [[ -f "$MONITORS_CONF" ]]; then
+        cp "$MONITORS_CONF" "${MONITORS_CONF}.bak"
+    fi
+
+    # Generate and apply profile
+    case "$PROFILE" in
+        desktop)
+            generate_desktop > "$MONITORS_CONF"
+            ;;
+        console)
+            generate_console > "$MONITORS_CONF"
+            ;;
+        laptop)
+            generate_laptop > "$MONITORS_CONF"
+            ;;
+        campus)
+            generate_campus > "$MONITORS_CONF"
+            ;;
+        *)
+            echo "Unknown profile: $PROFILE"
+            echo "Available: desktop, console, laptop, campus"
+            exit 1
+            ;;
+    esac
+
+    # Reload Hyprland
+    hyprctl reload
+
+    notify-send "Monitor Profile Applied" "Profile: $PROFILE"
+    echo "✓ Applied $PROFILE profile"
+}
+
+main "$@"

@@ -1,0 +1,283 @@
+#!/bin/bash
+# vulcan-monitor-identify - Identify identical monitors with smart auto-detection
+# Attempts automatic identification based on X positions, falls back to manual if needed
+#
+# Usage:
+#   vulcan-monitor-identify [--auto]    # Auto-detect, prompt only if needed
+#   vulcan-monitor-identify --manual    # Force manual identification
+#   vulcan-monitor-identify --show      # Just show current DP assignments
+
+set -euo pipefail
+
+CACHE_DIR="$HOME/.cache/vulcan-monitors"
+MAPPING_FILE="$CACHE_DIR/sceptre-mapping"
+BOOT_ID_FILE="$CACHE_DIR/boot-id"
+
+mkdir -p "$CACHE_DIR"
+
+CURRENT_BOOT_ID=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null || echo "unknown")
+
+# Check if valid mapping exists for this boot
+check_existing_mapping() {
+    if [[ -f "$BOOT_ID_FILE" && -f "$MAPPING_FILE" ]]; then
+        local saved_boot_id
+        saved_boot_id=$(cat "$BOOT_ID_FILE")
+        if [[ "$saved_boot_id" == "$CURRENT_BOOT_ID" ]]; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Get all Sceptre monitors sorted by X position
+get_sceptre_monitors_by_x() {
+    hyprctl monitors -j | jq -r '
+        [.[] | select(.description | contains("Sceptre"))]
+        | sort_by(.x)
+        | .[].name'
+}
+
+# Get Float2 Pro monitor
+get_float2_monitor() {
+    hyprctl monitors -j | jq -r '.[] | select(.description | contains("Float2")) | .name'
+}
+
+# Get monitor info
+get_monitor_info() {
+    local mon="$1"
+    hyprctl monitors -j | jq -r ".[] | select(.name == \"$mon\") | \"X=\(.x) Y=\(.y) transform=\(.transform)\""
+}
+
+# Show current DP assignments with visual labels
+show_assignments() {
+    echo "Current Sceptre monitor positions:"
+    echo ""
+
+    local monitors
+    readarray -t monitors < <(get_sceptre_monitors_by_x)
+
+    for mon in "${monitors[@]}"; do
+        local info
+        info=$(get_monitor_info "$mon")
+        echo "  $mon: $info"
+    done
+
+    echo ""
+    echo "Float2 Pro: $(get_float2_monitor)"
+}
+
+# Attempt auto-detection based on X positions and transforms
+auto_detect() {
+    local -a monitors
+    readarray -t monitors < <(get_sceptre_monitors_by_x)
+    local count=${#monitors[@]}
+
+    if [[ $count -lt 3 ]]; then
+        echo "Only $count Sceptre monitors detected, need 3 for auto-detection"
+        return 1
+    fi
+
+    # Monitors are sorted by X position (leftmost first)
+    # Strategy:
+    # - Leftmost (lowest X) = LEFT_VERTICAL (should have transform=1 if rotated)
+    # - Middle two: compare Y positions - lower Y = CENTER_TOP, higher Y = CENTER_BOTTOM
+
+    local left_mon="${monitors[0]}"
+    local mid1="${monitors[1]}"
+    local mid2="${monitors[2]}"
+
+    # Check if leftmost has rotation (transform != 0)
+    local left_transform
+    left_transform=$(hyprctl monitors -j | jq -r ".[] | select(.name == \"$left_mon\") | .transform")
+
+    # Get Y positions of middle monitors
+    local mid1_y mid2_y
+    mid1_y=$(hyprctl monitors -j | jq -r ".[] | select(.name == \"$mid1\") | .y")
+    mid2_y=$(hyprctl monitors -j | jq -r ".[] | select(.name == \"$mid2\") | .y")
+
+    local center_top center_bottom
+    if [[ "$mid1_y" -lt "$mid2_y" ]]; then
+        center_top="$mid1"
+        center_bottom="$mid2"
+    else
+        center_top="$mid2"
+        center_bottom="$mid1"
+    fi
+
+    echo "Auto-detected layout:"
+    echo "  Left Vertical:  $left_mon (X is leftmost, transform=$left_transform)"
+    echo "  Center Top:     $center_top (Y=$mid1_y - higher position)"
+    echo "  Center Bottom:  $center_bottom (Y=$mid2_y - lower position)"
+
+    # Save mapping
+    local float2
+    float2=$(get_float2_monitor)
+
+    cat > "$MAPPING_FILE" << EOF
+# Sceptre monitor mapping - auto-detected $(date)
+# Boot ID: $CURRENT_BOOT_ID
+LEFT_VERTICAL=$left_mon
+CENTER_TOP=$center_top
+CENTER_BOTTOM=$center_bottom
+FLOAT2_PRO=$float2
+EOF
+
+    echo "$CURRENT_BOOT_ID" > "$BOOT_ID_FILE"
+    return 0
+}
+
+# Manual identification using wofi
+manual_identify() {
+    local -a monitors
+    readarray -t monitors < <(get_sceptre_monitors_by_x)
+    local count=${#monitors[@]}
+
+    if [[ $count -eq 0 ]]; then
+        echo "No Sceptre monitors detected."
+        notify-send "Monitor ID" "No Sceptre monitors found"
+        exit 0
+    fi
+
+    # Show DP labels on each monitor first
+    echo "Showing DP labels on each monitor..."
+    for mon in "${monitors[@]}"; do
+        local ws
+        ws=$(hyprctl monitors -j | jq -r ".[] | select(.name == \"$mon\") | .activeWorkspace.id")
+        hyprctl dispatch workspace "$ws" 2>/dev/null || true
+        sleep 0.1
+        zenity --info --text="<span font='48' color='yellow'>$mon</span>" \
+            --title="$mon" --width=300 --height=200 --timeout=30 &
+        sleep 0.3
+    done
+
+    notify-send -t 5000 "Monitor Identification" "Look for DP-X labels on each monitor, then select positions."
+
+    # Identify each position via wofi
+    local positions=("LEFT_VERTICAL" "CENTER_TOP" "CENTER_BOTTOM")
+    local labels=("Left Vertical (rotated 90°)" "Center Top" "Center Bottom (curved)")
+    local -A mapping
+    local -a remaining=("${monitors[@]}")
+
+    for i in "${!positions[@]}"; do
+        local pos="${positions[$i]}"
+        local label="${labels[$i]}"
+
+        # Build menu from remaining monitors
+        local menu=""
+        for mon in "${remaining[@]}"; do
+            local x y
+            x=$(hyprctl monitors -j | jq -r ".[] | select(.name == \"$mon\") | .x")
+            y=$(hyprctl monitors -j | jq -r ".[] | select(.name == \"$mon\") | .y")
+            menu+="$mon (X=$x, Y=$y)\n"
+        done
+
+        if [[ -z "$menu" ]]; then
+            continue
+        fi
+
+        local selection
+        selection=$(echo -e "$menu" | wofi --show dmenu \
+            --prompt "Which monitor is $label?" \
+            --width 400 --height 200 2>/dev/null) || true
+
+        if [[ -n "$selection" ]]; then
+            local selected
+            selected=$(echo "$selection" | awk '{print $1}')
+            mapping[$pos]="$selected"
+
+            # Remove from remaining
+            local -a new_remaining=()
+            for mon in "${remaining[@]}"; do
+                [[ "$mon" != "$selected" ]] && new_remaining+=("$mon")
+            done
+            remaining=("${new_remaining[@]}")
+        fi
+    done
+
+    # Kill zenity dialogs
+    pkill zenity 2>/dev/null || true
+
+    # Save mapping
+    local float2
+    float2=$(get_float2_monitor)
+
+    cat > "$MAPPING_FILE" << EOF
+# Sceptre monitor mapping - manual $(date)
+# Boot ID: $CURRENT_BOOT_ID
+LEFT_VERTICAL=${mapping[LEFT_VERTICAL]:-}
+CENTER_TOP=${mapping[CENTER_TOP]:-}
+CENTER_BOTTOM=${mapping[CENTER_BOTTOM]:-}
+FLOAT2_PRO=$float2
+EOF
+
+    echo "$CURRENT_BOOT_ID" > "$BOOT_ID_FILE"
+
+    echo ""
+    echo "✓ Monitor mapping saved!"
+    echo "  Left vertical:    ${mapping[LEFT_VERTICAL]:-not set}"
+    echo "  Center top:       ${mapping[CENTER_TOP]:-not set}"
+    echo "  Center bottom:    ${mapping[CENTER_BOTTOM]:-not set}"
+    echo "  Float2 Pro:       $float2"
+
+    notify-send "Monitors Identified" "Mapping saved successfully"
+}
+
+# Main
+case "${1:-}" in
+    --auto)
+        if check_existing_mapping; then
+            echo "✓ Valid mapping exists for this boot"
+            exit 0
+        fi
+
+        echo "No valid mapping for this boot. Attempting auto-detection..."
+        if auto_detect; then
+            echo "✓ Auto-detection successful"
+            notify-send "Monitors Auto-Detected" "Layout identified automatically"
+        else
+            echo "Auto-detection failed, falling back to manual..."
+            manual_identify
+        fi
+        ;;
+
+    --manual)
+        manual_identify
+        ;;
+
+    --show)
+        show_assignments
+        if [[ -f "$MAPPING_FILE" ]]; then
+            echo ""
+            echo "Saved mapping:"
+            cat "$MAPPING_FILE"
+        fi
+        ;;
+
+    --help|-h)
+        echo "vulcan-monitor-identify - Identify identical Sceptre monitors"
+        echo ""
+        echo "Usage:"
+        echo "  vulcan-monitor-identify --auto     Auto-detect, prompt if needed"
+        echo "  vulcan-monitor-identify --manual   Force manual identification"
+        echo "  vulcan-monitor-identify --show     Show current assignments"
+        echo ""
+        echo "On boot, --auto attempts to identify monitors by their X/Y positions."
+        echo "If monitors aren't where expected, it falls back to manual wofi prompts."
+        ;;
+
+    *)
+        # Default: try auto, fall back to manual
+        if check_existing_mapping; then
+            echo "✓ Valid mapping exists for this boot"
+            show_assignments
+            exit 0
+        fi
+
+        echo "Attempting auto-detection..."
+        if auto_detect; then
+            echo "✓ Auto-detection successful"
+        else
+            manual_identify
+        fi
+        ;;
+esac

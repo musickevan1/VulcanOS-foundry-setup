@@ -1,137 +1,189 @@
 #!/bin/bash
-# hyprmon-desc - Wrapper for desc-based monitor profile management
-# Applies reboot-stable monitor configurations using EDID descriptions
+# hyprmon-desc - Dynamic monitor profile manager for VulcanOS
+# Handles DP port changes on reboot by using runtime mapping
 #
 # Usage:
-#   hyprmon-desc --profile <profile-name>  # Apply profile (desktop/campus/laptop)
+#   hyprmon-desc --profile <profile-name>  # Apply profile (desktop/console/laptop/campus)
 #   hyprmon-desc profiles                  # Show profile selection menu
+#   hyprmon-desc --identify                # Force re-identification of monitors
 #   hyprmon-desc                           # Launch hyprmon TUI
 
+CACHE_DIR="$HOME/.cache/vulcan-monitors"
+MAPPING_FILE="$CACHE_DIR/sceptre-mapping"
+BOOT_ID_FILE="$CACHE_DIR/boot-id"
 PROFILE_DIR="$HOME/.config/hyprmon-desc/profiles"
 MONITORS_CONF="$HOME/.config/hypr/monitors.conf"
 
-# Function to apply a profile
+# Check if mapping is valid for current boot
+check_mapping_valid() {
+    if [[ ! -f "$MAPPING_FILE" || ! -f "$BOOT_ID_FILE" ]]; then
+        return 1
+    fi
+
+    local current_boot_id
+    current_boot_id=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null || echo "unknown")
+    local saved_boot_id
+    saved_boot_id=$(cat "$BOOT_ID_FILE")
+
+    [[ "$saved_boot_id" == "$current_boot_id" ]]
+}
+
+# Prompt user to identify monitors if mapping is stale
+ensure_mapping() {
+    if ! check_mapping_valid; then
+        notify-send -u normal "Monitor Setup Required" "DP ports changed. Please identify your monitors."
+
+        # Check if running in terminal
+        if [[ -t 0 ]]; then
+            vulcan-monitor-identify
+        else
+            # Launch in a terminal for interaction
+            kitty --class="vulcan-monitor-setup" \
+                  -o remember_window_size=no \
+                  -o initial_window_width=80c \
+                  -o initial_window_height=30c \
+                  -e vulcan-monitor-identify
+        fi
+
+        # Re-check after identification
+        if ! check_mapping_valid; then
+            notify-send -u critical "Monitor Setup Failed" "Could not identify monitors.\nUsing fallback auto-detect."
+            return 1
+        fi
+    fi
+    return 0
+}
+
+# Apply profile using dynamic mapping
 apply_profile() {
     local profile_name="$1"
-    local profile_file="$PROFILE_DIR/${profile_name}.conf"
-    
-    if [ ! -f "$profile_file" ]; then
-        notify-send -u critical "Monitor Profile Error" "Profile not found: $profile_name\n\nAvailable: desktop, campus, laptop"
-        echo "Error: Profile '$profile_name' not found at $profile_file" >&2
-        echo "Available profiles:" >&2
-        ls "$PROFILE_DIR"/*.conf 2>/dev/null | xargs -n1 basename | sed 's/.conf$//' >&2
-        exit 1
+
+    # Ensure we have a valid mapping
+    if ! ensure_mapping; then
+        echo "Warning: Using auto-detect fallback (no valid monitor mapping)"
+        # Fall back to desc-based matching for uniquely identifiable monitors
+        apply_fallback_profile "$profile_name"
+        return
     fi
-    
-    # Backup current config
-    cp "$MONITORS_CONF" "${MONITORS_CONF}.backup-$(date +%Y%m%d-%H%M%S)" 2>/dev/null
-    
-    # Apply profile
-    cp "$profile_file" "$MONITORS_CONF"
 
-    # Brief delay to let monitors initialize before reload
-    # Prevents waybar positioning race condition
-    sleep 1.5
-    hyprctl reload >/dev/null 2>&1
+    # Use vulcan-monitor-apply which reads the mapping
+    vulcan-monitor-apply "$profile_name"
 
-    # Configure workspace bindings based on detected monitors
-    # This binds workspace ranges to each monitor and updates waybar
+    # Post-apply tasks
     sleep 0.5
-    configure-workspaces 2>/dev/null
+    configure-workspaces 2>/dev/null || true
 
-    # Reload Hyprland again to apply workspace rules
+    # Reload to apply workspace rules
     hyprctl reload >/dev/null 2>&1
 
-    # Restart waybar to pick up new monitor configuration
-    # Waybar needs restart (not just reload) to detect monitor changes
+    # Restart waybar for monitor changes
     killall waybar 2>/dev/null
     sleep 0.3
     waybar &>/dev/null &
-
-    # Success notification
-    local monitor_count=$(grep -c '^monitor = desc:' "$profile_file")
-    notify-send -u normal "Monitor Profile Applied" "Profile: $profile_name\nMonitors: $monitor_count active"
-    
-    echo "✓ Applied profile: $profile_name"
 }
 
-# Function to show profile menu
+# Fallback using desc: syntax (works for Float2 Pro and laptop)
+apply_fallback_profile() {
+    local profile_name="$1"
+
+    # Get Float2 Pro by description (unique)
+    local float2
+    float2=$(hyprctl monitors -j | jq -r '.[] | select(.description | contains("Float2")) | .name' | head -1)
+
+    case "$profile_name" in
+        laptop)
+            cat > "$MONITORS_CONF" << EOF
+# FALLBACK: Laptop only
+monitor = eDP-1, 3072x1920@60, 0x0, 1.6
+monitor = , disable
+EOF
+            ;;
+        campus)
+            cat > "$MONITORS_CONF" << EOF
+# FALLBACK: Campus (MacBook + Float2 Pro)
+monitor = desc:Invalid Vendor Codename - RTK Float2 Pro 0x01010130, 2560x1600@120, 0x0, 1
+monitor = eDP-1, 3072x1920@60, 2560x200, 1.6
+monitor = , disable
+EOF
+            ;;
+        *)
+            # Desktop/console - need identification for Sceptres
+            cat > "$MONITORS_CONF" << EOF
+# FALLBACK: Auto-detect all monitors
+# Run 'vulcan-monitor-identify' to set up proper positions
+monitor = eDP-1, preferred, auto, 1.6
+monitor = , preferred, auto, 1
+EOF
+            notify-send -u normal "Monitor Fallback" "Using auto-detect. Run vulcan-monitor-identify for proper layout."
+            ;;
+    esac
+
+    hyprctl reload >/dev/null 2>&1
+}
+
+# Show profile selection menu
 show_profiles() {
-    # Use wofi for profile selection
-    local profiles=$(ls "$PROFILE_DIR"/*.conf 2>/dev/null | xargs -n1 basename | sed 's/.conf$//')
-    
+    local profiles
+    profiles=$(ls "$PROFILE_DIR"/*.conf 2>/dev/null | xargs -n1 basename | sed 's/.conf$//')
+
     if [ -z "$profiles" ]; then
-        notify-send -u critical "Monitor Profiles" "No profiles found in $PROFILE_DIR"
+        notify-send -u critical "Monitor Profiles" "No profiles found"
         exit 1
     fi
-    
-    # Create menu with descriptions
+
     local menu_items=""
     while IFS= read -r profile; do
         case "$profile" in
-            desktop)
-                menu_items+="desktop - Home setup (3 monitors)\n"
-                ;;
-            campus)
-                menu_items+="campus - On-the-go (Float2 Pro + Laptop)\n"
-                ;;
-            presentation)
-                menu_items+="presentation - Mirrored display (Float2 Pro mirrors Laptop)\n"
-                ;;
-            laptop)
-                menu_items+="laptop - Portable (Laptop only)\n"
-                ;;
-            *)
-                menu_items+="$profile - Custom profile\n"
-                ;;
+            desktop)  menu_items+="desktop - Full 5-monitor setup\n" ;;
+            console)  menu_items+="console - 4 monitors (no center top)\n" ;;
+            campus)   menu_items+="campus - Portable (Float2 + Laptop)\n" ;;
+            laptop)   menu_items+="laptop - MacBook only\n" ;;
+            *)        menu_items+="$profile - Custom profile\n" ;;
         esac
     done <<< "$profiles"
-    
-    # Show menu and get selection
-    local selection=$(echo -e "$menu_items" | wofi --show dmenu --prompt "Select Monitor Profile" --width 500 --height 300)
-    
+
+    local selection
+    selection=$(echo -e "$menu_items" | wofi --show dmenu --prompt "Select Monitor Profile" --width 500 --height 300)
+
     if [ -n "$selection" ]; then
-        # Extract profile name (first word before ' -')
-        local profile_name=$(echo "$selection" | awk '{print $1}')
+        local profile_name
+        profile_name=$(echo "$selection" | awk '{print $1}')
         apply_profile "$profile_name"
     fi
 }
 
-# Main command handling
+# Main
 case "$1" in
     --profile)
         if [ -z "$2" ]; then
             echo "Error: --profile requires a profile name" >&2
-            echo "Usage: hyprmon-desc --profile <desktop|campus|laptop>" >&2
             exit 1
         fi
         apply_profile "$2"
+        ;;
+    --identify)
+        vulcan-monitor-identify
         ;;
     profiles)
         show_profiles
         ;;
     --help|-h)
-        echo "hyprmon-desc - Desc-based monitor profile manager"
+        echo "hyprmon-desc - Dynamic monitor profile manager"
         echo ""
         echo "Usage:"
         echo "  hyprmon-desc --profile <name>   Apply monitor profile"
+        echo "  hyprmon-desc --identify         Re-identify monitors (flash test)"
         echo "  hyprmon-desc profiles           Show profile selection menu"
         echo "  hyprmon-desc                    Launch hyprmon TUI"
         echo ""
-        echo "Available profiles:"
-        ls "$PROFILE_DIR"/*.conf 2>/dev/null | xargs -n1 basename | sed 's/.conf$//' | sed 's/^/  - /'
+        echo "Profiles: desktop, console, campus, laptop"
         echo ""
         echo "Keybindings:"
-        echo "  Super + Alt + 1    Apply 'desktop' profile (3 monitors)"
-        echo "  Super + Alt + 2    Apply 'campus' profile (2 monitors)"
-        echo "  Super + Alt + 3    Apply 'presentation' profile (mirrored)"
-        echo "  Super + Alt + 4    Apply 'laptop' profile (1 monitor)"
-        echo "  Super + Shift + M    Emergency restore (desktop)"
-        echo ""
-        echo "Legacy keybindings (F1-F3) still supported for compatibility"
+        echo "  Super + Alt + 1-5   Apply profiles"
+        echo "  Super + F1-F3       Quick profiles (desktop/console/laptop)"
+        echo "  Super + Shift + M   Emergency restore"
         ;;
     *)
-        # No arguments or unrecognized - launch hyprmon TUI
-        exec hyprmon "$@"
+        exec hyprmon "$@" 2>/dev/null || show_profiles
         ;;
 esac
