@@ -4,41 +4,21 @@ use adw::prelude::*;
 use std::path::PathBuf;
 use std::collections::HashMap;
 
-use crate::models::Monitor;
-use crate::services::{hyprctl, hyprpaper, thumbnail};
-use crate::components::monitor_layout::{MonitorLayoutModel, MonitorLayoutInput, MonitorLayoutOutput};
-use crate::components::wallpaper_picker::{WallpaperPickerModel, WallpaperPickerInput, WallpaperPickerOutput};
 use crate::components::profile_manager::{ProfileManagerModel, ProfileManagerInput, ProfileManagerOutput};
-use crate::components::split_dialog::{SplitDialogModel, SplitDialogOutput};
 
 #[derive(Debug)]
 pub enum AppMsg {
-    MonitorSelected(String),
-    WallpaperSelected(PathBuf),
-    ApplyWallpaper,
-    RefreshMonitors,
-    OpenDirectory,
-    // Profile management messages
+    Refresh,
     ProfileApply(HashMap<String, PathBuf>),
     ProfileSaved(String),
     ProfileError(String),
-    // Split dialog messages
-    ShowSplitDialog,
-    SplitGenerated(HashMap<String, PathBuf>),
-    SplitCancelled,
-    SplitError(String),
+    ShowToast(String),
 }
 
 pub struct App {
-    monitors: Vec<Monitor>,
-    selected_monitor: Option<String>,
-    selected_wallpaper: Option<PathBuf>,
-    monitor_wallpapers: HashMap<String, PathBuf>,
-    monitor_layout: Controller<MonitorLayoutModel>,
-    wallpaper_picker: Controller<WallpaperPickerModel>,
+    view_stack: adw::ViewStack,
     profile_manager: Controller<ProfileManagerModel>,
-    split_dialog: Option<Controller<SplitDialogModel>>,
-    split_dialog_window: Option<gtk::Window>,
+    toast_overlay: adw::ToastOverlay,
 }
 
 #[relm4::component(pub)]
@@ -49,103 +29,33 @@ impl SimpleComponent for App {
 
     view! {
         adw::ApplicationWindow {
-            set_title: Some("VulcanOS Wallpaper Manager"),
+            set_title: Some("VulcanOS Appearance Manager"),
             set_default_size: (1000, 700),
 
-            adw::ToolbarView {
-                add_top_bar = &adw::HeaderBar {
-                    #[wrap(Some)]
-                    set_title_widget = &adw::WindowTitle {
-                        set_title: "Wallpaper Manager",
-                        #[watch]
-                        set_subtitle: &format!(
-                            "{}",
-                            model.selected_monitor.as_deref().unwrap_or("Select a monitor")
-                        ),
-                    },
+            #[local_ref]
+            toast_overlay -> adw::ToastOverlay {
+                adw::ToolbarView {
+                    add_top_bar = &adw::HeaderBar {
+                        #[wrap(Some)]
+                        set_title_widget = &adw::ViewSwitcher {
+                            #[watch]
+                            set_stack: Some(&model.view_stack),
+                            set_policy: adw::ViewSwitcherPolicy::Wide,
+                        },
 
-                    pack_start = &gtk::Button {
-                        set_icon_name: "folder-open-symbolic",
-                        set_tooltip_text: Some("Open wallpaper folder"),
-                        connect_clicked => AppMsg::OpenDirectory,
-                    },
+                        // Profile manager shared across both tabs
+                        pack_start = model.profile_manager.widget() {},
 
-                    pack_start = &gtk::Button {
-                        set_icon_name: "insert-image-symbolic",
-                        set_tooltip_text: Some("Import panoramic image"),
-                        connect_clicked => AppMsg::ShowSplitDialog,
-                    },
-
-                    pack_start = &gtk::Separator {
-                        set_orientation: gtk::Orientation::Vertical,
-                    },
-
-                    // Profile manager in header
-                    pack_start = model.profile_manager.widget() {},
-
-                    pack_end = &gtk::Button {
-                        set_icon_name: "view-refresh-symbolic",
-                        set_tooltip_text: Some("Refresh"),
-                        connect_clicked => AppMsg::RefreshMonitors,
-                    },
-                },
-
-                #[wrap(Some)]
-                set_content = &gtk::Paned {
-                    set_orientation: gtk::Orientation::Vertical,
-                    set_shrink_start_child: false,
-                    set_shrink_end_child: false,
-                    set_position: 350,
-
-                    // Top: Monitor layout
-                    #[wrap(Some)]
-                    set_start_child = &gtk::Frame {
-                        set_margin_all: 12,
-
-                        gtk::Box {
-                            set_orientation: gtk::Orientation::Vertical,
-                            set_spacing: 8,
-
-                            gtk::Label {
-                                set_markup: "<b>Monitor Layout</b>",
-                                set_halign: gtk::Align::Start,
-                            },
-
-                            model.monitor_layout.widget() {},
+                        // Refresh button
+                        pack_end = &gtk::Button {
+                            set_icon_name: "view-refresh-symbolic",
+                            set_tooltip_text: Some("Refresh"),
+                            connect_clicked => AppMsg::Refresh,
                         },
                     },
 
-                    // Bottom: Wallpaper picker
                     #[wrap(Some)]
-                    set_end_child = &gtk::Frame {
-                        set_margin_all: 12,
-
-                        gtk::Box {
-                            set_orientation: gtk::Orientation::Vertical,
-                            set_spacing: 8,
-
-                            gtk::Box {
-                                set_orientation: gtk::Orientation::Horizontal,
-                                set_spacing: 12,
-
-                                gtk::Label {
-                                    set_markup: "<b>Wallpapers</b>",
-                                    set_halign: gtk::Align::Start,
-                                    set_hexpand: true,
-                                },
-
-                                gtk::Button {
-                                    set_label: "Apply",
-                                    #[watch]
-                                    set_sensitive: model.selected_monitor.is_some() && model.selected_wallpaper.is_some(),
-                                    add_css_class: "suggested-action",
-                                    connect_clicked => AppMsg::ApplyWallpaper,
-                                },
-                            },
-
-                            model.wallpaper_picker.widget() {},
-                        },
-                    },
+                    set_content = &model.view_stack.clone(),
                 },
             },
         }
@@ -156,37 +66,32 @@ impl SimpleComponent for App {
         root: Self::Root,
         sender: ComponentSender<Self>,
     ) -> ComponentParts<Self> {
-        // Load monitors on startup
-        let monitors = hyprctl::get_monitors().unwrap_or_default();
+        // Create ViewStack for tab navigation
+        let view_stack = adw::ViewStack::new();
 
-        // Load current wallpaper assignments
-        let mut monitor_wallpapers = HashMap::new();
-        if let Ok(active) = hyprpaper::list_active() {
-            for (mon, path) in active {
-                monitor_wallpapers.insert(mon, PathBuf::from(path));
-            }
-        }
+        // Placeholder for Themes (will be replaced in Plan 3)
+        let themes_placeholder = gtk::Label::builder()
+            .label("Themes View (loading...)")
+            .build();
+        view_stack.add_titled_with_icon(
+            &themes_placeholder,
+            Some("themes"),
+            "Themes",
+            "preferences-color-symbolic"
+        );
 
-        // Create monitor layout component
-        let monitor_layout = MonitorLayoutModel::builder()
-            .launch(monitors.clone())
-            .forward(sender.input_sender(), |msg| {
-                match msg {
-                    MonitorLayoutOutput::Selected(name) => AppMsg::MonitorSelected(name),
-                }
-            });
+        // Placeholder for Wallpapers (will be replaced in Plan 4)
+        let wallpapers_placeholder = gtk::Label::builder()
+            .label("Wallpapers View (loading...)")
+            .build();
+        view_stack.add_titled_with_icon(
+            &wallpapers_placeholder,
+            Some("wallpapers"),
+            "Wallpapers",
+            "preferences-desktop-wallpaper-symbolic"
+        );
 
-        // Create wallpaper picker component
-        let wallpaper_dir = thumbnail::default_wallpaper_dir();
-        let wallpaper_picker = WallpaperPickerModel::builder()
-            .launch(wallpaper_dir)
-            .forward(sender.input_sender(), |msg| {
-                match msg {
-                    WallpaperPickerOutput::Selected(path) => AppMsg::WallpaperSelected(path),
-                }
-            });
-
-        // Create profile manager component
+        // Create profile manager component (shared across both tabs)
         let profile_manager = ProfileManagerModel::builder()
             .launch(())
             .forward(sender.input_sender(), |msg| {
@@ -197,16 +102,12 @@ impl SimpleComponent for App {
                 }
             });
 
+        let toast_overlay = adw::ToastOverlay::new();
+
         let model = App {
-            monitors,
-            selected_monitor: None,
-            selected_wallpaper: None,
-            monitor_wallpapers,
-            monitor_layout,
-            wallpaper_picker,
+            view_stack,
             profile_manager,
-            split_dialog: None,
-            split_dialog_window: None,
+            toast_overlay: toast_overlay.clone(),
         };
 
         let widgets = view_output!();
@@ -216,148 +117,29 @@ impl SimpleComponent for App {
 
     fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
         match msg {
-            AppMsg::MonitorSelected(name) => {
-                self.selected_monitor = Some(name.clone());
-                println!("Selected monitor: {}", name);
-            }
-
-            AppMsg::WallpaperSelected(path) => {
-                self.selected_wallpaper = Some(path.clone());
-                println!("Selected wallpaper: {}", path.display());
-            }
-
-            AppMsg::ApplyWallpaper => {
-                if let (Some(monitor), Some(path)) = (&self.selected_monitor, &self.selected_wallpaper) {
-                    match hyprpaper::apply_wallpaper(monitor, path) {
-                        Ok(()) => {
-                            println!("Applied {} to {}", path.display(), monitor);
-                            self.monitor_wallpapers.insert(monitor.clone(), path.clone());
-                            // Notify profile manager of current wallpaper state
-                            self.profile_manager.emit(ProfileManagerInput::UpdateWallpapers(
-                                self.monitor_wallpapers.clone()
-                            ));
-                            // Update monitor layout visualization
-                            self.monitor_layout.emit(MonitorLayoutInput::UpdateWallpapers(
-                                self.monitor_wallpapers.clone()
-                            ));
-                        }
-                        Err(e) => {
-                            eprintln!("Failed to apply wallpaper: {}", e);
-                        }
-                    }
-                }
-            }
-
-            AppMsg::RefreshMonitors => {
-                if let Ok(monitors) = hyprctl::get_monitors() {
-                    self.monitors = monitors.clone();
-                    self.monitor_layout.emit(MonitorLayoutInput::UpdateMonitors(monitors));
-                    // Also refresh wallpaper state on layout
-                    self.monitor_layout.emit(MonitorLayoutInput::UpdateWallpapers(
-                        self.monitor_wallpapers.clone()
-                    ));
-                }
-                self.wallpaper_picker.emit(WallpaperPickerInput::Refresh);
-            }
-
-            AppMsg::OpenDirectory => {
-                let dir = thumbnail::default_wallpaper_dir();
-                if let Err(e) = std::process::Command::new("xdg-open")
-                    .arg(&dir)
-                    .spawn()
-                {
-                    eprintln!("Failed to open directory: {}", e);
-                }
+            AppMsg::Refresh => {
+                // Refresh current view (will be forwarded to active view in later plans)
+                println!("Refresh requested");
             }
 
             AppMsg::ProfileApply(wallpapers) => {
+                // Apply profile (will be forwarded to wallpaper view in Plan 4)
                 println!("Applying profile with {} wallpapers", wallpapers.len());
-                for (monitor, path) in &wallpapers {
-                    if let Err(e) = hyprpaper::apply_wallpaper(monitor, path) {
-                        eprintln!("Failed to apply to {}: {}", monitor, e);
-                    }
-                }
-                // Update internal state
-                self.monitor_wallpapers = wallpapers.clone();
-                // Update monitor layout visualization
-                self.monitor_layout.emit(MonitorLayoutInput::UpdateWallpapers(wallpapers));
             }
 
             AppMsg::ProfileSaved(name) => {
-                println!("Profile saved: {}", name);
+                let toast = adw::Toast::new(&format!("Profile '{}' saved", name));
+                self.toast_overlay.add_toast(toast);
             }
 
             AppMsg::ProfileError(error) => {
-                eprintln!("Profile error: {}", error);
+                let toast = adw::Toast::new(&format!("Error: {}", error));
+                self.toast_overlay.add_toast(toast);
             }
 
-            AppMsg::ShowSplitDialog => {
-                // Create split dialog component with current monitors
-                let split_dialog = SplitDialogModel::builder()
-                    .launch(self.monitors.clone())
-                    .forward(sender.input_sender(), |msg| {
-                        match msg {
-                            SplitDialogOutput::Generated(wallpapers) => AppMsg::SplitGenerated(wallpapers),
-                            SplitDialogOutput::Cancelled => AppMsg::SplitCancelled,
-                            SplitDialogOutput::Error(e) => AppMsg::SplitError(e),
-                        }
-                    });
-
-                // Create a popup window to host the dialog
-                let window = gtk::Window::builder()
-                    .title("Import Panoramic Wallpaper")
-                    .modal(true)
-                    .default_width(450)
-                    .default_height(300)
-                    .child(split_dialog.widget())
-                    .build();
-
-                window.present();
-
-                // Store references so we can close the window later
-                self.split_dialog = Some(split_dialog);
-                self.split_dialog_window = Some(window);
-            }
-
-            AppMsg::SplitGenerated(wallpapers) => {
-                println!("Generated {} wallpapers from panoramic", wallpapers.len());
-
-                // Apply all generated wallpapers
-                for (monitor, path) in &wallpapers {
-                    if let Err(e) = hyprpaper::apply_wallpaper(monitor, path) {
-                        eprintln!("Failed to apply to {}: {}", monitor, e);
-                    }
-                }
-                self.monitor_wallpapers.extend(wallpapers.clone());
-
-                // Notify profile manager of the new wallpapers
-                self.profile_manager.emit(ProfileManagerInput::UpdateWallpapers(
-                    self.monitor_wallpapers.clone()
-                ));
-
-                // Update monitor layout visualization
-                self.monitor_layout.emit(MonitorLayoutInput::UpdateWallpapers(
-                    self.monitor_wallpapers.clone()
-                ));
-
-                // Close the dialog window
-                if let Some(window) = self.split_dialog_window.take() {
-                    window.close();
-                }
-                self.split_dialog = None;
-            }
-
-            AppMsg::SplitCancelled => {
-                // Close the dialog window
-                if let Some(window) = self.split_dialog_window.take() {
-                    window.close();
-                }
-                self.split_dialog = None;
-            }
-
-            AppMsg::SplitError(error) => {
-                eprintln!("Split error: {}", error);
-                // Keep dialog open so user can try again or cancel
+            AppMsg::ShowToast(message) => {
+                let toast = adw::Toast::new(&message);
+                self.toast_overlay.add_toast(toast);
             }
         }
     }
