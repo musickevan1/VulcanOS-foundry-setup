@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 ## Current Position
 
 Phase: 7 of 10 (Component Integration)
-Plan: 3 of 4 in current phase
-Status: In progress
-Last activity: 2026-01-25 — Completed 07-03-PLAN.md (ThemeView container integration)
+Plan: 4 of 4 in current phase
+Status: Phase complete
+Last activity: 2026-01-25 — Completed 07-04-PLAN.md (WallpaperView container integration)
 
-Progress: [████████░░░░░░░░░░░░░░░░░░] 22% (19/86 total plans from v1.0 complete)
+Progress: [████████░░░░░░░░░░░░░░░░░░] 23% (20/86 total plans from v1.0 complete)
 
 ## Performance Metrics
 
@@ -30,7 +30,7 @@ Progress: [████████░░░░░░░░░░░░░░░
 | 1. T2 Kernel Protection | 3 | ~2h | ~40 min |
 | 5. VulcanOS Wallpaper Manager | 8 | ~6h | ~45 min |
 | 6. Foundation Architecture | 5 | 17min | 3.4 min |
-| 7. Component Integration | 3/4 | 10min | 3.3 min |
+| 7. Component Integration | 4/4 | 13min | 3.3 min |
 
 **Recent Trend:**
 - Last completed: Phase 7 Plan 1 (07-01)
@@ -90,6 +90,12 @@ Progress: [████████░░░░░░░░░░░░░░░
 - Three-level message forwarding: Card → Browser → ThemeView → App
 - FileDialog for theme imports with .sh file filtering
 
+**From Phase 7 Plan 4 (07-04):**
+- Vertical paned layout for Wallpapers tab (monitor layout top, wallpaper picker bottom)
+- Profile state synchronization via WallpapersChanged output message
+- Wallpaper backend runtime detection (swww → hyprpaper → dummy graceful degradation)
+- Container component pattern: WallpaperView coordinates monitor_layout, wallpaper_picker, split_dialog
+
 ### Previous Milestone Summary
 
 **v1.0 VulcanOS Foundation** (Phase 5 shipped 2026-01-24):
@@ -106,10 +112,11 @@ Progress: [████████░░░░░░░░░░░░░░░
 - Plan 4: Wallpaper backend abstraction (SwwwBackend + HyprpaperBackend with auto-detection)
 - Plan 5: Theme parser hardening (security validation, dangerous pattern detection)
 
-**v2.0 Component Integration - Phase 7 IN PROGRESS:**
+**v2.0 Component Integration - Phase 7 COMPLETE:**
 - Plan 1: Unified app shell (ViewStack + ViewSwitcher navigation, placeholder views, profile manager in header) ✓
 - Plan 2: Theme UI component migration (theme_card, theme_browser, preview_panel, theme_editor) ✓
 - Plan 3: ThemeView container integration (horizontal paned layout, message forwarding, modal editor) ✓
+- Plan 4: WallpaperView container integration (vertical paned layout, backend abstraction, profile sync) ✓
 
 ### Pending Todos
 
@@ -117,15 +124,15 @@ None yet (v2.0 milestone just initialized).
 
 ### Blockers/Concerns
 
-**Phase 7 Near Complete:**
-ThemeView container integrated with all child components. Themes tab fully functional. Next step:
-- Plan 4: Wallpaper View Integration (final plan in Phase 7)
-- No current blockers - theme functionality complete and operational
+**Phase 7 Complete:**
+Both ThemeView and WallpaperView containers integrated. All components functional. Next phase:
+- Phase 8: Theme-Wallpaper Binding (theme suggests wallpaper, unified profiles)
+- No current blockers - both tabs operational, ready for theme-wallpaper integration
 
 ## Session Continuity
 
-Last session: 2026-01-25 (Phase 7 Plan 3 execution)
-Stopped at: Completed 07-03-PLAN.md - ThemeView container integration (horizontal paned layout, all theme operations functional)
+Last session: 2026-01-25 (Phase 7 Plan 4 execution)
+Stopped at: Completed 07-04-PLAN.md - WallpaperView container integration (vertical paned layout, wallpaper operations, profile sync)
 Resume file: None
 
-**Next action:** Continue Phase 7 with Plan 4 (Wallpaper View Integration) - final plan in phase, then Phase 7 complete.
+**Next action:** Begin Phase 8 (Theme-Wallpaper Binding) - theme suggests wallpaper, unified profiles spanning themes + wallpapers.
