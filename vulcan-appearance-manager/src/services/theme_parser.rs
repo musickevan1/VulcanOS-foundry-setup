@@ -5,9 +5,29 @@ use std::path::Path;
 
 use crate::models::Theme;
 
+/// Required variables that must be present in every theme file
+const REQUIRED_VARS: &[&str] = &["THEME_NAME", "THEME_ID"];
+
+/// Color fields that should be validated as hex colors (when not empty)
+const COLOR_FIELDS: &[&str] = &[
+    "BG_PRIMARY", "BG_SECONDARY", "BG_TERTIARY", "BG_SURFACE",
+    "FG_PRIMARY", "FG_SECONDARY", "FG_MUTED",
+    "ACCENT", "ACCENT_ALT",
+    "RED", "GREEN", "YELLOW", "BLUE", "PURPLE", "CYAN", "ORANGE", "PINK",
+    "BRIGHT_RED", "BRIGHT_GREEN", "BRIGHT_YELLOW", "BRIGHT_BLUE", "BRIGHT_PURPLE", "BRIGHT_CYAN",
+    "BORDER_ACTIVE", "BORDER_INACTIVE", "SELECTION", "CURSOR",
+    "GRADIENT_START", "GRADIENT_END",
+];
+
 lazy_static::lazy_static! {
     /// Regex to match: export VAR_NAME="value" or export VAR_NAME='value'
     static ref EXPORT_RE: Regex = Regex::new(r#"export\s+(\w+)\s*=\s*["']([^"']*)["']"#).unwrap();
+
+    /// Regex to validate hex color format: #RRGGBB
+    static ref HEX_COLOR_RE: Regex = Regex::new(r"^#[0-9a-fA-F]{6}$").unwrap();
+
+    /// Regex to validate theme_id: alphanumeric with hyphens/underscores, not starting with hyphen
+    static ref THEME_ID_RE: Regex = Regex::new(r"^[a-zA-Z0-9][a-zA-Z0-9_-]*$").unwrap();
 }
 
 /// Parse a theme .sh file into a Theme struct
@@ -98,6 +118,115 @@ pub fn parse_theme_content(content: &str, source_path: Option<&Path>) -> Result<
     if let Some(path) = source_path {
         theme.source_path = Some(path.to_path_buf());
     }
+
+    Ok(theme)
+}
+
+/// Check for dangerous shell execution patterns in theme file content
+fn check_dangerous_patterns(content: &str, path_display: &str) -> Result<()> {
+    let dangerous_patterns = [
+        ("$(", "command substitution"),
+        ("`", "backtick command execution"),
+        ("eval ", "eval command"),
+        ("source ", "source command"),
+        ("exec ", "exec command"),
+        ("| ", "pipe command"),
+    ];
+
+    for (pattern, description) in &dangerous_patterns {
+        if content.contains(pattern) {
+            anyhow::bail!(
+                "Theme file contains dangerous pattern '{}' ({}): {}",
+                pattern,
+                description,
+                path_display
+            );
+        }
+    }
+
+    Ok(())
+}
+
+/// Validate a Theme struct for security and correctness
+pub fn validate_theme(theme: &Theme) -> Result<()> {
+    // Validate theme_name is not empty
+    if theme.theme_name.trim().is_empty() {
+        anyhow::bail!("THEME_NAME is required and cannot be empty");
+    }
+
+    // Validate theme_id is not empty
+    if theme.theme_id.trim().is_empty() {
+        anyhow::bail!("THEME_ID is required and cannot be empty");
+    }
+
+    // Validate theme_id matches safe pattern
+    if !THEME_ID_RE.is_match(&theme.theme_id) {
+        anyhow::bail!(
+            "THEME_ID '{}' is invalid. Must start with alphanumeric and contain only alphanumeric, hyphens, or underscores",
+            theme.theme_id
+        );
+    }
+
+    // Validate color fields (if not empty)
+    let color_map = [
+        ("BG_PRIMARY", &theme.bg_primary),
+        ("BG_SECONDARY", &theme.bg_secondary),
+        ("BG_TERTIARY", &theme.bg_tertiary),
+        ("BG_SURFACE", &theme.bg_surface),
+        ("FG_PRIMARY", &theme.fg_primary),
+        ("FG_SECONDARY", &theme.fg_secondary),
+        ("FG_MUTED", &theme.fg_muted),
+        ("ACCENT", &theme.accent),
+        ("ACCENT_ALT", &theme.accent_alt),
+        ("RED", &theme.red),
+        ("GREEN", &theme.green),
+        ("YELLOW", &theme.yellow),
+        ("BLUE", &theme.blue),
+        ("PURPLE", &theme.purple),
+        ("CYAN", &theme.cyan),
+        ("ORANGE", &theme.orange),
+        ("PINK", &theme.pink),
+        ("BRIGHT_RED", &theme.bright_red),
+        ("BRIGHT_GREEN", &theme.bright_green),
+        ("BRIGHT_YELLOW", &theme.bright_yellow),
+        ("BRIGHT_BLUE", &theme.bright_blue),
+        ("BRIGHT_PURPLE", &theme.bright_purple),
+        ("BRIGHT_CYAN", &theme.bright_cyan),
+        ("BORDER_ACTIVE", &theme.border_active),
+        ("BORDER_INACTIVE", &theme.border_inactive),
+        ("SELECTION", &theme.selection),
+        ("CURSOR", &theme.cursor),
+        ("GRADIENT_START", &theme.gradient_start),
+        ("GRADIENT_END", &theme.gradient_end),
+    ];
+
+    for (field_name, value) in &color_map {
+        if !value.is_empty() && !HEX_COLOR_RE.is_match(value) {
+            anyhow::bail!(
+                "{} has invalid hex color '{}'. Must be in format #RRGGBB",
+                field_name,
+                value
+            );
+        }
+    }
+
+    Ok(())
+}
+
+/// Parse and validate a theme file with security checks
+pub fn parse_and_validate(path: &Path) -> Result<Theme> {
+    // Read file content
+    let content = fs::read_to_string(path)
+        .with_context(|| format!("Failed to read theme file: {}", path.display()))?;
+
+    // Check for dangerous patterns
+    check_dangerous_patterns(&content, &path.display().to_string())?;
+
+    // Parse theme content
+    let theme = parse_theme_content(&content, Some(path))?;
+
+    // Validate theme
+    validate_theme(&theme)?;
 
     Ok(theme)
 }
@@ -224,5 +353,201 @@ export ACCENT="#f97316"
         let serialized = serialize_theme(&theme);
         assert!(serialized.contains(r#"export THEME_NAME="My Theme""#));
         assert!(serialized.contains(r#"export THEME_ID="my-theme""#));
+    }
+
+    // === Dangerous pattern detection tests ===
+
+    #[test]
+    fn test_rejects_command_substitution() {
+        let content = r##"
+export THEME_NAME="Evil Theme"
+export THEME_ID="evil-$(whoami)"
+export BG_PRIMARY="#1c1917"
+"##;
+        let result = check_dangerous_patterns(content, "test.sh");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("command substitution"));
+    }
+
+    #[test]
+    fn test_rejects_backtick() {
+        let content = r##"
+export THEME_NAME="Evil Theme"
+export THEME_ID="evil-`whoami`"
+export BG_PRIMARY="#1c1917"
+"##;
+        let result = check_dangerous_patterns(content, "test.sh");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("backtick"));
+    }
+
+    #[test]
+    fn test_rejects_eval() {
+        let content = r##"
+export THEME_NAME="Evil Theme"
+eval "whoami"
+export BG_PRIMARY="#1c1917"
+"##;
+        let result = check_dangerous_patterns(content, "test.sh");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("eval"));
+    }
+
+    #[test]
+    fn test_rejects_pipe() {
+        let content = r##"
+export THEME_NAME="Evil Theme"
+export THEME_ID="evil-theme" | cat
+export BG_PRIMARY="#1c1917"
+"##;
+        let result = check_dangerous_patterns(content, "test.sh");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("pipe"));
+    }
+
+    // === Required variable tests ===
+
+    #[test]
+    fn test_rejects_missing_theme_name() {
+        let mut theme = Theme::new("", "test-theme");
+        theme.theme_name = String::new();
+        let result = validate_theme(&theme);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("THEME_NAME"));
+    }
+
+    #[test]
+    fn test_rejects_missing_theme_id() {
+        let mut theme = Theme::new("Test Theme", "");
+        theme.theme_id = String::new();
+        let result = validate_theme(&theme);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("THEME_ID"));
+    }
+
+    // === Theme ID validation tests ===
+
+    #[test]
+    fn test_valid_theme_id() {
+        let theme = Theme::new("Test Theme", "test-theme-123");
+        assert!(validate_theme(&theme).is_ok());
+
+        let theme2 = Theme::new("Test Theme", "test_theme_456");
+        assert!(validate_theme(&theme2).is_ok());
+
+        let theme3 = Theme::new("Test Theme", "TestTheme789");
+        assert!(validate_theme(&theme3).is_ok());
+    }
+
+    #[test]
+    fn test_rejects_theme_id_with_spaces() {
+        let theme = Theme::new("Test Theme", "test theme");
+        let result = validate_theme(&theme);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("THEME_ID"));
+    }
+
+    #[test]
+    fn test_rejects_theme_id_with_semicolons() {
+        let theme = Theme::new("Test Theme", "test;rm -rf");
+        let result = validate_theme(&theme);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("THEME_ID"));
+    }
+
+    #[test]
+    fn test_rejects_theme_id_starting_with_hyphen() {
+        let theme = Theme::new("Test Theme", "-test-theme");
+        let result = validate_theme(&theme);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("THEME_ID"));
+    }
+
+    // === Color validation tests ===
+
+    #[test]
+    fn test_valid_hex_colors() {
+        let mut theme = Theme::new("Test Theme", "test-theme");
+        theme.bg_primary = "#1c1917".to_string();
+        theme.accent = "#f97316".to_string();
+        theme.fg_primary = "#FFFFFF".to_string();
+        assert!(validate_theme(&theme).is_ok());
+    }
+
+    #[test]
+    fn test_rejects_invalid_hex_color() {
+        let mut theme = Theme::new("Test Theme", "test-theme");
+        theme.bg_primary = "rgb(28, 25, 23)".to_string();
+        let result = validate_theme(&theme);
+        assert!(result.is_err());
+        let err_msg = result.unwrap_err().to_string();
+        assert!(err_msg.contains("BG_PRIMARY"));
+        assert!(err_msg.contains("#RRGGBB"));
+    }
+
+    #[test]
+    fn test_rejects_3_digit_hex() {
+        let mut theme = Theme::new("Test Theme", "test-theme");
+        theme.accent = "#fff".to_string();
+        let result = validate_theme(&theme);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("ACCENT"));
+    }
+
+    #[test]
+    fn test_allows_empty_color_fields() {
+        let mut theme = Theme::new("Test Theme", "test-theme");
+        theme.bg_primary = "#1c1917".to_string();
+        theme.accent = "#f97316".to_string();
+        theme.orange = String::new();
+        theme.pink = String::new();
+        assert!(validate_theme(&theme).is_ok());
+    }
+
+    // === Integration tests ===
+
+    #[test]
+    fn test_parse_and_validate_valid_file() {
+        use std::io::Write;
+        let content = r##"#!/bin/bash
+export THEME_NAME="Test Theme"
+export THEME_ID="test-theme"
+export BG_PRIMARY="#1c1917"
+export ACCENT="#f97316"
+"##;
+        let temp_dir = std::env::temp_dir();
+        let test_file = temp_dir.join("test_theme_valid.sh");
+        let mut file = fs::File::create(&test_file).unwrap();
+        file.write_all(content.as_bytes()).unwrap();
+
+        let result = parse_and_validate(&test_file);
+        assert!(result.is_ok());
+        let theme = result.unwrap();
+        assert_eq!(theme.theme_name, "Test Theme");
+        assert_eq!(theme.theme_id, "test-theme");
+
+        // Cleanup
+        let _ = fs::remove_file(&test_file);
+    }
+
+    #[test]
+    fn test_parse_and_validate_dangerous_file() {
+        use std::io::Write;
+        let content = r##"#!/bin/bash
+export THEME_NAME="Evil Theme"
+export THEME_ID="evil-$(whoami)"
+export BG_PRIMARY="#1c1917"
+"##;
+        let temp_dir = std::env::temp_dir();
+        let test_file = temp_dir.join("test_theme_evil.sh");
+        let mut file = fs::File::create(&test_file).unwrap();
+        file.write_all(content.as_bytes()).unwrap();
+
+        let result = parse_and_validate(&test_file);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("dangerous pattern"));
+
+        // Cleanup
+        let _ = fs::remove_file(&test_file);
     }
 }
