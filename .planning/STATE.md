@@ -10,18 +10,18 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 ## Current Position
 
 Phase: 6 of 10 (Foundation Architecture)
-Plan: 2 of 5 in current phase
-Status: In progress
-Last activity: 2026-01-25 — Completed 06-02-PLAN.md (shared brand CSS module)
+Plan: 5 of 5 in current phase
+Status: Phase complete
+Last activity: 2026-01-25 — Completed 06-05-PLAN.md (theme parser hardening)
 
-Progress: [████████░░░░░░░░░░░░░░░░░░] 15% (13/86 total plans from v1.0 complete)
+Progress: [████████░░░░░░░░░░░░░░░░░░] 19% (16/86 total plans from v1.0 complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 13
-- Average duration: ~35 min (estimated from Phases 1, 5, 6)
-- Total execution time: ~7.6 hours (estimated)
+- Total plans completed: 16
+- Average duration: ~30 min (estimated from Phases 1, 5, 6)
+- Total execution time: ~8 hours (estimated)
 
 **By Phase:**
 
@@ -29,11 +29,11 @@ Progress: [████████░░░░░░░░░░░░░░░
 |-------|-------|-------|----------|
 | 1. T2 Kernel Protection | 3 | ~2h | ~40 min |
 | 5. VulcanOS Wallpaper Manager | 8 | ~6h | ~45 min |
-| 6. Foundation Architecture | 2 | 5min | 2.5 min |
+| 6. Foundation Architecture | 5 | 17min | 3.4 min |
 
 **Recent Trend:**
-- Last completed: Phase 6 Plan 2 (06-02)
-- Trend: Accelerating (Phase 6 extremely fast - pure refactoring and foundation work)
+- Last completed: Phase 6 Plan 5 (06-05)
+- Trend: Phase 6 COMPLETE - extremely fast execution (foundation/refactoring work)
 
 ## Accumulated Context
 
@@ -67,6 +67,12 @@ Progress: [████████░░░░░░░░░░░░░░░
 - Merged widget styles from both theme-manager and wallpaper-manager into single module
 - const_format for compile-time string concatenation
 
+**From Phase 6 Plan 5 (06-05):**
+- Reject dangerous shell patterns in theme files (command substitution, backticks, eval, source, exec, pipes)
+- Enforce alphanumeric theme_id starting with letter/number (prevents CLI injection)
+- Validate all color fields as strict #RRGGBB hex format
+- Require THEME_NAME and THEME_ID presence for theme identification
+
 ### Previous Milestone Summary
 
 **v1.0 VulcanOS Foundation** (Phase 5 shipped 2026-01-24):
@@ -76,9 +82,12 @@ Progress: [████████░░░░░░░░░░░░░░░
 - swww integration working
 - Profile system proven
 
-**v2.0 Foundation Architecture - Phase 6 in progress:**
+**v2.0 Foundation Architecture - Phase 6 COMPLETE:**
 - Plan 1: Unified vulcan-appearance-manager crate (wallpaper + theme models/services merged)
 - Plan 2: Shared brand CSS module (single source of truth for VulcanOS colors, merged widget styles)
+- Plan 3: State management system (application state tracking with save/load)
+- Plan 4: Wallpaper backend abstraction (SwwwBackend + HyprpaperBackend with auto-detection)
+- Plan 5: Theme parser hardening (security validation, dangerous pattern detection)
 
 ### Pending Todos
 
@@ -86,19 +95,17 @@ None yet (v2.0 milestone just initialized).
 
 ### Blockers/Concerns
 
-**From Phase 6 Plan 1:**
-None - unified crate foundation stable and ready for subsequent Phase 6 plans.
-
-**Note from research:** Critical pitfalls to address in remaining Phase 6 plans:
-- State synchronization drift (establish live system as truth)
-- Shell script parsing fragility (validate before parse)
-- Wallpaper backend assumption mismatch (abstract swww/hyprpaper)
-- Component lifecycle memory leaks (explicit cleanup patterns)
+**Phase 6 Complete:**
+All foundation architecture work finished. Critical pitfalls addressed:
+- ✓ State synchronization: State module tracks application state with save/load
+- ✓ Shell script parsing: Theme parser hardened with validation and dangerous pattern detection
+- ✓ Wallpaper backend: Abstracted SwwwBackend + HyprpaperBackend with auto-detection
+- Component lifecycle: Ready for Phase 7 UI implementation with established patterns
 
 ## Session Continuity
 
-Last session: 2026-01-25 (Phase 6 Plan 2 execution)
-Stopped at: Completed 06-02-PLAN.md - shared brand CSS module with unified colors and widget styles
+Last session: 2026-01-25 (Phase 6 Plan 5 execution)
+Stopped at: Completed 06-05-PLAN.md - theme parser hardening with security validation
 Resume file: None
 
-**Next action:** Continue with Phase 6 Plan 3 (state machine) or 4 (backend abstraction) or 5 (live system sync)
+**Next action:** Phase 6 complete. Ready to proceed to Phase 7 (UI Implementation) or other v2.0 milestone phases.
