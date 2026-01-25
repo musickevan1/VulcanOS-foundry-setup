@@ -68,43 +68,49 @@ monitor = ${CENTER_TOP}, 1920x1080@60, 1080x0, 1
 # Center bottom (curved Sceptre)
 monitor = ${CENTER_BOTTOM}, 1920x1080@60, 1080x1080, 1
 
-# Float2 Pro - right top, 120Hz portable monitor (2560x1600 = 1600 tall)
-monitor = ${FLOAT2_PRO:-desc:Invalid Vendor Codename - RTK Float2 Pro 0x01010130}, 2560x1600@120, 3000x0, 1
+# Float2 Pro - right top, 120Hz
+# 2560x1600 @ scale 1.333 = 1920x1200 logical (matches MacBook width)
+monitor = ${FLOAT2_PRO:-desc:Invalid Vendor Codename - RTK Float2 Pro 0x01010130}, 2560x1600@120, 3000x0, 1.333333
 
 # MacBook Laptop - right bottom, native HiDPI
 # 3072x1920 @ scale 1.6 = 1920x1200 logical
-# Starts at Y=1600 (after Float2 Pro ends)
-monitor = eDP-1, 3072x1920@60, 3000x1600, 1.6
+# Starts at Y=1200 (after Float2 Pro's 1200 logical height)
+monitor = eDP-1, 3072x1920@60, 3000x1200, 1.6
 
 # Fallback for any additional monitors
 monitor = , preferred, auto, 1
 EOF
 }
 
-# Generate console profile (4 monitors - no center top)
-# Identical to desktop but center top is disabled
+# Generate console profile (4 monitors - center top kept alive but DPMS off)
+# DP-10 stays enabled to avoid MST modeset loop with DP-12 on same hub.
+# After reload, DPMS turns DP-10 off. Physical monitor is on console input.
 generate_console() {
+    # Store center top name for post-reload DPMS off
+    CONSOLE_DPMS_OFF="${CENTER_TOP}"
+
     cat << EOF
 # VulcanOS Monitor Profile: CONSOLE (Auto-generated)
 # Generated: $(date)
-# Desktop layout with center top monitor disabled
+# Desktop layout - center top stays enabled (MST) but DPMS off after reload
 
 # Left vertical monitor - rotated 90° clockwise
 monitor = ${LEFT_VERTICAL}, 1920x1080@60, 0x120, 1, transform, 1
 
-# Center top horizontal - DISABLED
-monitor = ${CENTER_TOP}, disable
+# Center top horizontal - kept enabled to avoid MST modeset loop
+# DPMS off applied after reload (physical display is on console input)
+monitor = ${CENTER_TOP}, 1920x1080@60, 1080x0, 1
 
 # Center bottom (curved Sceptre)
 monitor = ${CENTER_BOTTOM}, 1920x1080@60, 1080x1080, 1
 
-# Float2 Pro - right top, 120Hz portable monitor (2560x1600 = 1600 tall)
-monitor = ${FLOAT2_PRO:-desc:Invalid Vendor Codename - RTK Float2 Pro 0x01010130}, 2560x1600@120, 3000x0, 1
+# Float2 Pro - right top, 120Hz (scaled to match MacBook width)
+monitor = ${FLOAT2_PRO:-desc:Invalid Vendor Codename - RTK Float2 Pro 0x01010130}, 2560x1600@120, 3000x0, 1.333333
 
 # MacBook Laptop - right bottom, native HiDPI
-monitor = eDP-1, 3072x1920@60, 3000x1600, 1.6
+monitor = eDP-1, 3072x1920@60, 3000x1200, 1.6
 
-# Disable any other monitors
+# Disable any truly unknown monitors
 monitor = , disable
 EOF
 }
@@ -192,6 +198,13 @@ main() {
 
     # Reload Hyprland
     hyprctl reload
+
+    # Post-reload: DPMS off for monitors that should be dark (e.g. console mode)
+    if [[ -n "${CONSOLE_DPMS_OFF:-}" ]]; then
+        sleep 0.5
+        hyprctl dispatch dpms off "$CONSOLE_DPMS_OFF"
+        echo "  DPMS off: $CONSOLE_DPMS_OFF"
+    fi
 
     notify-send "Monitor Profile Applied" "Profile: $PROFILE"
     echo "✓ Applied $PROFILE profile"
