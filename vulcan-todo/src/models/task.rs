@@ -175,6 +175,15 @@ pub struct Task {
     /// Automatically fetch vault context when task starts
     #[serde(default)]
     pub auto_fetch_context: bool,
+    /// Enable ralph loop mode for this task (iterative self-correction)
+    #[serde(default)]
+    pub ralph_mode: bool,
+    /// Success criteria for ralph loop (e.g., "tests pass", "lint clean")
+    #[serde(default)]
+    pub success_criteria: Vec<String>,
+    /// Quality gates to run before completion (e.g., "test", "typecheck", "lint")
+    #[serde(default)]
+    pub quality_gates: Vec<String>,
 }
 
 impl Task {
@@ -196,6 +205,9 @@ impl Task {
             sprint_order: None,
             context_notes: Vec::new(),
             auto_fetch_context: false,
+            ralph_mode: false,
+            success_criteria: Vec::new(),
+            quality_gates: Vec::new(),
         }
     }
 
@@ -217,6 +229,9 @@ impl Task {
             sprint_order: None,
             context_notes: Vec::new(),
             auto_fetch_context: false,
+            ralph_mode: false,
+            success_criteria: Vec::new(),
+            quality_gates: Vec::new(),
         }
     }
 
@@ -401,7 +416,7 @@ pub struct TaskStore {
 
 impl TaskStore {
     /// Current schema version (bump when adding new fields)
-    pub const CURRENT_VERSION: u32 = 3;
+    pub const CURRENT_VERSION: u32 = 4;
 
     /// Current schema version (for serde default)
     fn current_version() -> u32 {
@@ -432,6 +447,14 @@ impl TaskStore {
             // - Added auto_fetch_context: bool to Task (defaults to false)
             // No data transformation needed, serde defaults handle it
             self.version = 3;
+        }
+        if self.version < 4 {
+            // Migration from v3 to v4:
+            // - Added ralph_mode: bool to Task (defaults to false)
+            // - Added success_criteria: Vec<String> to Task (defaults to empty)
+            // - Added quality_gates: Vec<String> to Task (defaults to empty)
+            // No data transformation needed, serde defaults handle it
+            self.version = 4;
         }
         // Future migrations go here
     }

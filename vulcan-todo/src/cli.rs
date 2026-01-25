@@ -17,6 +17,10 @@ pub struct Cli {
     #[arg(long)]
     pub tui: bool,
 
+    /// Output in JSON format (for scripts and hooks)
+    #[arg(long)]
+    pub json: bool,
+
     /// Path to task store (default: ~/.config/vulcan-todo/tasks.json)
     #[arg(long, short = 'p')]
     pub path: Option<PathBuf>,
@@ -188,6 +192,14 @@ pub enum Commands {
     /// Interactive TUI mode
     #[command(name = "tui")]
     Tui,
+
+    /// Get Ralph Loop status for current in-progress task
+    #[command(name = "ralph-status")]
+    RalphStatus {
+        /// Filter by project
+        #[arg(long, short = 'P')]
+        project: Option<String>,
+    },
 
     /// Sprint management
     #[command(name = "sprint")]

@@ -48,7 +48,7 @@ async fn main() -> Result<()> {
         mcp::run_mcp_server(store).await
     } else if cli.command.is_some() {
         // Handle CLI commands
-        handle_command(cli.command.unwrap(), &store)
+        handle_command(cli.command.unwrap(), &store, cli.json)
     } else {
         // Default: run TUI (if feature enabled)
         #[cfg(feature = "tui")]
@@ -65,7 +65,7 @@ async fn main() -> Result<()> {
     }
 }
 
-fn handle_command(command: cli::Commands, store: &Arc<dyn store::Store>) -> Result<()> {
+fn handle_command(command: cli::Commands, store: &Arc<dyn store::Store>, json: bool) -> Result<()> {
     match command {
         cli::Commands::List {
             status,
@@ -365,6 +365,72 @@ fn handle_command(command: cli::Commands, store: &Arc<dyn store::Store>) -> Resu
         cli::Commands::Reorder { id, position } => {
             store.reorder_task_in_sprint(&id, position)?;
             println!("Task {} reordered to position {}", id, position);
+            Ok(())
+        }
+
+        cli::Commands::RalphStatus { project } => {
+            let all_tasks = store.get_all()?;
+            let ralph_tasks: Vec<_> = all_tasks
+                .iter()
+                .filter(|t| {
+                    t.is_in_progress()
+                        && t.ralph_mode
+                        && project
+                            .as_ref()
+                            .map(|p| t.belongs_to_project(p))
+                            .unwrap_or(true)
+                })
+                .collect();
+
+            if json {
+                // JSON output for scripts/hooks
+                if ralph_tasks.is_empty() {
+                    println!(
+                        "{}",
+                        serde_json::json!({
+                            "active": false,
+                            "task": null
+                        })
+                    );
+                } else {
+                    let task = ralph_tasks[0];
+                    println!(
+                        "{}",
+                        serde_json::json!({
+                            "active": true,
+                            "task": {
+                                "id": task.id,
+                                "title": task.title,
+                                "project": task.project,
+                                "ralph_mode": task.ralph_mode,
+                                "success_criteria": task.success_criteria,
+                                "quality_gates": task.quality_gates
+                            }
+                        })
+                    );
+                }
+            } else {
+                // Human-readable output
+                if ralph_tasks.is_empty() {
+                    println!("No Ralph Loop tasks currently active.");
+                } else {
+                    let task = ralph_tasks[0];
+                    println!("Ralph Loop Active:");
+                    println!("  Task: {} ({})", task.title, task.id);
+                    if let Some(ref proj) = task.project {
+                        println!("  Project: {}", proj);
+                    }
+                    if !task.success_criteria.is_empty() {
+                        println!("  Success Criteria:");
+                        for criterion in &task.success_criteria {
+                            println!("    - {}", criterion);
+                        }
+                    }
+                    if !task.quality_gates.is_empty() {
+                        println!("  Quality Gates: {}", task.quality_gates.join(", "));
+                    }
+                }
+            }
             Ok(())
         }
 

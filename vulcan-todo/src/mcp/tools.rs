@@ -223,6 +223,20 @@ pub fn get_tools() -> Vec<Tool> {
                         "type": "array",
                         "items": {"type": "string"},
                         "description": "UUIDs of linked vulcan-vault notes"
+                    },
+                    "ralph_mode": {
+                        "type": "boolean",
+                        "description": "Enable ralph loop mode for iterative self-correction"
+                    },
+                    "success_criteria": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Success criteria that must be met (e.g., 'tests pass', 'lint clean')"
+                    },
+                    "quality_gates": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Quality gates to run: test, lint, typecheck, build, custom:<cmd>"
                     }
                 },
                 "required": ["id"]
@@ -393,7 +407,8 @@ pub fn get_tools() -> Vec<Tool> {
         Tool::new(
             "start_task".to_string(),
             "Mark a task as in-progress. Use this when you begin working on a task. \
-             This helps track which tasks are actively being worked on."
+             This helps track which tasks are actively being worked on. \
+             Optionally enable ralph loop mode for iterative self-correction."
                 .to_string(),
             json!({
                 "type": "object",
@@ -401,6 +416,20 @@ pub fn get_tools() -> Vec<Tool> {
                     "id": {
                         "type": "string",
                         "description": "The task ID to mark as in-progress"
+                    },
+                    "ralph_mode": {
+                        "type": "boolean",
+                        "description": "Enable ralph loop mode for iterative self-correction"
+                    },
+                    "success_criteria": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Success criteria that must be met (e.g., 'tests pass')"
+                    },
+                    "quality_gates": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Quality gates to run: test, lint, typecheck, build, custom:<cmd>"
                     }
                 },
                 "required": ["id"]
@@ -428,6 +457,23 @@ pub fn get_tools() -> Vec<Tool> {
                 }
             }),
             get_context,
+        ),
+        Tool::new(
+            "get_ralph_status".to_string(),
+            "Get Ralph Loop status for the current in-progress task. Returns the task with \
+             ralph_mode enabled, along with its success_criteria and quality_gates. \
+             Useful for Stop hooks to check if quality gates should be enforced."
+                .to_string(),
+            json!({
+                "type": "object",
+                "properties": {
+                    "project": {
+                        "type": "string",
+                        "description": "Optional: filter by project"
+                    }
+                }
+            }),
+            get_ralph_status,
         ),
         Tool::new(
             "bulk_operation".to_string(),
@@ -960,6 +1006,22 @@ fn update_task(ctx: &ToolContext, args: Value) -> ToolResult {
             .filter_map(|v| v.as_str().map(|s| s.to_string()))
             .collect();
     }
+    // Ralph loop fields
+    if let Some(ralph) = args.get("ralph_mode").and_then(|v| v.as_bool()) {
+        task.ralph_mode = ralph;
+    }
+    if let Some(criteria) = args.get("success_criteria").and_then(|v| v.as_array()) {
+        task.success_criteria = criteria
+            .iter()
+            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+            .collect();
+    }
+    if let Some(gates) = args.get("quality_gates").and_then(|v| v.as_array()) {
+        task.quality_gates = gates
+            .iter()
+            .filter_map(|v| v.as_str().map(|s| s.to_string()))
+            .collect();
+    }
 
     match ctx.store.update(&task) {
         Ok(Some(updated)) => ToolResult::success(
@@ -970,7 +1032,10 @@ fn update_task(ctx: &ToolContext, args: Value) -> ToolResult {
                 "status": updated.status.to_string(),
                 "priority": updated.priority.to_string(),
                 "project": updated.project,
-                "tags": updated.tags
+                "tags": updated.tags,
+                "ralph_mode": updated.ralph_mode,
+                "success_criteria": updated.success_criteria,
+                "quality_gates": updated.quality_gates
             })),
         ),
         Ok(None) => ToolResult::error(format!("Task not found: {}", id)),
@@ -1389,9 +1454,29 @@ fn start_task(ctx: &ToolContext, args: Value) -> ToolResult {
                         "status": "in_progress",
                         "auto_fetch_context": task.auto_fetch_context,
                         "context_notes": task.context_notes,
-                        "project": task.project
+                        "project": task.project,
+                        "ralph_mode": task.ralph_mode,
+                        "success_criteria": task.success_criteria,
+                        "quality_gates": task.quality_gates
                     })),
                 );
+            }
+
+            // Set ralph fields if provided
+            if let Some(ralph) = args.get("ralph_mode").and_then(|v| v.as_bool()) {
+                task.ralph_mode = ralph;
+            }
+            if let Some(criteria) = args.get("success_criteria").and_then(|v| v.as_array()) {
+                task.success_criteria = criteria
+                    .iter()
+                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                    .collect();
+            }
+            if let Some(gates) = args.get("quality_gates").and_then(|v| v.as_array()) {
+                task.quality_gates = gates
+                    .iter()
+                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                    .collect();
             }
 
             task.start();
@@ -1406,7 +1491,11 @@ fn start_task(ctx: &ToolContext, args: Value) -> ToolResult {
                         // Context hints for agent to call vulcan-vault
                         "auto_fetch_context": updated.auto_fetch_context,
                         "context_notes": updated.context_notes,
-                        "project": updated.project
+                        "project": updated.project,
+                        // Ralph loop fields
+                        "ralph_mode": updated.ralph_mode,
+                        "success_criteria": updated.success_criteria,
+                        "quality_gates": updated.quality_gates
                     })),
                 ),
                 Ok(None) => ToolResult::error(format!("Task not found: {}", id)),
@@ -1502,6 +1591,56 @@ fn get_context(ctx: &ToolContext, args: Value) -> ToolResult {
             )
         }
         Err(e) => ToolResult::error(format!("Failed to get context: {}", e)),
+    }
+}
+
+fn get_ralph_status(ctx: &ToolContext, args: Value) -> ToolResult {
+    let empty_map = serde_json::map::Map::new();
+    let args = args.as_object().unwrap_or(&empty_map);
+    let project_filter = args.get("project").and_then(|v| v.as_str());
+
+    match ctx.store.get_all() {
+        Ok(all_tasks) => {
+            // Find in-progress tasks with ralph_mode enabled
+            let ralph_tasks: Vec<&Task> = all_tasks
+                .iter()
+                .filter(|t| {
+                    t.is_in_progress()
+                        && t.ralph_mode
+                        && project_filter
+                            .map(|p| t.belongs_to_project(p))
+                            .unwrap_or(true)
+                })
+                .collect();
+
+            if ralph_tasks.is_empty() {
+                return ToolResult::success(
+                    "No Ralph Loop tasks currently active".to_string(),
+                    Some(json!({
+                        "active": false,
+                        "task": null
+                    })),
+                );
+            }
+
+            // Return the first (should typically be only one) ralph-enabled task
+            let task = ralph_tasks[0];
+            ToolResult::success(
+                format!("Ralph Loop active: {}", task.title),
+                Some(json!({
+                    "active": true,
+                    "task": {
+                        "id": task.id,
+                        "title": task.title,
+                        "project": task.project,
+                        "ralph_mode": task.ralph_mode,
+                        "success_criteria": task.success_criteria,
+                        "quality_gates": task.quality_gates
+                    }
+                })),
+            )
+        }
+        Err(e) => ToolResult::error(format!("Failed to get ralph status: {}", e)),
     }
 }
 
