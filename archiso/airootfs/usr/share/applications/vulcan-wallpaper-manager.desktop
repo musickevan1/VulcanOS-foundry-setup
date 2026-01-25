@@ -1,12 +1,13 @@
 [Desktop Entry]
 Version=1.0
 Type=Application
-Name=VulcanOS Wallpaper Manager
+Name=VulcanOS Wallpaper Manager (Legacy)
 GenericName=Wallpaper Manager
-Comment=Manage per-monitor wallpapers with profile support
-Exec=vulcan-wallpaper-manager
+Comment=Manage per-monitor wallpapers with profile support (opens unified Appearance Manager)
+Exec=vulcan-appearance-manager
 Icon=preferences-desktop-wallpaper
 Terminal=false
 Categories=Settings;DesktopSettings;
 Keywords=wallpaper;background;monitor;display;
 StartupNotify=true
+Hidden=true
