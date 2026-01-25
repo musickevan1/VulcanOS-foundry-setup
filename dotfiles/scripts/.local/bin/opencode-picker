@@ -305,7 +305,7 @@ main() {
         
         # Launch opencode in kitty
         cd "$dir"
-        exec kitty --title "OpenCode: $(basename "$dir")" -e opencode
+        exec kitty --title "OpenCode: $(basename "$dir")" -e opencode-notify
     else
         notify-send "OpenCode Picker" "Invalid directory: $dir" --urgency=critical
         exit 1

@@ -4,10 +4,13 @@
 #   workspace-switch 3       - Switch to workspace 3 on current monitor
 #   workspace-switch 3 move  - Move active window to workspace 3 on current monitor
 #
-# Maps relative workspace (1-5) to absolute workspace based on focused monitor:
-#   Monitor 0 (leftmost): workspaces 1-5
-#   Monitor 1: workspaces 6-10
-#   Monitor 2: workspaces 11-15
+# Maps relative workspace (1-5) to absolute workspace based on focused monitor.
+# Uses VulcanOS workspace order (main first, then left-to-right):
+#   DP-15 (main): workspaces 1-5
+#   DP-11 (left): workspaces 6-10
+#   DP-13 (top):  workspaces 11-15
+#   DP-4 (float): workspaces 16-20
+#   eDP-1 (laptop): workspaces 21-25
 
 RELATIVE_WS="$1"
 ACTION="${2:-switch}"  # "switch" or "move"
@@ -17,26 +20,58 @@ if [[ -z "$RELATIVE_WS" || "$RELATIVE_WS" -lt 1 || "$RELATIVE_WS" -gt 5 ]]; then
     exit 1
 fi
 
-# Get focused monitor index (monitors sorted by x position)
-get_monitor_index() {
-    local focused_name
-    focused_name=$(hyprctl monitors -j | jq -r '.[] | select(.focused) | .name')
+# VulcanOS workspace order - main monitor first, then left-to-right
+# This must match the order in vulcan-workspace-init
+declare -A MONITOR_INDEX
+MONITOR_INDEX[DP-15]=0   # Main curved monitor
+MONITOR_INDEX[DP-11]=1   # Left vertical
+MONITOR_INDEX[DP-13]=2   # Center top
+MONITOR_INDEX[DP-4]=3    # Float2 Pro
+MONITOR_INDEX[eDP-1]=4   # MacBook laptop
 
-    # Get all monitors sorted by x position and find index of focused one
-    hyprctl monitors -j | jq -r --arg fname "$focused_name" '
-        sort_by(.x) | to_entries[] | select(.value.name == $fname) | .key
-    '
+WS_PER_MONITOR=5
+
+# Get focused monitor name
+get_focused_monitor() {
+    hyprctl monitors -j | jq -r '.[] | select(.focused) | .name'
 }
 
-MONITOR_INDEX=$(get_monitor_index)
+# Get monitor index from our defined order
+get_monitor_index() {
+    local mon_name="$1"
 
-if [[ -z "$MONITOR_INDEX" ]]; then
-    echo "Error: Could not determine focused monitor" >&2
+    # Check if monitor is in our predefined order
+    if [[ -v "MONITOR_INDEX[$mon_name]" ]]; then
+        echo "${MONITOR_INDEX[$mon_name]}"
+        return 0
+    fi
+
+    # Fallback: calculate index by counting connected monitors in order
+    local index=0
+    for mon in DP-15 DP-11 DP-13 DP-4 eDP-1; do
+        if hyprctl monitors -j | jq -e --arg m "$mon" '.[] | select(.name == $m)' > /dev/null 2>&1; then
+            if [[ "$mon" == "$mon_name" ]]; then
+                echo "$index"
+                return 0
+            fi
+            ((index++))
+        fi
+    done
+
+    # Final fallback: return 0 for unknown monitors
+    echo "0"
+}
+
+FOCUSED_MON=$(get_focused_monitor)
+MONITOR_IDX=$(get_monitor_index "$FOCUSED_MON")
+
+if [[ -z "$MONITOR_IDX" ]]; then
+    echo "Error: Could not determine focused monitor index" >&2
     exit 1
 fi
 
 # Calculate absolute workspace: (monitor_index * 5) + relative_ws
-ABSOLUTE_WS=$(( (MONITOR_INDEX * 5) + RELATIVE_WS ))
+ABSOLUTE_WS=$(( (MONITOR_IDX * WS_PER_MONITOR) + RELATIVE_WS ))
 
 # Perform action
 if [[ "$ACTION" == "move" ]]; then

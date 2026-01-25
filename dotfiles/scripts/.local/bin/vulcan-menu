@@ -3,6 +3,9 @@
 # Central control hub for system management
 # Usage: vulcan-menu [category] [action]
 
+# Ensure ~/.local/bin is in PATH (Hyprland may not include it)
+export PATH="${HOME}/.local/bin:${PATH}"
+
 set -e
 
 # Configuration
@@ -30,6 +33,38 @@ notify() {
         notify-send "Vulcan Menu" "$1" -i preferences-system -t 3000
     fi
 }
+
+# Find vulcan-theme (GUI environment may not have ~/.local/bin in PATH)
+find_vulcan_theme() {
+    local candidates=(
+        "${HOME}/.local/bin/vulcan-theme"
+        "${HOME}/VulcanOS/dotfiles/scripts/.local/bin/vulcan-theme"
+        "/usr/local/bin/vulcan-theme"
+    )
+    for cmd in "${candidates[@]}"; do
+        [[ -x "$cmd" ]] && echo "$cmd" && return 0
+    done
+    command -v vulcan-theme 2>/dev/null && return 0
+    return 1
+}
+
+# Find vulcan-theme-manager
+find_vulcan_theme_manager() {
+    local candidates=(
+        "${HOME}/.local/bin/vulcan-theme-manager"
+        "${HOME}/VulcanOS/vulcan-theme-manager/target/release/vulcan-theme-manager"
+        "/usr/local/bin/vulcan-theme-manager"
+    )
+    for cmd in "${candidates[@]}"; do
+        [[ -x "$cmd" ]] && echo "$cmd" && return 0
+    done
+    command -v vulcan-theme-manager 2>/dev/null && return 0
+    return 1
+}
+
+# Cache the paths (called once at startup, || true to avoid set -e exit)
+VULCAN_THEME_CMD="$(find_vulcan_theme || true)"
+VULCAN_THEME_MANAGER_CMD="$(find_vulcan_theme_manager || true)"
 
 run_in_terminal() {
     $TERMINAL -e "$@"
@@ -510,20 +545,21 @@ $ICON_BACK  Back"
 show_style_menu() {
     # Get current theme for display
     local current_theme
-    if command -v vulcan-theme &> /dev/null; then
-        current_theme=$(vulcan-theme current 2>/dev/null | cut -d'(' -f1 | sed 's/Current theme: //' | sed 's/ *$//')
+    if [[ -n "$VULCAN_THEME_CMD" ]]; then
+        current_theme=$("$VULCAN_THEME_CMD" current 2>/dev/null | cut -d'(' -f1 | sed 's/Current theme: //' | sed 's/ *$//')
     else
         current_theme="Unknown"
     fi
 
     local options="󰏘  Theme: ${current_theme}
+󰔎  Theme Manager
 󰸉  Wallpaper
 󰛖  GTK Settings
 󰆍  Font Manager
 $ICON_BACK  Back"
 
     local choice
-    choice=$(wofi_menu "Style" "$options" 350 320)
+    choice=$(wofi_menu "Style" "$options" 350 360)
 
     local action
     action=$(echo "$choice" | sed 's/^[^ ]* *//' | cut -d':' -f1)
@@ -531,6 +567,13 @@ $ICON_BACK  Back"
     case "$action" in
         "Theme")
             show_theme_selector_menu
+            ;;
+        "Theme Manager")
+            if [[ -n "$VULCAN_THEME_MANAGER_CMD" ]]; then
+                "$VULCAN_THEME_MANAGER_CMD" &
+            else
+                notify "vulcan-theme-manager not found. Build with: cd vulcan-theme-manager && cargo build --release"
+            fi
             ;;
         "Wallpaper")
             show_wallpaper_menu
@@ -559,7 +602,7 @@ $ICON_BACK  Back"
 }
 
 show_theme_selector_menu() {
-    if ! command -v vulcan-theme &> /dev/null; then
+    if [[ -z "$VULCAN_THEME_CMD" ]]; then
         notify "vulcan-theme not found"
         show_style_menu
         return
@@ -567,11 +610,11 @@ show_theme_selector_menu() {
 
     # Get current theme
     local current_theme_id
-    current_theme_id=$(vulcan-theme current 2>/dev/null | grep -oP '\(\K[^)]+' || echo "")
+    current_theme_id=$("$VULCAN_THEME_CMD" current 2>/dev/null | grep -oP '\(\K[^)]+' || echo "")
 
     # Build theme list
     local theme_list
-    theme_list=$(vulcan-theme list-ids 2>/dev/null)
+    theme_list=$("$VULCAN_THEME_CMD" list-ids 2>/dev/null)
 
     if [[ -z "$theme_list" ]]; then
         notify "No themes available"
@@ -608,9 +651,24 @@ show_theme_selector_menu() {
         return
     fi
 
-    # Extract theme name (remove icon and "(Current)" suffix)
-    local selected_theme_name
-    selected_theme_name=$(echo "$choice" | sed 's/^[󰄬 ]*//' | sed 's/ (Current)$//')
+    # Extract theme name (remove icon prefix and "(Current)" suffix)
+    # Format is: "󰄬 Name (Current)" for current, "  Name" for others
+    local selected_theme_name="$choice"
+
+    # Remove " (Current)" suffix if present
+    selected_theme_name="${selected_theme_name% (Current)}"
+
+    # Remove icon prefix: either "󰄬 " (icon+space) or "  " (two spaces)
+    # Use pattern matching to strip leading icon or spaces
+    if [[ "$selected_theme_name" == "󰄬 "* ]]; then
+        selected_theme_name="${selected_theme_name#󰄬 }"
+    else
+        # Strip leading spaces
+        selected_theme_name="${selected_theme_name#  }"
+    fi
+
+    # Trim any remaining whitespace
+    selected_theme_name="${selected_theme_name#"${selected_theme_name%%[![:space:]]*}"}"
 
     # Find theme ID from name
     local selected_theme_id=""
@@ -624,13 +682,15 @@ show_theme_selector_menu() {
     if [[ -n "$selected_theme_id" ]]; then
         # Apply theme
         notify "Applying theme: $selected_theme_name"
-        vulcan-theme set "$selected_theme_id" &
-        
+        "$VULCAN_THEME_CMD" set "$selected_theme_id" &
+
         # Return to style menu after a moment
         sleep 0.5
         show_style_menu
     else
-        show_style_menu
+        # Theme not found - show error and return to menu
+        notify-send -u critical "Theme Error" "Could not find theme: $selected_theme_name"
+        show_theme_selector_menu
     fi
 }
 
