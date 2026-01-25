@@ -1,0 +1,331 @@
+use gtk::prelude::*;
+use relm4::prelude::*;
+use adw::prelude::*;
+
+use crate::models::Theme;
+use crate::services::{theme_applier, theme_storage};
+use super::theme_browser::{ThemeBrowserModel, ThemeBrowserInput, ThemeBrowserOutput};
+use super::preview_panel::{PreviewPanelModel, PreviewPanelInput};
+use super::theme_editor::{ThemeEditorModel, ThemeEditorOutput};
+
+#[derive(Debug)]
+pub enum ThemeViewMsg {
+    // Theme selection
+    ThemeSelected(Theme),
+    // Actions
+    PreviewTheme,
+    ApplyTheme,
+    CancelPreview,
+    NewTheme,
+    EditTheme,
+    // Editor callbacks
+    ThemeSaved(Theme),
+    EditorCancelled,
+    // General
+    Refresh,
+    Import,
+}
+
+#[derive(Debug)]
+pub enum ThemeViewOutput {
+    ShowToast(String),
+    ThemeApplied(String), // theme_id
+}
+
+pub struct ThemeViewModel {
+    theme_browser: Controller<ThemeBrowserModel>,
+    preview_panel: Controller<PreviewPanelModel>,
+    editor_dialog: Option<Controller<ThemeEditorModel>>,
+    editor_window: Option<gtk::Window>,
+    selected_theme: Option<Theme>,
+    original_theme_id: String,
+}
+
+#[relm4::component(pub)]
+impl SimpleComponent for ThemeViewModel {
+    type Init = ();
+    type Input = ThemeViewMsg;
+    type Output = ThemeViewOutput;
+
+    view! {
+        gtk::Paned {
+            set_orientation: gtk::Orientation::Horizontal,
+            set_shrink_start_child: false,
+            set_shrink_end_child: false,
+            set_position: 550,
+
+            // Left: Theme browser
+            #[wrap(Some)]
+            set_start_child = &gtk::Frame {
+                set_margin_all: 12,
+
+                gtk::Box {
+                    set_orientation: gtk::Orientation::Vertical,
+                    set_spacing: 8,
+
+                    gtk::Box {
+                        set_orientation: gtk::Orientation::Horizontal,
+                        set_spacing: 8,
+
+                        gtk::Label {
+                            set_markup: "<b>Available Themes</b>",
+                            set_halign: gtk::Align::Start,
+                            set_hexpand: true,
+                        },
+
+                        gtk::Button {
+                            set_icon_name: "list-add-symbolic",
+                            set_tooltip_text: Some("Create new theme"),
+                            connect_clicked => ThemeViewMsg::NewTheme,
+                        },
+
+                        gtk::Button {
+                            set_icon_name: "document-open-symbolic",
+                            set_tooltip_text: Some("Import theme file"),
+                            connect_clicked => ThemeViewMsg::Import,
+                        },
+                    },
+
+                    model.theme_browser.widget() {},
+                },
+            },
+
+            // Right: Preview + actions
+            #[wrap(Some)]
+            set_end_child = &gtk::Box {
+                set_orientation: gtk::Orientation::Vertical,
+                set_spacing: 12,
+                set_margin_all: 12,
+
+                model.preview_panel.widget() {},
+
+                // Action buttons
+                gtk::Box {
+                    set_orientation: gtk::Orientation::Horizontal,
+                    set_spacing: 8,
+                    set_halign: gtk::Align::End,
+
+                    gtk::Button {
+                        set_label: "Edit",
+                        set_tooltip_text: Some("Edit selected theme"),
+                        #[watch]
+                        set_sensitive: model.selected_theme.as_ref().map(|t| !t.is_builtin).unwrap_or(false),
+                        connect_clicked => ThemeViewMsg::EditTheme,
+                    },
+
+                    gtk::Button {
+                        set_label: "Preview",
+                        set_tooltip_text: Some("Preview theme (temporary)"),
+                        #[watch]
+                        set_sensitive: model.selected_theme.is_some(),
+                        connect_clicked => ThemeViewMsg::PreviewTheme,
+                    },
+
+                    gtk::Button {
+                        set_label: "Cancel",
+                        set_tooltip_text: Some("Revert to original theme"),
+                        connect_clicked => ThemeViewMsg::CancelPreview,
+                    },
+
+                    gtk::Button {
+                        set_label: "Apply",
+                        add_css_class: "suggested-action",
+                        set_tooltip_text: Some("Apply theme permanently"),
+                        #[watch]
+                        set_sensitive: model.selected_theme.is_some(),
+                        connect_clicked => ThemeViewMsg::ApplyTheme,
+                    },
+                },
+            },
+        }
+    }
+
+    fn init(
+        _init: Self::Init,
+        root: Self::Root,
+        sender: ComponentSender<Self>,
+    ) -> ComponentParts<Self> {
+        // Get current theme
+        let original_theme_id = theme_applier::get_current_theme()
+            .unwrap_or_else(|_| "tokyonight".to_string());
+
+        // Create theme browser
+        let theme_browser = ThemeBrowserModel::builder()
+            .launch(())
+            .forward(sender.input_sender(), |msg| {
+                match msg {
+                    ThemeBrowserOutput::ThemeSelected(theme) => ThemeViewMsg::ThemeSelected(theme),
+                }
+            });
+
+        // Create preview panel
+        let preview_panel = PreviewPanelModel::builder()
+            .launch(())
+            .detach();
+
+        let model = ThemeViewModel {
+            theme_browser,
+            preview_panel,
+            editor_dialog: None,
+            editor_window: None,
+            selected_theme: None,
+            original_theme_id,
+        };
+
+        let widgets = view_output!();
+
+        ComponentParts { model, widgets }
+    }
+
+    fn update(&mut self, msg: Self::Input, sender: ComponentSender<Self>) {
+        match msg {
+            ThemeViewMsg::ThemeSelected(theme) => {
+                println!("Selected theme: {}", theme.theme_name);
+                self.preview_panel.emit(PreviewPanelInput::SetTheme(Some(theme.clone())));
+                self.selected_theme = Some(theme);
+            }
+
+            ThemeViewMsg::PreviewTheme => {
+                if let Some(ref theme) = self.selected_theme {
+                    if let Err(e) = theme_applier::preview_theme(&theme.theme_id) {
+                        eprintln!("Preview failed: {}", e);
+                        sender.output(ThemeViewOutput::ShowToast(format!("Preview failed: {}", e))).ok();
+                    } else {
+                        sender.output(ThemeViewOutput::ShowToast(format!("Previewing: {}", theme.theme_name))).ok();
+                    }
+                }
+            }
+
+            ThemeViewMsg::ApplyTheme => {
+                if let Some(ref theme) = self.selected_theme {
+                    if let Err(e) = theme_applier::apply_theme(&theme.theme_id) {
+                        eprintln!("Apply failed: {}", e);
+                        sender.output(ThemeViewOutput::ShowToast(format!("Apply failed: {}", e))).ok();
+                    } else {
+                        self.original_theme_id = theme.theme_id.clone();
+                        self.theme_browser.emit(ThemeBrowserInput::SetCurrentTheme(theme.theme_id.clone()));
+                        sender.output(ThemeViewOutput::ShowToast(format!("Applied: {}", theme.theme_name))).ok();
+                        sender.output(ThemeViewOutput::ThemeApplied(theme.theme_id.clone())).ok();
+                    }
+                }
+            }
+
+            ThemeViewMsg::CancelPreview => {
+                if let Err(e) = theme_applier::revert_theme() {
+                    eprintln!("Revert failed: {}", e);
+                    sender.output(ThemeViewOutput::ShowToast(format!("Revert failed: {}", e))).ok();
+                } else {
+                    sender.output(ThemeViewOutput::ShowToast("Reverted to original theme".to_string())).ok();
+                }
+            }
+
+            ThemeViewMsg::NewTheme => {
+                self.open_editor(None, true, sender.clone());
+            }
+
+            ThemeViewMsg::EditTheme => {
+                if let Some(ref theme) = self.selected_theme {
+                    if !theme.is_builtin {
+                        self.open_editor(Some(theme.clone()), false, sender.clone());
+                    }
+                }
+            }
+
+            ThemeViewMsg::ThemeSaved(theme) => {
+                // Save the theme
+                match theme_storage::save_theme(&theme) {
+                    Ok(_) => {
+                        sender.output(ThemeViewOutput::ShowToast(format!("Saved: {}", theme.theme_name))).ok();
+                        // Refresh the browser
+                        self.theme_browser.emit(ThemeBrowserInput::Refresh);
+                    }
+                    Err(e) => {
+                        sender.output(ThemeViewOutput::ShowToast(format!("Save failed: {}", e))).ok();
+                    }
+                }
+
+                // Close editor window
+                if let Some(window) = self.editor_window.take() {
+                    window.close();
+                }
+                self.editor_dialog = None;
+            }
+
+            ThemeViewMsg::EditorCancelled => {
+                if let Some(window) = self.editor_window.take() {
+                    window.close();
+                }
+                self.editor_dialog = None;
+            }
+
+            ThemeViewMsg::Refresh => {
+                self.theme_browser.emit(ThemeBrowserInput::Refresh);
+                sender.output(ThemeViewOutput::ShowToast("Themes refreshed".to_string())).ok();
+            }
+
+            ThemeViewMsg::Import => {
+                self.import_theme_dialog(sender.clone());
+            }
+        }
+    }
+}
+
+impl ThemeViewModel {
+    fn open_editor(&mut self, theme: Option<Theme>, is_new: bool, sender: ComponentSender<Self>) {
+        let editor = ThemeEditorModel::builder()
+            .launch((theme, is_new))
+            .forward(sender.input_sender(), |msg| {
+                match msg {
+                    ThemeEditorOutput::Saved(theme) => ThemeViewMsg::ThemeSaved(theme),
+                    ThemeEditorOutput::Cancelled => ThemeViewMsg::EditorCancelled,
+                }
+            });
+
+        let title = if is_new { "New Theme" } else { "Edit Theme" };
+
+        let window = gtk::Window::builder()
+            .title(title)
+            .modal(true)
+            .default_width(550)
+            .default_height(600)
+            .child(editor.widget())
+            .build();
+
+        window.present();
+
+        self.editor_dialog = Some(editor);
+        self.editor_window = Some(window);
+    }
+
+    fn import_theme_dialog(&self, sender: ComponentSender<Self>) {
+        let dialog = gtk::FileDialog::builder()
+            .title("Import Theme")
+            .accept_label("Import")
+            .build();
+
+        // Set up filter for .sh files
+        let filter = gtk::FileFilter::new();
+        filter.add_pattern("*.sh");
+        filter.set_name(Some("Theme files (*.sh)"));
+
+        let filters = gtk::gio::ListStore::new::<gtk::FileFilter>();
+        filters.append(&filter);
+        dialog.set_filters(Some(&filters));
+
+        dialog.open(None::<&gtk::Window>, None::<&gtk::gio::Cancellable>, move |result| {
+            if let Ok(file) = result {
+                if let Some(path) = file.path() {
+                    match theme_storage::import_theme(&path) {
+                        Ok(theme) => {
+                            sender.input(ThemeViewMsg::Refresh);
+                            sender.output(ThemeViewOutput::ShowToast(format!("Imported: {}", theme.theme_name))).ok();
+                        }
+                        Err(e) => {
+                            sender.output(ThemeViewOutput::ShowToast(format!("Import failed: {}", e))).ok();
+                        }
+                    }
+                }
+            }
+        });
+    }
+}
