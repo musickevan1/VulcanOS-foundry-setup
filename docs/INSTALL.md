@@ -420,6 +420,30 @@ VulcanOS uses **Kitty** as the default terminal with these keybindings:
 | Ctrl+Shift+H | Show scrollback in pager |
 | Ctrl+Shift+= / - | Increase/decrease font size |
 
+### 10. Notifications (Optional)
+
+VulcanOS uses **SwayNC** + **Waybar** for notifications. The Waybar badge shows unread counts and opens the notification center.
+
+**OpenCode alerts**
+- Launch via `opencode-notify` (already wired in `opencode-picker`).
+- Alerts fire on action required, errors, and session completion.
+
+**Gmail alerts (labels only)**
+1. From the repo dotfiles, run `cd ~/VulcanOS/dotfiles && stow goimapnotify systemd`.
+2. Install `goimapnotify`.
+3. Update `~/.config/goimapnotify/goimapnotify.yaml` with your Gmail username and `passwordCMD`.
+4. Enable the service:
+   `systemctl --user enable --now goimapnotify.service`
+
+Alerting labels:
+- `💼 Business / Clients`
+- `🛠️ Dev & Infrastructure`
+- `🤖 AI & Research`
+
+**Custom sounds**
+- Add `opencode.oga`, `mail.oga`, or `s2t.oga` to `~/.config/vulcan/sounds/` to override defaults.
+- Reload notifications: `swaync-client -R` and `swaync-client -rs`.
+
 ---
 
 ## Troubleshooting
