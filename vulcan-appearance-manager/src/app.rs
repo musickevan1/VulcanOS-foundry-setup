@@ -22,6 +22,7 @@ pub enum AppMsg {
     ProfileLoad(UnifiedProfile),
     ProfileDeleted(String),
     BindingModeChanged(BindingMode),
+    ApplyThemeWallpaper(PathBuf),
 }
 
 pub struct App {
@@ -133,6 +134,8 @@ impl SimpleComponent for App {
                 match msg {
                     ThemeViewOutput::ShowToast(text) => AppMsg::ShowToast(text),
                     ThemeViewOutput::ThemeApplied(id) => AppMsg::ThemeApplied(id),
+                    ThemeViewOutput::ApplyWallpaper(path) => AppMsg::ApplyThemeWallpaper(path),
+                    ThemeViewOutput::BindingModeChanged(mode) => AppMsg::BindingModeChanged(mode),
                 }
             });
 
@@ -274,6 +277,13 @@ impl SimpleComponent for App {
 
             AppMsg::BindingModeChanged(mode) => {
                 self.current_binding_mode = mode;
+            }
+
+            AppMsg::ApplyThemeWallpaper(wallpaper_path) => {
+                // Apply wallpaper to all monitors
+                // Get current monitor list from wallpaper view
+                // For now, apply to all monitors
+                self.wallpaper_view.emit(WallpaperViewMsg::SetWallpaperForAll(wallpaper_path));
             }
         }
     }

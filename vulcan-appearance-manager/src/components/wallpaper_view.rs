@@ -23,6 +23,7 @@ pub enum WallpaperViewMsg {
     SplitCancelled,
     SplitError(String),
     ApplyProfile(HashMap<String, PathBuf>),
+    SetWallpaperForAll(PathBuf),  // Apply wallpaper to all monitors
 }
 
 #[derive(Debug)]
@@ -359,6 +360,36 @@ impl SimpleComponent for WallpaperViewModel {
                 if success_count > 0 {
                     let _ = sender.output(WallpaperViewOutput::ShowToast(
                         format!("Applied profile to {} monitors", success_count)
+                    ));
+                    let _ = sender.output(WallpaperViewOutput::WallpapersChanged(
+                        self.monitor_wallpapers.clone()
+                    ));
+                }
+            }
+
+            WallpaperViewMsg::SetWallpaperForAll(wallpaper_path) => {
+                // Apply the same wallpaper to all monitors
+                let mut success_count = 0;
+                for monitor in &self.monitors {
+                    if let Err(e) = self.backend.apply(&monitor.name, &wallpaper_path) {
+                        let _ = sender.output(WallpaperViewOutput::ShowToast(
+                            format!("Failed to apply wallpaper to {}: {}", monitor.name, e)
+                        ));
+                    } else {
+                        self.monitor_wallpapers.insert(monitor.name.clone(), wallpaper_path.clone());
+                        success_count += 1;
+                    }
+                }
+
+                // Update monitor layout visualization
+                self.monitor_layout.emit(
+                    MonitorLayoutInput::UpdateWallpapers(self.monitor_wallpapers.clone())
+                );
+
+                // Notify parent
+                if success_count > 0 {
+                    let _ = sender.output(WallpaperViewOutput::ShowToast(
+                        format!("Applied wallpaper to {} monitors", success_count)
                     ));
                     let _ = sender.output(WallpaperViewOutput::WallpapersChanged(
                         self.monitor_wallpapers.clone()
