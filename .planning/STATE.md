@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 ## Current Position
 
 Phase: 8 of 10 (Theme-Wallpaper Binding) — IN PROGRESS
-Plan: 3 of 6 in current phase
-Status: Plans 08-01, 08-02, 08-03 complete
-Last activity: 2026-01-26 — Completed 08-03-PLAN.md (Theme Card Wallpaper Overlay)
+Plan: 5 of 6 in current phase
+Status: Plans 08-01, 08-02, 08-03, 08-05 complete
+Last activity: 2026-01-26 — Completed 08-05-PLAN.md (Profiles Tab UI)
 
-Progress: [███████████░░░░░░░░░░░░░░░] 28% (24/86 total plans from v1.0 complete)
+Progress: [███████████░░░░░░░░░░░░░░░] 29% (25/86 total plans from v1.0 complete)
 
 ## Performance Metrics
 
@@ -120,6 +120,14 @@ Progress: [███████████░░░░░░░░░░░░
 - gtk::Overlay for layering wallpaper thumbnail and badge over color preview
 - gtk::Picture with ContentFit::Cover for proper aspect ratio handling
 
+**From Phase 8 Plan 5 (08-05):**
+- ProfileCardOutput enum for Load/Delete actions from profile cards
+- Mini color preview shows 4 colors instead of 8 for compact display
+- Load button gets suggested-action class when profile is active
+- UpdateCurrentState message for tracking app state to save as profile
+- Auto-suggested profile name from theme_id in save dialog
+- First monitor's wallpaper used for profile card preview
+
 ### Previous Milestone Summary
 
 **v1.0 VulcanOS Foundation** (Phase 5 shipped 2026-01-24):
@@ -147,6 +155,7 @@ Progress: [███████████░░░░░░░░░░░░
 - Plan 1: Foundation data models (BindingMode enum, UnifiedProfile struct, THEME_WALLPAPER validation) ✓
 - Plan 2: Profile Storage (UnifiedProfile CRUD, migration from WallpaperProfile, legacy directory support) ✓
 - Plan 3: Theme Card Wallpaper Overlay (60x40 thumbnail, override badge, gtk::Overlay structure) ✓
+- Plan 5: Profiles Tab UI (ProfileItem cards, ProfileView container, save/load/delete operations) ✓
 
 ### Pending Todos
 
@@ -162,7 +171,7 @@ None yet (v2.0 milestone just initialized).
 - Keyboard shortcuts Ctrl+1/Ctrl+2 ✓
 - Toast notifications ✓
 
-**Phase 8 Plans 1-3 Complete:**
+**Phase 8 Plans 1-3, 5 Complete:**
 - BindingMode enum and UnifiedProfile struct created ✓
 - THEME_WALLPAPER security validation (relative paths only) ✓
 - resolve_theme_wallpaper() helper for path resolution ✓
@@ -172,13 +181,16 @@ None yet (v2.0 milestone just initialized).
 - Theme cards show wallpaper thumbnails (60x40, bottom-right) ✓
 - Override badge prepared (16px icon, top-right) ✓
 - gtk::Overlay structure for layered UI elements ✓
+- ProfileItem cards display theme colors and wallpaper thumbnails ✓
+- ProfileView container with save/load/delete operations ✓
+- Save Current dialog with auto-suggested profile names ✓
 
-**Ready for Plan 08-04:** Theme Application Wallpaper Sync
+**Ready for Plan 08-04 or 08-06:** Theme Application Wallpaper Sync or App Integration
 
 ## Session Continuity
 
-Last session: 2026-01-26 (Phase 8 Plan 3 execution complete)
-Stopped at: Completed 08-03-PLAN.md (Theme Card Wallpaper Overlay)
+Last session: 2026-01-26 (Phase 8 Plan 5 execution complete)
+Stopped at: Completed 08-05-PLAN.md (Profiles Tab UI)
 Resume file: None
 
-**Next action:** Execute Phase 8 Plan 4 (Theme Application Wallpaper Sync) - sync wallpaper when theme applied.
+**Next action:** Execute Phase 8 Plan 4 or Plan 6 - either sync wallpaper on theme apply, or integrate ProfileView into app shell.
