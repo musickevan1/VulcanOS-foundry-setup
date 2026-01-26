@@ -2,11 +2,12 @@ use gtk::prelude::*;
 use relm4::prelude::*;
 use adw::prelude::*;
 
-use crate::models::Theme;
+use crate::models::{Theme, resolve_theme_wallpaper};
 use crate::services::{theme_applier, theme_storage};
 use super::theme_browser::{ThemeBrowserModel, ThemeBrowserInput, ThemeBrowserOutput};
 use super::preview_panel::{PreviewPanelModel, PreviewPanelInput};
 use super::theme_editor::{ThemeEditorModel, ThemeEditorOutput};
+use super::binding_dialog::{BindingDialogModel, BindingDialogOutput, BindingDialogInit};
 
 #[derive(Debug)]
 pub enum ThemeViewMsg {
@@ -22,6 +23,8 @@ pub enum ThemeViewMsg {
     // Editor callbacks
     ThemeSaved(Theme),
     EditorCancelled,
+    // Binding dialog
+    BindingChoice(BindingDialogOutput),
     // General
     Refresh,
     Import,
@@ -31,6 +34,8 @@ pub enum ThemeViewMsg {
 pub enum ThemeViewOutput {
     ShowToast(String),
     ThemeApplied(String), // theme_id
+    ApplyWallpaper(std::path::PathBuf),  // Request wallpaper application
+    BindingModeChanged(crate::models::BindingMode),  // Notify binding state change
 }
 
 pub struct ThemeViewModel {
@@ -38,6 +43,8 @@ pub struct ThemeViewModel {
     preview_panel: Controller<PreviewPanelModel>,
     editor_dialog: Option<Controller<ThemeEditorModel>>,
     editor_window: Option<gtk::Window>,
+    binding_dialog: Option<Controller<BindingDialogModel>>,
+    binding_window: Option<gtk::Window>,
     selected_theme: Option<Theme>,
     original_theme_id: String,
 }
@@ -169,6 +176,8 @@ impl SimpleComponent for ThemeViewModel {
             preview_panel,
             editor_dialog: None,
             editor_window: None,
+            binding_dialog: None,
+            binding_window: None,
             selected_theme: None,
             original_theme_id,
         };
@@ -199,14 +208,14 @@ impl SimpleComponent for ThemeViewModel {
 
             ThemeViewMsg::ApplyTheme => {
                 if let Some(ref theme) = self.selected_theme {
-                    if let Err(e) = theme_applier::apply_theme(&theme.theme_id) {
-                        eprintln!("Apply failed: {}", e);
-                        sender.output(ThemeViewOutput::ShowToast(format!("Apply failed: {}", e))).ok();
+                    // Check if theme has a suggested wallpaper
+                    if let Some(wallpaper_path) = resolve_theme_wallpaper(theme) {
+                        // Show binding dialog
+                        self.show_binding_dialog(theme.clone(), wallpaper_path, sender.clone());
                     } else {
-                        self.original_theme_id = theme.theme_id.clone();
-                        self.theme_browser.emit(ThemeBrowserInput::SetCurrentTheme(theme.theme_id.clone()));
-                        sender.output(ThemeViewOutput::ShowToast(format!("Applied: {}", theme.theme_name))).ok();
-                        sender.output(ThemeViewOutput::ThemeApplied(theme.theme_id.clone())).ok();
+                        // No wallpaper - apply theme only
+                        let theme_id = theme.theme_id.clone();
+                        self.apply_theme_only(&theme_id, sender.clone());
                     }
                 }
             }
@@ -279,6 +288,41 @@ impl SimpleComponent for ThemeViewModel {
                     sender.output(ThemeViewOutput::ThemeApplied(theme_id)).ok();
                 }
             }
+
+            ThemeViewMsg::BindingChoice(choice) => {
+                // Close binding dialog
+                if let Some(window) = self.binding_window.take() {
+                    window.close();
+                }
+                self.binding_dialog = None;
+
+                match choice {
+                    BindingDialogOutput::ApplyThemeOnly => {
+                        // Apply theme only, keep current wallpaper
+                        if let Some(ref theme) = self.selected_theme {
+                            let theme_id = theme.theme_id.clone();
+                            self.apply_theme_only(&theme_id, sender.clone());
+                            sender.output(ThemeViewOutput::BindingModeChanged(
+                                crate::models::BindingMode::Unbound
+                            )).ok();
+                        }
+                    }
+                    BindingDialogOutput::ApplyBoth(wallpaper_path) => {
+                        // Apply theme AND wallpaper
+                        if let Some(ref theme) = self.selected_theme {
+                            let theme_id = theme.theme_id.clone();
+                            self.apply_theme_only(&theme_id, sender.clone());
+                            sender.output(ThemeViewOutput::ApplyWallpaper(wallpaper_path)).ok();
+                            sender.output(ThemeViewOutput::BindingModeChanged(
+                                crate::models::BindingMode::ThemeBound
+                            )).ok();
+                        }
+                    }
+                    BindingDialogOutput::Cancelled => {
+                        // User cancelled - do nothing
+                    }
+                }
+            }
         }
     }
 }
@@ -340,5 +384,33 @@ impl ThemeViewModel {
                 }
             }
         });
+    }
+
+    fn show_binding_dialog(&mut self, theme: Theme, wallpaper_path: std::path::PathBuf, sender: ComponentSender<Self>) {
+        let (connector, window) = BindingDialogModel::show_dialog(
+            None::<&gtk::Window>,
+            theme,
+            wallpaper_path,
+        );
+
+        // Forward binding dialog output to our input
+        let controller = connector.forward(sender.input_sender(), |msg| {
+            ThemeViewMsg::BindingChoice(msg)
+        });
+
+        self.binding_dialog = Some(controller);
+        self.binding_window = Some(window);
+    }
+
+    fn apply_theme_only(&mut self, theme_id: &str, sender: ComponentSender<Self>) {
+        if let Err(e) = theme_applier::apply_theme(theme_id) {
+            eprintln!("Apply failed: {}", e);
+            sender.output(ThemeViewOutput::ShowToast(format!("Apply failed: {}", e))).ok();
+        } else {
+            self.original_theme_id = theme_id.to_string();
+            self.theme_browser.emit(ThemeBrowserInput::SetCurrentTheme(theme_id.to_string()));
+            sender.output(ThemeViewOutput::ShowToast(format!("Applied theme: {}", theme_id))).ok();
+            sender.output(ThemeViewOutput::ThemeApplied(theme_id.to_string())).ok();
+        }
     }
 }
