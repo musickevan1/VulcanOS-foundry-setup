@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 
 ## Current Position
 
-Phase: 8 of 10 (Theme-Wallpaper Binding) — IN PROGRESS
-Plan: 5 of 6 in current phase
-Status: Plans 08-01, 08-02, 08-03, 08-04, 08-05 complete
-Last activity: 2026-01-26 — Completed 08-04-PLAN.md (Binding Confirmation Dialog)
+Phase: 8 of 10 (Theme-Wallpaper Binding) — COMPLETE ✓
+Plan: 6 of 6 in current phase
+Status: All Phase 8 plans complete (08-01 through 08-06)
+Last activity: 2026-01-26 — Completed 08-06-PLAN.md (App Integration)
 
-Progress: [███████████░░░░░░░░░░░░░░░] 30% (26/86 total plans from v1.0 complete)
+Progress: [████████████████████████████░░] 96% (26/27 total plans complete)
 
 ## Performance Metrics
 
@@ -135,6 +135,13 @@ Progress: [███████████░░░░░░░░░░░░
 - Auto-suggested profile name from theme_id in save dialog
 - First monitor's wallpaper used for profile card preview
 
+**From Phase 8 Plan 6 (08-06):**
+- Profiles tab third position with user-bookmarks-symbolic icon and Ctrl+3 shortcut
+- Binding dialog shown inline during theme application (not separate action)
+- Manual wallpaper change switches binding mode from ThemeBound to CustomOverride
+- State sync via UpdateCurrentState messages (app pushes to profile view on theme/wallpaper changes)
+- Three-level message forwarding: theme_view → app → wallpaper_view for coordinated state
+
 ### Previous Milestone Summary
 
 **v1.0 VulcanOS Foundation** (Phase 5 shipped 2026-01-24):
@@ -158,12 +165,13 @@ Progress: [███████████░░░░░░░░░░░░
 - Plan 4: WallpaperView container integration (vertical paned layout, backend abstraction, profile sync) ✓
 - Plan 5: Final integration, polish, desktop entry (human verified) ✓
 
-**v2.0 Theme-Wallpaper Binding - Phase 8 IN PROGRESS:**
+**v2.0 Theme-Wallpaper Binding - Phase 8 COMPLETE:**
 - Plan 1: Foundation data models (BindingMode enum, UnifiedProfile struct, THEME_WALLPAPER validation) ✓
 - Plan 2: Profile Storage (UnifiedProfile CRUD, migration from WallpaperProfile, legacy directory support) ✓
 - Plan 3: Theme Card Wallpaper Overlay (60x40 thumbnail, override badge, gtk::Overlay structure) ✓
 - Plan 4: Binding Confirmation Dialog (BindingDialogModel modal with side-by-side preview, user choice output) ✓
 - Plan 5: Profiles Tab UI (ProfileItem cards, ProfileView container, save/load/delete operations) ✓
+- Plan 6: App Integration (Profiles tab, binding dialog flow, state sync, profile save/load) ✓
 
 ### Pending Todos
 
@@ -179,7 +187,7 @@ None yet (v2.0 milestone just initialized).
 - Keyboard shortcuts Ctrl+1/Ctrl+2 ✓
 - Toast notifications ✓
 
-**Phase 8 Plans 1-5 Complete:**
+**Phase 8 COMPLETE - All functionality verified:**
 - BindingMode enum and UnifiedProfile struct created ✓
 - THEME_WALLPAPER security validation (relative paths only) ✓
 - resolve_theme_wallpaper() helper for path resolution ✓
@@ -193,13 +201,17 @@ None yet (v2.0 milestone just initialized).
 - ProfileItem cards display theme colors and wallpaper thumbnails ✓
 - ProfileView container with save/load/delete operations ✓
 - Save Current dialog with auto-suggested profile names ✓
+- Profiles tab navigation (Ctrl+3) ✓
+- Binding dialog integration into theme application flow ✓
+- Profile load restores theme + wallpapers ✓
+- State synchronization across all views ✓
 
-**Ready for Plan 08-06:** App Integration - wire all components together
+**Ready for Phase 9:** App Self-Theming (GUI matching active theme colors)
 
 ## Session Continuity
 
-Last session: 2026-01-26 (Phase 8 Plan 4 execution complete)
-Stopped at: Completed 08-04-PLAN.md (Binding Confirmation Dialog)
+Last session: 2026-01-26 (Phase 8 Plan 6 execution complete)
+Stopped at: Completed 08-06-PLAN.md (App Integration) - PHASE 8 COMPLETE
 Resume file: None
 
-**Next action:** Execute Phase 8 Plan 6 - App Integration (wire binding dialog, profile view, and theme application together)
+**Next action:** Execute Phase 9 (App Self-Theming) - remaining phase in v2.0 milestone
