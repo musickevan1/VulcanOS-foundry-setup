@@ -1,6 +1,7 @@
 use gtk::prelude::*;
 use gtk::gio;
 use relm4::prelude::*;
+use relm4::component::Connector;
 use std::path::PathBuf;
 
 use crate::models::Theme;
@@ -168,6 +169,58 @@ impl SimpleComponent for BindingDialogModel {
                 sender.output(BindingDialogOutput::Cancelled).ok();
             }
         }
+    }
+}
+
+impl BindingDialogModel {
+    /// Create and show the binding dialog as a modal window
+    /// Returns a connector that the caller can forward to handle output messages
+    ///
+    /// Example usage:
+    /// ```
+    /// let (connector, window) = BindingDialogModel::show_dialog(
+    ///     Some(&parent_window),
+    ///     theme,
+    ///     wallpaper_path,
+    /// );
+    ///
+    /// let controller = connector.forward(sender.input_sender(), |msg| {
+    ///     match msg {
+    ///         BindingDialogOutput::ApplyThemeOnly => ...,
+    ///         BindingDialogOutput::ApplyBoth(path) => ...,
+    ///         BindingDialogOutput::Cancelled => ...,
+    ///     }
+    /// });
+    /// ```
+    pub fn show_dialog<W: IsA<gtk::Window>>(
+        parent: Option<&W>,
+        theme: Theme,
+        wallpaper_path: PathBuf,
+    ) -> (Connector<Self>, gtk::Window) {
+        let init = BindingDialogInit {
+            theme: theme.clone(),
+            wallpaper_path,
+        };
+
+        let connector = BindingDialogModel::builder().launch(init);
+
+        let title = format!("Apply {} Wallpaper?", theme.theme_name);
+
+        let window = gtk::Window::builder()
+            .title(&title)
+            .modal(true)
+            .default_width(600)
+            .default_height(400)
+            .child(connector.widget())
+            .build();
+
+        if let Some(parent) = parent {
+            window.set_transient_for(Some(parent));
+        }
+
+        window.present();
+
+        (connector, window)
     }
 }
 
