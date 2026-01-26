@@ -15,6 +15,7 @@ pub enum ThemeViewMsg {
     // Actions
     PreviewTheme,
     ApplyTheme,
+    ApplyThemeById(String),  // Apply theme by ID (for profile loading)
     CancelPreview,
     NewTheme,
     EditTheme,
@@ -265,6 +266,18 @@ impl SimpleComponent for ThemeViewModel {
 
             ThemeViewMsg::Import => {
                 self.import_theme_dialog(sender.clone());
+            }
+
+            ThemeViewMsg::ApplyThemeById(theme_id) => {
+                // Apply theme by ID (used when loading profiles)
+                if let Err(e) = theme_applier::apply_theme(&theme_id) {
+                    eprintln!("Apply failed: {}", e);
+                    sender.output(ThemeViewOutput::ShowToast(format!("Apply failed: {}", e))).ok();
+                } else {
+                    self.original_theme_id = theme_id.clone();
+                    self.theme_browser.emit(ThemeBrowserInput::SetCurrentTheme(theme_id.clone()));
+                    sender.output(ThemeViewOutput::ThemeApplied(theme_id)).ok();
+                }
             }
         }
     }

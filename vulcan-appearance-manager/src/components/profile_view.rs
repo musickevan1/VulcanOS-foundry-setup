@@ -262,15 +262,12 @@ impl ProfileViewModel {
             .and_then(|s| s.theme_id.clone())
             .unwrap_or_else(|| "My Profile".to_string());
 
-        // Create simple entry dialog
-        let dialog = gtk::Dialog::builder()
-            .title("Save Profile")
-            .modal(true)
-            .build();
-
-        let content = dialog.content_area();
-        content.set_margin_all(16);
-        content.set_spacing(12);
+        // Create content box
+        let content = gtk::Box::new(gtk::Orientation::Vertical, 12);
+        content.set_margin_start(16);
+        content.set_margin_end(16);
+        content.set_margin_top(16);
+        content.set_margin_bottom(16);
 
         let label = gtk::Label::new(Some("Profile name:"));
         label.set_halign(gtk::Align::Start);
@@ -278,23 +275,58 @@ impl ProfileViewModel {
 
         let entry = gtk::Entry::new();
         entry.set_text(&suggested_name);
-        entry.set_activates_default(true);
         content.append(&entry);
 
-        dialog.add_button("Cancel", gtk::ResponseType::Cancel);
-        dialog.add_button("Save", gtk::ResponseType::Accept);
+        // Action buttons
+        let button_box = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+        button_box.set_halign(gtk::Align::End);
+        button_box.set_margin_top(8);
 
-        let entry_clone = entry.clone();
-        dialog.connect_response(move |dialog, response| {
-            if response == gtk::ResponseType::Accept {
-                let name = entry_clone.text().to_string().trim().to_string();
-                if !name.is_empty() {
-                    sender.input(ProfileViewMsg::SaveDialogResponse(name));
-                }
-            }
-            dialog.close();
+        let cancel_btn = gtk::Button::with_label("Cancel");
+        let save_btn = gtk::Button::with_label("Save");
+        save_btn.add_css_class("suggested-action");
+
+        button_box.append(&cancel_btn);
+        button_box.append(&save_btn);
+        content.append(&button_box);
+
+        // Create window
+        let window = gtk::Window::builder()
+            .title("Save Profile")
+            .modal(true)
+            .default_width(400)
+            .child(&content)
+            .build();
+
+        // Connect signals
+        let window_clone1 = window.clone();
+        cancel_btn.connect_clicked(move |_| {
+            window_clone1.close();
         });
 
-        dialog.present();
+        let window_clone2 = window.clone();
+        let entry_clone = entry.clone();
+        let sender_clone1 = sender.clone();
+        save_btn.connect_clicked(move |_| {
+            let name = entry_clone.text().to_string().trim().to_string();
+            if !name.is_empty() {
+                sender_clone1.input(ProfileViewMsg::SaveDialogResponse(name));
+            }
+            window_clone2.close();
+        });
+
+        // Enter key activates save
+        let window_clone3 = window.clone();
+        let entry_clone2 = entry.clone();
+        let sender_clone2 = sender.clone();
+        entry.connect_activate(move |_| {
+            let name = entry_clone2.text().to_string().trim().to_string();
+            if !name.is_empty() {
+                sender_clone2.input(ProfileViewMsg::SaveDialogResponse(name));
+            }
+            window_clone3.close();
+        });
+
+        window.present();
     }
 }

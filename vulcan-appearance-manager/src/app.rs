@@ -7,6 +7,8 @@ use std::collections::HashMap;
 use crate::components::profile_manager::{ProfileManagerModel, ProfileManagerInput, ProfileManagerOutput};
 use crate::components::theme_view::{ThemeViewModel, ThemeViewMsg, ThemeViewOutput};
 use crate::components::wallpaper_view::{WallpaperViewModel, WallpaperViewMsg, WallpaperViewOutput};
+use crate::components::profile_view::{ProfileViewModel, ProfileViewMsg, ProfileViewOutput};
+use crate::models::{UnifiedProfile, BindingMode};
 
 #[derive(Debug)]
 pub enum AppMsg {
@@ -17,14 +19,19 @@ pub enum AppMsg {
     ShowToast(String),
     ThemeApplied(String),
     WallpapersChanged(HashMap<String, PathBuf>),
+    ProfileLoad(UnifiedProfile),
+    ProfileDeleted(String),
+    BindingModeChanged(BindingMode),
 }
 
 pub struct App {
     view_stack: adw::ViewStack,
     theme_view: Controller<ThemeViewModel>,
     wallpaper_view: Controller<WallpaperViewModel>,
+    profile_view: Controller<ProfileViewModel>,
     profile_manager: Controller<ProfileManagerModel>,
     toast_overlay: adw::ToastOverlay,
+    current_binding_mode: BindingMode,
 }
 
 #[relm4::component(pub)]
@@ -82,6 +89,7 @@ impl SimpleComponent for App {
         // Clone view_stack for closures
         let view_stack_clone1 = view_stack.clone();
         let view_stack_clone2 = view_stack.clone();
+        let view_stack_clone3 = view_stack.clone();
 
         // Ctrl+1 for Themes
         let themes_action = gtk::CallbackAction::new(move |_, _| {
@@ -103,8 +111,19 @@ impl SimpleComponent for App {
             Some(wallpapers_action),
         );
 
+        // Ctrl+3 for Profiles
+        let profiles_action = gtk::CallbackAction::new(move |_, _| {
+            view_stack_clone3.set_visible_child_name("profiles");
+            gtk::glib::Propagation::Stop
+        });
+        let profiles_shortcut = gtk::Shortcut::new(
+            gtk::ShortcutTrigger::parse_string("<Control>3"),
+            Some(profiles_action),
+        );
+
         shortcut_controller.add_shortcut(themes_shortcut);
         shortcut_controller.add_shortcut(wallpapers_shortcut);
+        shortcut_controller.add_shortcut(profiles_shortcut);
         root.add_controller(shortcut_controller);
 
         // Create theme view component
@@ -143,6 +162,25 @@ impl SimpleComponent for App {
             "preferences-desktop-wallpaper-symbolic"
         );
 
+        // Create profile view component
+        let profile_view = ProfileViewModel::builder()
+            .launch(())
+            .forward(sender.input_sender(), |msg| {
+                match msg {
+                    ProfileViewOutput::ShowToast(text) => AppMsg::ShowToast(text),
+                    ProfileViewOutput::LoadProfile(profile) => AppMsg::ProfileLoad(profile),
+                    ProfileViewOutput::ProfileDeleted(name) => AppMsg::ProfileDeleted(name),
+                }
+            });
+
+        // Add Profiles tab to ViewStack
+        view_stack.add_titled_with_icon(
+            profile_view.widget(),
+            Some("profiles"),
+            "Profiles",
+            "user-bookmarks-symbolic"
+        );
+
         // Create profile manager component (shared across both tabs)
         let profile_manager = ProfileManagerModel::builder()
             .launch(())
@@ -160,8 +198,10 @@ impl SimpleComponent for App {
             view_stack,
             theme_view,
             wallpaper_view,
+            profile_view,
             profile_manager,
             toast_overlay: toast_overlay.clone(),
+            current_binding_mode: BindingMode::Unbound,
         };
 
         let widgets = view_output!();
@@ -209,6 +249,31 @@ impl SimpleComponent for App {
             AppMsg::WallpapersChanged(wallpapers) => {
                 // Notify profile manager of wallpaper changes
                 self.profile_manager.emit(ProfileManagerInput::UpdateWallpapers(wallpapers));
+            }
+
+            AppMsg::ProfileLoad(profile) => {
+                // Apply theme if present
+                if let Some(ref theme_id) = profile.theme_id {
+                    self.theme_view.emit(ThemeViewMsg::ApplyThemeById(theme_id.clone()));
+                }
+
+                // Apply wallpapers
+                self.wallpaper_view.emit(WallpaperViewMsg::ApplyProfile(profile.monitor_wallpapers.clone()));
+
+                // Update binding mode
+                self.current_binding_mode = profile.binding_mode;
+
+                let toast = adw::Toast::new(&format!("Loaded profile: {}", profile.name));
+                self.toast_overlay.add_toast(toast);
+            }
+
+            AppMsg::ProfileDeleted(name) => {
+                let toast = adw::Toast::new(&format!("Deleted profile: {}", name));
+                self.toast_overlay.add_toast(toast);
+            }
+
+            AppMsg::BindingModeChanged(mode) => {
+                self.current_binding_mode = mode;
             }
         }
     }
