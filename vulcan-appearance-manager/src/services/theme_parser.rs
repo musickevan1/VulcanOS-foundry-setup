@@ -210,6 +210,24 @@ pub fn validate_theme(theme: &Theme) -> Result<()> {
         }
     }
 
+    // Validate theme_wallpaper is a relative path (security)
+    if let Some(ref wallpaper) = theme.theme_wallpaper {
+        // Reject absolute paths
+        if wallpaper.starts_with('/') {
+            anyhow::bail!(
+                "THEME_WALLPAPER '{}' must be a relative path (not starting with /)",
+                wallpaper
+            );
+        }
+        // Reject paths with .. (directory traversal)
+        if wallpaper.contains("..") {
+            anyhow::bail!(
+                "THEME_WALLPAPER '{}' cannot contain '..' (directory traversal)",
+                wallpaper
+            );
+        }
+    }
+
     Ok(())
 }
 
@@ -549,5 +567,56 @@ export BG_PRIMARY="#1c1917"
 
         // Cleanup
         let _ = fs::remove_file(&test_file);
+    }
+
+    // === THEME_WALLPAPER validation tests ===
+
+    #[test]
+    fn test_accepts_relative_wallpaper_path() {
+        let mut theme = Theme::new("Test Theme", "test-theme");
+        theme.theme_wallpaper = Some("wallpapers/dark.png".to_string());
+        assert!(validate_theme(&theme).is_ok());
+
+        let mut theme2 = Theme::new("Test Theme", "test-theme");
+        theme2.theme_wallpaper = Some("bg.jpg".to_string());
+        assert!(validate_theme(&theme2).is_ok());
+    }
+
+    #[test]
+    fn test_rejects_absolute_wallpaper_path() {
+        let mut theme = Theme::new("Test Theme", "test-theme");
+        theme.theme_wallpaper = Some("/etc/passwd".to_string());
+        let result = validate_theme(&theme);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("relative path"));
+    }
+
+    #[test]
+    fn test_rejects_wallpaper_with_traversal() {
+        let mut theme = Theme::new("Test Theme", "test-theme");
+        theme.theme_wallpaper = Some("../../../etc/passwd".to_string());
+        let result = validate_theme(&theme);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().to_string().contains("directory traversal"));
+    }
+
+    #[test]
+    fn test_accepts_none_wallpaper() {
+        let mut theme = Theme::new("Test Theme", "test-theme");
+        theme.theme_wallpaper = None;
+        assert!(validate_theme(&theme).is_ok());
+    }
+
+    #[test]
+    fn test_parse_theme_with_wallpaper() {
+        let content = r##"
+export THEME_NAME="Test Theme"
+export THEME_ID="test-theme"
+export BG_PRIMARY="#1c1917"
+export THEME_WALLPAPER="wallpapers/dark.png"
+"##;
+        let theme = parse_theme_content(content, None).unwrap();
+        assert_eq!(theme.theme_name, "Test Theme");
+        assert_eq!(theme.theme_wallpaper, Some("wallpapers/dark.png".to_string()));
     }
 }
