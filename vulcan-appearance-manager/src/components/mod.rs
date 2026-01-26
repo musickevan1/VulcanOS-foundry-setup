@@ -17,3 +17,6 @@ pub use binding_dialog::{BindingDialogModel, BindingDialogOutput, BindingDialogI
 
 // Profile components
 pub mod profile_card;
+pub mod profile_view;
+
+pub use profile_view::{ProfileViewModel, ProfileViewMsg, ProfileViewOutput};
