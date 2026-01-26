@@ -335,4 +335,68 @@ mod tests {
         assert!(KNOWN_PROFILES.contains(&"laptop"));
         assert!(KNOWN_PROFILES.contains(&"campus"));
     }
+
+    #[test]
+    fn test_unified_profile_roundtrip() {
+        use crate::models::BindingMode;
+
+        let mut wallpapers = HashMap::new();
+        wallpapers.insert("eDP-1".to_string(), PathBuf::from("/home/test/wall.png"));
+
+        let profile = UnifiedProfile {
+            name: "test-unified".to_string(),
+            description: "Test unified profile".to_string(),
+            theme_id: Some("catppuccin".to_string()),
+            monitor_wallpapers: wallpapers.clone(),
+            binding_mode: BindingMode::ThemeBound,
+        };
+
+        // Save
+        let result = save_unified_profile(&profile);
+        assert!(result.is_ok());
+
+        // Load
+        let loaded = load_unified_profile("test-unified");
+        assert!(loaded.is_ok());
+
+        let loaded = loaded.unwrap();
+        assert_eq!(loaded.name, "test-unified");
+        assert_eq!(loaded.theme_id, Some("catppuccin".to_string()));
+        assert_eq!(loaded.monitor_wallpapers, wallpapers);
+        assert!(matches!(loaded.binding_mode, BindingMode::ThemeBound));
+
+        // Cleanup
+        let _ = delete_unified_profile("test-unified");
+    }
+
+    #[test]
+    fn test_legacy_profile_migration() {
+        // Create a WallpaperProfile format file
+        let mut wallpapers = HashMap::new();
+        wallpapers.insert("eDP-1".to_string(), PathBuf::from("/home/test/wall.png"));
+
+        let old_profile = WallpaperProfile {
+            name: "test-migration".to_string(),
+            description: "Old format profile".to_string(),
+            monitor_wallpapers: wallpapers.clone(),
+        };
+
+        // Save as old format
+        let result = save_profile(&old_profile);
+        assert!(result.is_ok());
+
+        // Load as UnifiedProfile (should auto-migrate)
+        let loaded = load_unified_profile("test-migration");
+        assert!(loaded.is_ok());
+
+        let loaded = loaded.unwrap();
+        assert_eq!(loaded.name, "test-migration");
+        assert_eq!(loaded.description, "Old format profile");
+        assert_eq!(loaded.theme_id, None); // Should be None after migration
+        assert_eq!(loaded.monitor_wallpapers, wallpapers);
+        assert!(matches!(loaded.binding_mode, BindingMode::Unbound)); // Should be Unbound after migration
+
+        // Cleanup
+        let _ = delete_unified_profile("test-migration");
+    }
 }
