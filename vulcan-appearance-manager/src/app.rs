@@ -1,6 +1,7 @@
 use relm4::prelude::*;
 use adw::prelude::*;
 use gtk::prelude::*;
+use gtk::{CssProvider, gdk::Display};
 use std::path::PathBuf;
 use std::collections::HashMap;
 
@@ -9,6 +10,26 @@ use crate::components::theme_view::{ThemeViewModel, ThemeViewMsg, ThemeViewOutpu
 use crate::components::wallpaper_view::{WallpaperViewModel, WallpaperViewMsg, WallpaperViewOutput};
 use crate::components::profile_view::{ProfileViewModel, ProfileViewMsg, ProfileViewOutput};
 use crate::models::{UnifiedProfile, BindingMode};
+use crate::services::theme_css;
+
+/// Load theme CSS at runtime via CssProvider
+///
+/// This supplements brand_css.rs which provides defaults.
+/// Theme CSS overrides brand colors with active theme colors.
+fn load_theme_css() {
+    if let Some(css_content) = theme_css::get_theme_css() {
+        let provider = CssProvider::new();
+        provider.load_from_string(&css_content);
+
+        if let Some(display) = Display::default() {
+            gtk::style_context_add_provider_for_display(
+                &display,
+                &provider,
+                gtk::STYLE_PROVIDER_PRIORITY_USER, // Higher priority than APPLICATION
+            );
+        }
+    }
+}
 
 #[derive(Debug)]
 pub enum AppMsg {
@@ -211,6 +232,9 @@ impl SimpleComponent for App {
             current_theme_id: None,
             current_wallpapers: HashMap::new(),
         };
+
+        // Load theme CSS for self-theming (if a theme has been applied previously)
+        load_theme_css();
 
         let widgets = view_output!();
 
