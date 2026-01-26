@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 ## Current Position
 
 Phase: 8 of 10 (Theme-Wallpaper Binding) — IN PROGRESS
-Plan: 2 of 6 in current phase
-Status: Plans 08-01, 08-02 complete
-Last activity: 2026-01-26 — Completed 08-02-PLAN.md (Profile Storage)
+Plan: 3 of 6 in current phase
+Status: Plans 08-01, 08-02, 08-03 complete
+Last activity: 2026-01-26 — Completed 08-03-PLAN.md (Theme Card Wallpaper Overlay)
 
-Progress: [███████████░░░░░░░░░░░░░░░] 27% (23/86 total plans from v1.0 complete)
+Progress: [███████████░░░░░░░░░░░░░░░] 28% (24/86 total plans from v1.0 complete)
 
 ## Performance Metrics
 
@@ -113,6 +113,13 @@ Progress: [███████████░░░░░░░░░░░░
 - UnifiedProfile format is primary, WallpaperProfile support maintained for migration
 - Format detection via try-parse with fallback to old format
 
+**From Phase 8 Plan 3 (08-03):**
+- Wallpaper thumbnail is 60x40 pixels in bottom-right corner of theme cards
+- Override badge uses emblem-default-symbolic icon in top-right corner
+- ThemeItemInput::SetOverride for parent-controlled override state updates
+- gtk::Overlay for layering wallpaper thumbnail and badge over color preview
+- gtk::Picture with ContentFit::Cover for proper aspect ratio handling
+
 ### Previous Milestone Summary
 
 **v1.0 VulcanOS Foundation** (Phase 5 shipped 2026-01-24):
@@ -139,6 +146,7 @@ Progress: [███████████░░░░░░░░░░░░
 **v2.0 Theme-Wallpaper Binding - Phase 8 IN PROGRESS:**
 - Plan 1: Foundation data models (BindingMode enum, UnifiedProfile struct, THEME_WALLPAPER validation) ✓
 - Plan 2: Profile Storage (UnifiedProfile CRUD, migration from WallpaperProfile, legacy directory support) ✓
+- Plan 3: Theme Card Wallpaper Overlay (60x40 thumbnail, override badge, gtk::Overlay structure) ✓
 
 ### Pending Todos
 
@@ -154,21 +162,23 @@ None yet (v2.0 milestone just initialized).
 - Keyboard shortcuts Ctrl+1/Ctrl+2 ✓
 - Toast notifications ✓
 
-**Phase 8 Plans 1-2 Complete:**
+**Phase 8 Plans 1-3 Complete:**
 - BindingMode enum and UnifiedProfile struct created ✓
 - THEME_WALLPAPER security validation (relative paths only) ✓
 - resolve_theme_wallpaper() helper for path resolution ✓
 - UnifiedProfile CRUD operations with TOML persistence ✓
 - Automatic migration from WallpaperProfile format ✓
 - Legacy directory support (vulcan-wallpaper → vulcan-appearance-manager) ✓
-- All profile tests passing (roundtrip and migration) ✓
+- Theme cards show wallpaper thumbnails (60x40, bottom-right) ✓
+- Override badge prepared (16px icon, top-right) ✓
+- gtk::Overlay structure for layered UI elements ✓
 
-**Ready for Plan 08-03:** Profile selector UI with binding mode indicator
+**Ready for Plan 08-04:** Theme Application Wallpaper Sync
 
 ## Session Continuity
 
-Last session: 2026-01-26 (Phase 8 Plan 2 execution complete)
-Stopped at: Completed 08-02-PLAN.md (Profile Storage)
+Last session: 2026-01-26 (Phase 8 Plan 3 execution complete)
+Stopped at: Completed 08-03-PLAN.md (Theme Card Wallpaper Overlay)
 Resume file: None
 
-**Next action:** Execute Phase 8 Plan 3 (Profile Selector UI) - dropdown with binding mode indicator.
+**Next action:** Execute Phase 8 Plan 4 (Theme Application Wallpaper Sync) - sync wallpaper when theme applied.
