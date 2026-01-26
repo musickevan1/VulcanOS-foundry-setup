@@ -9,6 +9,9 @@ pub struct WallpaperProfile {
     pub name: String,
     /// Map of monitor name -> wallpaper path
     pub monitor_wallpapers: HashMap<String, PathBuf>,
+    /// Optional description
+    #[serde(default)]
+    pub description: String,
 }
 
 impl WallpaperProfile {
@@ -16,6 +19,7 @@ impl WallpaperProfile {
         Self {
             name,
             monitor_wallpapers: HashMap::new(),
+            description: String::new(),
         }
     }
 
