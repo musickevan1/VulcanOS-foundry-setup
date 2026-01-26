@@ -71,6 +71,29 @@ const BRAND_COLORS_CSS: &str = r#"
 @define-color accent_bg_color @vulcan_ember;
 @define-color accent_fg_color @vulcan_white;
 @define-color accent_color @vulcan_ember;
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ * Theme Color Fallbacks
+ * These are overridden by current-theme.css when loaded at runtime
+ * Default to VulcanOS brand colors when no theme is applied
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Accent color (overrideable by theme) */
+@define-color theme_accent @vulcan_ember;
+
+/* Background colors (overrideable by theme) */
+@define-color theme_bg_primary @vulcan_obsidian;
+@define-color theme_bg_secondary @vulcan_charcoal;
+@define-color theme_bg_tertiary @vulcan_ash;
+
+/* Foreground/text colors (overrideable by theme) */
+@define-color theme_fg_primary @vulcan_white;
+@define-color theme_fg_secondary @vulcan_stone;
+@define-color theme_fg_muted @vulcan_gray;
+
+/* Border colors (overrideable by theme) */
+@define-color theme_border_active @vulcan_ember;
+@define-color theme_border_inactive @vulcan_ash;
 "#;
 
 /// Shared widget styles for both theme-manager and wallpaper-manager
@@ -124,20 +147,20 @@ label.dim-label {
  * Buttons
  * ═══════════════════════════════════════════════════════════════════════════ */
 
-/* Suggested action button (Apply) - Vulcan ember */
+/* Suggested action button (Apply) - uses theme accent */
 button.suggested-action {
-    background: linear-gradient(to bottom, @vulcan_ember, @vulcan_molten);
-    color: @vulcan_white;
+    background: linear-gradient(to bottom, @theme_accent, shade(@theme_accent, 0.9));
+    color: @theme_fg_primary;
     border: none;
     font-weight: 600;
 }
 
 button.suggested-action:hover {
-    background: linear-gradient(to bottom, shade(@vulcan_ember, 1.1), @vulcan_ember);
+    background: linear-gradient(to bottom, shade(@theme_accent, 1.1), @theme_accent);
 }
 
 button.suggested-action:active {
-    background: @vulcan_molten;
+    background: shade(@theme_accent, 0.85);
 }
 
 /* Regular buttons */
@@ -168,15 +191,15 @@ dropdown button, combobox button {
 
 /* Entry fields */
 entry {
-    background-color: @vulcan_charcoal;
-    color: @vulcan_white;
-    border: 1px solid @vulcan_ash;
-    caret-color: @vulcan_ember;
+    background-color: @theme_bg_secondary;
+    color: @theme_fg_primary;
+    border: 1px solid @theme_border_inactive;
+    caret-color: @theme_accent;
 }
 
 entry:focus {
-    border-color: @vulcan_ember;
-    box-shadow: 0 0 3px alpha(@vulcan_ember, 0.5);
+    border-color: @theme_accent;
+    box-shadow: 0 0 3px alpha(@theme_accent, 0.5);
 }
 
 /* Color button */
@@ -190,8 +213,8 @@ colorbutton {
 
 /* FlowBox selection (wallpaper thumbnails & theme cards) */
 flowboxchild:selected {
-    background-color: alpha(@vulcan_ember, 0.3);
-    border: 2px solid @vulcan_ember;
+    background-color: alpha(@theme_accent, 0.3);
+    border: 2px solid @theme_accent;
     border-radius: 8px;
 }
 
@@ -220,7 +243,7 @@ popover, popover.background {
 }
 
 popover modelbutton:hover {
-    background-color: alpha(@vulcan_ember, 0.2);
+    background-color: alpha(@theme_accent, 0.2);
 }
 
 /* Tooltip */
@@ -255,8 +278,8 @@ tooltip {
     font-size: 10px;
     padding: 2px 8px;
     border-radius: 4px;
-    background-color: @vulcan_ember;
-    color: @vulcan_white;
+    background-color: @theme_accent;
+    color: @theme_fg_primary;
 }
 
 .builtin-badge {
