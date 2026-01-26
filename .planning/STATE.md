@@ -5,21 +5,21 @@
 See: .planning/PROJECT.md (updated 2026-01-24)
 
 **Core value:** Cohesive, recoverable, keyboard-driven
-**Current focus:** Phase 7 Complete - Component Integration (v2.0 Vulcan Appearance Manager)
+**Current focus:** Phase 9 - Theming Infrastructure (v2.0 Vulcan Appearance Manager)
 
 ## Current Position
 
-Phase: 8 of 10 (Theme-Wallpaper Binding) — COMPLETE ✓
-Plan: 6 of 6 in current phase
-Status: All Phase 8 plans complete (08-01 through 08-06)
-Last activity: 2026-01-26 — Completed 08-06-PLAN.md (App Integration)
+Phase: 9 of 10 (Theming Infrastructure)
+Plan: 2 of 4 in current phase
+Status: In progress
+Last activity: 2026-01-26 — Completed 09-02-PLAN.md (Theme CSS Generation)
 
-Progress: [████████████████████████████░░] 96% (26/27 total plans complete)
+Progress: [█████████████████████████████░] 97% (27/28 total plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 21
+- Total plans completed: 27
 - Average duration: ~25 min (estimated from Phases 1, 5, 6, 7)
 - Total execution time: ~9 hours (estimated)
 
@@ -31,10 +31,12 @@ Progress: [███████████████████████
 | 5. VulcanOS Wallpaper Manager | 8 | ~6h | ~45 min |
 | 6. Foundation Architecture | 5 | 17min | 3.4 min |
 | 7. Component Integration | 5 | ~15min | ~3 min |
+| 8. Theme-Wallpaper Binding | 6 | ~20min | ~3.3 min |
+| 9. Theming Infrastructure | 2/4 | ~2min | ~1 min |
 
 **Recent Trend:**
-- Last completed: Phase 7 Plan 5 (07-05)
-- Trend: Phase 7 COMPLETE - unified app verified by human testing
+- Last completed: Phase 9 Plan 2 (09-02)
+- Trend: Fast execution with minimal deviations
 
 ## Accumulated Context
 
@@ -142,6 +144,11 @@ Progress: [███████████████████████
 - State sync via UpdateCurrentState messages (app pushes to profile view on theme/wallpaper changes)
 - Three-level message forwarding: theme_view → app → wallpaper_view for coordinated state
 
+**From Phase 9 Plan 2 (09-02):**
+- GTK CSS path: ~/.config/vulcan/current-theme.css
+- Include Libadwaita color overrides (window_bg_color, view_bg_color, headerbar_bg_color, etc.)
+- heredoc syntax for CSS generation in vulcan-theme
+
 ### Previous Milestone Summary
 
 **v1.0 VulcanOS Foundation** (Phase 5 shipped 2026-01-24):
@@ -173,45 +180,27 @@ Progress: [███████████████████████
 - Plan 5: Profiles Tab UI (ProfileItem cards, ProfileView container, save/load/delete operations) ✓
 - Plan 6: App Integration (Profiles tab, binding dialog flow, state sync, profile save/load) ✓
 
+**v2.0 Theming Infrastructure - Phase 9 IN PROGRESS:**
+- Plan 1: Research (domain research complete) ✓
+- Plan 2: Theme CSS Generation (vulcan-theme generates GTK CSS, Rust service reads it) ✓
+- Plan 3: CSS Loading (pending)
+- Plan 4: Watcher Integration (pending)
+
 ### Pending Todos
 
-None yet (v2.0 milestone just initialized).
+None.
 
 ### Blockers/Concerns
 
-**Phase 7 Complete - All verified:**
-- ViewSwitcher tabs work ✓
-- Theme browser with color preview cards ✓
-- Theme application changes system colors ✓
-- Wallpaper tab with monitor layout ✓
-- Keyboard shortcuts Ctrl+1/Ctrl+2 ✓
-- Toast notifications ✓
-
-**Phase 8 COMPLETE - All functionality verified:**
-- BindingMode enum and UnifiedProfile struct created ✓
-- THEME_WALLPAPER security validation (relative paths only) ✓
-- resolve_theme_wallpaper() helper for path resolution ✓
-- UnifiedProfile CRUD operations with TOML persistence ✓
-- Automatic migration from WallpaperProfile format ✓
-- Legacy directory support (vulcan-wallpaper → vulcan-appearance-manager) ✓
-- Theme cards show wallpaper thumbnails (60x40, bottom-right) ✓
-- Override badge prepared (16px icon, top-right) ✓
-- gtk::Overlay structure for layered UI elements ✓
-- BindingDialog modal with side-by-side preview and user choice ✓
-- ProfileItem cards display theme colors and wallpaper thumbnails ✓
-- ProfileView container with save/load/delete operations ✓
-- Save Current dialog with auto-suggested profile names ✓
-- Profiles tab navigation (Ctrl+3) ✓
-- Binding dialog integration into theme application flow ✓
-- Profile load restores theme + wallpapers ✓
-- State synchronization across all views ✓
-
-**Ready for Phase 9:** App Self-Theming (GUI matching active theme colors)
+**Phase 9 Progress:**
+- vulcan-theme generates ~/.config/vulcan/current-theme.css ✓
+- theme_css.rs service reads CSS file ✓
+- Next: Load CSS into GTK4 CssProvider (Plan 3)
 
 ## Session Continuity
 
-Last session: 2026-01-26 (Phase 8 Plan 6 execution complete)
-Stopped at: Completed 08-06-PLAN.md (App Integration) - PHASE 8 COMPLETE
+Last session: 2026-01-26 (Phase 9 Plan 2 execution complete)
+Stopped at: Completed 09-02-PLAN.md (Theme CSS Generation)
 Resume file: None
 
-**Next action:** Execute Phase 9 (App Self-Theming) - remaining phase in v2.0 milestone
+**Next action:** Execute Phase 9 Plan 3 (CSS Loading)
