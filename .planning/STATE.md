@@ -10,16 +10,16 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 ## Current Position
 
 Phase: 9 of 10 (Theming Infrastructure)
-Plan: 2 of 4 in current phase
+Plan: 3 of 4 in current phase
 Status: In progress
-Last activity: 2026-01-26 — Completed 09-02-PLAN.md (Theme CSS Generation)
+Last activity: 2026-01-26 — Completed 09-03-PLAN.md (CSS Loading)
 
-Progress: [█████████████████████████████░] 97% (27/28 total plans complete)
+Progress: [█████████████████████████████░] 97% (28/29 total plans complete)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 27
+- Total plans completed: 28
 - Average duration: ~25 min (estimated from Phases 1, 5, 6, 7)
 - Total execution time: ~9 hours (estimated)
 
@@ -32,10 +32,10 @@ Progress: [███████████████████████
 | 6. Foundation Architecture | 5 | 17min | 3.4 min |
 | 7. Component Integration | 5 | ~15min | ~3 min |
 | 8. Theme-Wallpaper Binding | 6 | ~20min | ~3.3 min |
-| 9. Theming Infrastructure | 2/4 | ~2min | ~1 min |
+| 9. Theming Infrastructure | 3/4 | ~6min | ~2 min |
 
 **Recent Trend:**
-- Last completed: Phase 9 Plan 2 (09-02)
+- Last completed: Phase 9 Plan 3 (09-03)
 - Trend: Fast execution with minimal deviations
 
 ## Accumulated Context
@@ -149,6 +149,11 @@ Progress: [███████████████████████
 - Include Libadwaita color overrides (window_bg_color, view_bg_color, headerbar_bg_color, etc.)
 - heredoc syntax for CSS generation in vulcan-theme
 
+**From Phase 9 Plan 3 (09-03):**
+- STYLE_PROVIDER_PRIORITY_USER (600) for runtime CSS to override brand defaults (APPLICATION=400)
+- theme_* prefix for overrideable colors, vulcan_* for brand-fixed elements
+- CSS reload on ThemeApplied message covers all theme application paths
+
 ### Previous Milestone Summary
 
 **v1.0 VulcanOS Foundation** (Phase 5 shipped 2026-01-24):
@@ -183,7 +188,7 @@ Progress: [███████████████████████
 **v2.0 Theming Infrastructure - Phase 9 IN PROGRESS:**
 - Plan 1: Research (domain research complete) ✓
 - Plan 2: Theme CSS Generation (vulcan-theme generates GTK CSS, Rust service reads it) ✓
-- Plan 3: CSS Loading (pending)
+- Plan 3: CSS Loading (GTK4 CssProvider integration, brand_css fallbacks) ✓
 - Plan 4: Watcher Integration (pending)
 
 ### Pending Todos
@@ -195,12 +200,14 @@ None.
 **Phase 9 Progress:**
 - vulcan-theme generates ~/.config/vulcan/current-theme.css ✓
 - theme_css.rs service reads CSS file ✓
-- Next: Load CSS into GTK4 CssProvider (Plan 3)
+- GTK4 CssProvider loads CSS at startup and on theme change ✓
+- brand_css provides theme_* fallbacks for graceful defaults ✓
+- Next: File watcher for live theme updates (Plan 4)
 
 ## Session Continuity
 
-Last session: 2026-01-26 (Phase 9 Plan 2 execution complete)
-Stopped at: Completed 09-02-PLAN.md (Theme CSS Generation)
+Last session: 2026-01-26 (Phase 9 Plan 3 execution complete)
+Stopped at: Completed 09-03-PLAN.md (CSS Loading)
 Resume file: None
 
-**Next action:** Execute Phase 9 Plan 3 (CSS Loading)
+**Next action:** Execute Phase 9 Plan 4 (Watcher Integration)
