@@ -1,8 +1,9 @@
 use gtk::prelude::*;
+use gtk::gio;
 use relm4::prelude::*;
 use relm4::factory::{FactoryComponent, DynamicIndex, FactorySender};
 
-use crate::models::Theme;
+use crate::models::{Theme, resolve_theme_wallpaper};
 
 /// Output messages from ThemeCard
 #[derive(Debug)]
@@ -10,17 +11,24 @@ pub enum ThemeCardOutput {
     Selected(Theme),
 }
 
+/// Input messages to ThemeCard
+#[derive(Debug)]
+pub enum ThemeItemInput {
+    SetOverride(bool),
+}
+
 /// Factory item for theme display in FlowBox
 #[derive(Debug)]
 pub struct ThemeItem {
     pub theme: Theme,
     pub is_current: bool,
+    pub is_override: bool,
 }
 
 #[relm4::factory(pub)]
 impl FactoryComponent for ThemeItem {
     type Init = (Theme, bool);
-    type Input = ();
+    type Input = ThemeItemInput;
     type Output = ThemeCardOutput;
     type CommandOutput = ();
     type ParentWidget = gtk::FlowBox;
@@ -33,70 +41,100 @@ impl FactoryComponent for ThemeItem {
             set_margin_all: 8,
             add_css_class: "theme-card",
 
-            // Color palette preview
-            gtk::Frame {
-                add_css_class: "color-preview-frame",
+            // Color palette preview with wallpaper overlay
+            gtk::Overlay {
+                // Main content: color preview frame
+                #[wrap(Some)]
+                set_child = &gtk::Frame {
+                    add_css_class: "color-preview-frame",
 
-                gtk::Box {
-                    set_orientation: gtk::Orientation::Vertical,
-                    set_spacing: 2,
-                    set_margin_all: 4,
-
-                    // Row 1: backgrounds + accents
                     gtk::Box {
-                        set_orientation: gtk::Orientation::Horizontal,
+                        set_orientation: gtk::Orientation::Vertical,
                         set_spacing: 2,
-                        set_homogeneous: true,
+                        set_margin_all: 4,
 
-                        #[name = "color0"]
-                        gtk::DrawingArea {
-                            set_content_height: 24,
-                            set_content_width: 40,
+                        // Row 1: backgrounds + accents
+                        gtk::Box {
+                            set_orientation: gtk::Orientation::Horizontal,
+                            set_spacing: 2,
+                            set_homogeneous: true,
+
+                            #[name = "color0"]
+                            gtk::DrawingArea {
+                                set_content_height: 24,
+                                set_content_width: 40,
+                            },
+                            #[name = "color1"]
+                            gtk::DrawingArea {
+                                set_content_height: 24,
+                                set_content_width: 40,
+                            },
+                            #[name = "color2"]
+                            gtk::DrawingArea {
+                                set_content_height: 24,
+                                set_content_width: 40,
+                            },
+                            #[name = "color3"]
+                            gtk::DrawingArea {
+                                set_content_height: 24,
+                                set_content_width: 40,
+                            },
                         },
-                        #[name = "color1"]
-                        gtk::DrawingArea {
-                            set_content_height: 24,
-                            set_content_width: 40,
-                        },
-                        #[name = "color2"]
-                        gtk::DrawingArea {
-                            set_content_height: 24,
-                            set_content_width: 40,
-                        },
-                        #[name = "color3"]
-                        gtk::DrawingArea {
-                            set_content_height: 24,
-                            set_content_width: 40,
+
+                        // Row 2: ANSI colors
+                        gtk::Box {
+                            set_orientation: gtk::Orientation::Horizontal,
+                            set_spacing: 2,
+                            set_homogeneous: true,
+
+                            #[name = "color4"]
+                            gtk::DrawingArea {
+                                set_content_height: 24,
+                                set_content_width: 40,
+                            },
+                            #[name = "color5"]
+                            gtk::DrawingArea {
+                                set_content_height: 24,
+                                set_content_width: 40,
+                            },
+                            #[name = "color6"]
+                            gtk::DrawingArea {
+                                set_content_height: 24,
+                                set_content_width: 40,
+                            },
+                            #[name = "color7"]
+                            gtk::DrawingArea {
+                                set_content_height: 24,
+                                set_content_width: 40,
+                            },
                         },
                     },
+                },
 
-                    // Row 2: ANSI colors
-                    gtk::Box {
-                        set_orientation: gtk::Orientation::Horizontal,
-                        set_spacing: 2,
-                        set_homogeneous: true,
+                // Wallpaper thumbnail (bottom-right corner)
+                #[name = "wallpaper_thumb"]
+                add_overlay = &gtk::Picture {
+                    set_halign: gtk::Align::End,
+                    set_valign: gtk::Align::End,
+                    set_margin_end: 4,
+                    set_margin_bottom: 4,
+                    set_width_request: 60,
+                    set_height_request: 40,
+                    set_content_fit: gtk::ContentFit::Cover,
+                    set_can_shrink: true,
+                    add_css_class: "wallpaper-corner-preview",
+                },
 
-                        #[name = "color4"]
-                        gtk::DrawingArea {
-                            set_content_height: 24,
-                            set_content_width: 40,
-                        },
-                        #[name = "color5"]
-                        gtk::DrawingArea {
-                            set_content_height: 24,
-                            set_content_width: 40,
-                        },
-                        #[name = "color6"]
-                        gtk::DrawingArea {
-                            set_content_height: 24,
-                            set_content_width: 40,
-                        },
-                        #[name = "color7"]
-                        gtk::DrawingArea {
-                            set_content_height: 24,
-                            set_content_width: 40,
-                        },
-                    },
+                // Override badge (top-right corner)
+                #[name = "override_badge"]
+                add_overlay = &gtk::Image {
+                    set_icon_name: Some("emblem-default-symbolic"),
+                    set_pixel_size: 16,
+                    set_halign: gtk::Align::End,
+                    set_valign: gtk::Align::Start,
+                    set_margin_top: 4,
+                    set_margin_end: 4,
+                    add_css_class: "override-badge",
                 },
             },
 
@@ -133,6 +171,15 @@ impl FactoryComponent for ThemeItem {
         ThemeItem {
             theme: init.0,
             is_current: init.1,
+            is_override: false,
+        }
+    }
+
+    fn update(&mut self, msg: Self::Input, _sender: FactorySender<Self>) {
+        match msg {
+            ThemeItemInput::SetOverride(is_override) => {
+                self.is_override = is_override;
+            }
         }
     }
 
@@ -144,6 +191,17 @@ impl FactoryComponent for ThemeItem {
         sender: FactorySender<Self>,
     ) -> Self::Widgets {
         let widgets = view_output!();
+
+        // Set wallpaper thumbnail if theme has one
+        if let Some(wallpaper_path) = resolve_theme_wallpaper(&self.theme) {
+            widgets.wallpaper_thumb.set_file(Some(&gio::File::for_path(&wallpaper_path)));
+            widgets.wallpaper_thumb.set_visible(true);
+        } else {
+            widgets.wallpaper_thumb.set_visible(false);
+        }
+
+        // Show override badge only if is_override is true
+        widgets.override_badge.set_visible(self.is_override);
 
         // Set up color preview drawing areas
         let colors = self.theme.preview_colors();

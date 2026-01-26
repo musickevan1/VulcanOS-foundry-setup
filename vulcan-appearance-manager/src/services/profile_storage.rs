@@ -4,6 +4,8 @@ use std::fs;
 use serde::{Deserialize, Serialize};
 use anyhow::{Result, Context};
 
+use crate::models::{UnifiedProfile, BindingMode};
+
 /// Known hyprmon-desc profile names
 pub const KNOWN_PROFILES: &[&str] = &["desktop", "console", "campus", "laptop", "presentation"];
 
@@ -40,7 +42,7 @@ impl WallpaperProfile {
 pub fn profile_dir() -> PathBuf {
     dirs::config_dir()
         .unwrap_or_else(|| PathBuf::from("~/.config"))
-        .join("vulcan-wallpaper")
+        .join("vulcan-appearance-manager")
         .join("profiles")
 }
 
@@ -177,6 +179,56 @@ pub fn set_current_profile(name: &str) -> Result<()> {
         fs::write(&path, name).context("Failed to save current profile")?;
     }
     Ok(())
+}
+
+/// Save a unified profile to disk
+pub fn save_unified_profile(profile: &UnifiedProfile) -> Result<PathBuf> {
+    let dir = ensure_profile_dir()?;
+    let path = dir.join(format!("{}.toml", profile.name));
+
+    let toml = toml::to_string_pretty(profile)
+        .context("Failed to serialize unified profile")?;
+
+    fs::write(&path, toml)
+        .context("Failed to write unified profile file")?;
+
+    Ok(path)
+}
+
+/// Load a unified profile from disk with automatic migration from old format
+pub fn load_unified_profile(name: &str) -> Result<UnifiedProfile> {
+    let dir = profile_dir();
+    let path = dir.join(format!("{}.toml", name));
+
+    let contents = fs::read_to_string(&path)
+        .context("Failed to read profile file")?;
+
+    // Try new UnifiedProfile format first
+    if let Ok(profile) = toml::from_str::<UnifiedProfile>(&contents) {
+        return Ok(profile);
+    }
+
+    // Fallback: migrate old WallpaperProfile format
+    let old_profile: WallpaperProfile = toml::from_str(&contents)
+        .context("Failed to parse profile as either format")?;
+
+    Ok(UnifiedProfile {
+        name: old_profile.name,
+        description: old_profile.description,
+        theme_id: None,
+        monitor_wallpapers: old_profile.monitor_wallpapers,
+        binding_mode: BindingMode::Unbound,
+    })
+}
+
+/// List all unified profiles (same as list_profiles)
+pub fn list_unified_profiles() -> Result<Vec<String>> {
+    list_profiles()
+}
+
+/// Delete a unified profile
+pub fn delete_unified_profile(name: &str) -> Result<()> {
+    delete_profile(name)
 }
 
 #[cfg(test)]
