@@ -32,7 +32,10 @@ pub struct App {
     profile_view: Controller<ProfileViewModel>,
     profile_manager: Controller<ProfileManagerModel>,
     toast_overlay: adw::ToastOverlay,
+    // Current appearance state for profile saving
     current_binding_mode: BindingMode,
+    current_theme_id: Option<String>,
+    current_wallpapers: HashMap<String, PathBuf>,
 }
 
 #[relm4::component(pub)]
@@ -205,6 +208,8 @@ impl SimpleComponent for App {
             profile_manager,
             toast_overlay: toast_overlay.clone(),
             current_binding_mode: BindingMode::Unbound,
+            current_theme_id: None,
+            current_wallpapers: HashMap::new(),
         };
 
         let widgets = view_output!();
@@ -245,13 +250,33 @@ impl SimpleComponent for App {
             }
 
             AppMsg::ThemeApplied(theme_id) => {
+                // Track current theme
+                self.current_theme_id = Some(theme_id.clone());
+
+                // Sync state to profile view for saving
+                self.profile_view.emit(ProfileViewMsg::UpdateCurrentState {
+                    theme_id: self.current_theme_id.clone(),
+                    wallpapers: self.current_wallpapers.clone(),
+                    binding_mode: self.current_binding_mode.clone(),
+                });
+
                 let toast = adw::Toast::new(&format!("Applied theme: {}", theme_id));
                 self.toast_overlay.add_toast(toast);
             }
 
             AppMsg::WallpapersChanged(wallpapers) => {
+                // Track current wallpapers
+                self.current_wallpapers = wallpapers.clone();
+
                 // Notify profile manager of wallpaper changes
-                self.profile_manager.emit(ProfileManagerInput::UpdateWallpapers(wallpapers));
+                self.profile_manager.emit(ProfileManagerInput::UpdateWallpapers(wallpapers.clone()));
+
+                // Sync state to profile view for saving
+                self.profile_view.emit(ProfileViewMsg::UpdateCurrentState {
+                    theme_id: self.current_theme_id.clone(),
+                    wallpapers: self.current_wallpapers.clone(),
+                    binding_mode: self.current_binding_mode.clone(),
+                });
             }
 
             AppMsg::ProfileLoad(profile) => {
@@ -276,7 +301,14 @@ impl SimpleComponent for App {
             }
 
             AppMsg::BindingModeChanged(mode) => {
-                self.current_binding_mode = mode;
+                self.current_binding_mode = mode.clone();
+
+                // Sync state to profile view for saving
+                self.profile_view.emit(ProfileViewMsg::UpdateCurrentState {
+                    theme_id: self.current_theme_id.clone(),
+                    wallpapers: self.current_wallpapers.clone(),
+                    binding_mode: mode,
+                });
             }
 
             AppMsg::ApplyThemeWallpaper(wallpaper_path) => {
