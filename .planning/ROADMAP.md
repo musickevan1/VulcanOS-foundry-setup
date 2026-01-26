@@ -128,10 +128,15 @@ Plans:
   5. Unified profiles save theme ID + wallpaper configuration + binding mode together
   6. User can save/load/delete unified profiles by name from profiles tab
   7. Theme browser shows suggested wallpaper thumbnail for each theme card
-**Plans**: TBD
+**Plans**: 6 plans
 
 Plans:
-- TBD (will be created during `/gsd:plan-phase 8`)
+- [ ] 08-01-PLAN.md — BindingMode enum, UnifiedProfile model, theme parser THEME_WALLPAPER extraction
+- [ ] 08-02-PLAN.md — Unified profile storage with migration from old format
+- [ ] 08-03-PLAN.md — Theme card wallpaper thumbnail overlay
+- [ ] 08-04-PLAN.md — Binding dialog for "Apply theme wallpaper?" confirmation
+- [ ] 08-05-PLAN.md — Profiles tab with profile cards (save/load/delete)
+- [ ] 08-06-PLAN.md — Integration wiring and human verification
 
 #### Phase 9: Theming Infrastructure
 **Goal**: Theme changes propagate automatically to all desktop components with self-theming GUI
@@ -186,10 +191,10 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 5. VulcanOS Wallpaper Manager | v1.0 | 8/8 | Complete | 2026-01-24 |
 | 6. Foundation Architecture | v2.0 | 5/5 | Complete | 2026-01-25 |
 | 7. Component Integration | v2.0 | 5/5 | Complete | 2026-01-25 |
-| 8. Theme-Wallpaper Binding | v2.0 | 0/? | Not started | - |
+| 8. Theme-Wallpaper Binding | v2.0 | 0/6 | Planned | - |
 | 9. Theming Infrastructure | v2.0 | 0/? | Not started | - |
 | 10. Preset Themes & Desktop Integration | v2.0 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-01-23*
-*Last updated: 2026-01-25 after Phase 7 execution complete*
+*Last updated: 2026-01-25 after Phase 8 planning complete*
