@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 
 ## Current Position
 
-Phase: 7 of 10 (Component Integration) — COMPLETE
-Plan: 5 of 5 in current phase
-Status: Phase verified and complete
-Last activity: 2026-01-25 — Completed 07-05-PLAN.md (Final integration, human verification passed)
+Phase: 8 of 10 (Theme-Wallpaper Binding) — IN PROGRESS
+Plan: 1 of 5 in current phase
+Status: Plan 08-01 complete
+Last activity: 2026-01-26 — Completed 08-01-PLAN.md (Foundation data models)
 
-Progress: [██████████░░░░░░░░░░░░░░░░] 25% (21/86 total plans from v1.0 complete)
+Progress: [███████████░░░░░░░░░░░░░░░] 26% (22/86 total plans from v1.0 complete)
 
 ## Performance Metrics
 
@@ -101,6 +101,12 @@ Progress: [██████████░░░░░░░░░░░░░
 - App self-theming (GUI matching active theme) correctly scoped to Phase 9
 - Binary installation required: `cp target/release/vulcan-appearance-manager ~/.local/bin/`
 
+**From Phase 8 Plan 1 (08-01):**
+- BindingMode enum with three states: ThemeBound, CustomOverride, Unbound (not boolean)
+- THEME_WALLPAPER must be relative path - reject absolute paths and .. traversal (security)
+- resolve_theme_wallpaper() returns None for missing files (graceful degradation)
+- UnifiedProfile struct extends WallpaperProfile pattern with theme_id and binding_mode
+
 ### Previous Milestone Summary
 
 **v1.0 VulcanOS Foundation** (Phase 5 shipped 2026-01-24):
@@ -124,6 +130,9 @@ Progress: [██████████░░░░░░░░░░░░░
 - Plan 4: WallpaperView container integration (vertical paned layout, backend abstraction, profile sync) ✓
 - Plan 5: Final integration, polish, desktop entry (human verified) ✓
 
+**v2.0 Theme-Wallpaper Binding - Phase 8 IN PROGRESS:**
+- Plan 1: Foundation data models (BindingMode enum, UnifiedProfile struct, THEME_WALLPAPER validation) ✓
+
 ### Pending Todos
 
 None yet (v2.0 milestone just initialized).
@@ -138,12 +147,18 @@ None yet (v2.0 milestone just initialized).
 - Keyboard shortcuts Ctrl+1/Ctrl+2 ✓
 - Toast notifications ✓
 
-**Ready for Phase 8:** Theme-Wallpaper Binding (themes suggest wallpapers, unified profiles)
+**Phase 8 Plan 1 Complete:**
+- BindingMode enum and UnifiedProfile struct created ✓
+- THEME_WALLPAPER security validation (relative paths only) ✓
+- resolve_theme_wallpaper() helper for path resolution ✓
+- All 23 theme parser tests passing ✓
+
+**Ready for Plan 08-02:** Profile storage (persist UnifiedProfile as TOML)
 
 ## Session Continuity
 
-Last session: 2026-01-25 (Phase 7 execution complete)
-Stopped at: Phase 7 verified and complete
+Last session: 2026-01-26 (Phase 8 Plan 1 execution complete)
+Stopped at: Completed 08-01-PLAN.md (Foundation data models)
 Resume file: None
 
-**Next action:** Begin Phase 8 (Theme-Wallpaper Binding) - theme suggests wallpaper, unified profiles spanning themes + wallpapers.
+**Next action:** Execute Phase 8 Plan 2 (Profile Storage) - persist UnifiedProfile as TOML, migration from WallpaperProfile.
