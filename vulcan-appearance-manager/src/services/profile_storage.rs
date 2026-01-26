@@ -46,6 +46,14 @@ pub fn profile_dir() -> PathBuf {
         .join("profiles")
 }
 
+/// Get the legacy profile directory (for migration)
+fn legacy_profile_dir() -> PathBuf {
+    dirs::config_dir()
+        .unwrap_or_else(|| PathBuf::from("~/.config"))
+        .join("vulcan-wallpaper")
+        .join("profiles")
+}
+
 /// Ensure the profile directory exists
 pub fn ensure_profile_dir() -> Result<PathBuf> {
     let dir = profile_dir();
@@ -124,13 +132,15 @@ pub fn ensure_known_profiles() {
         for name in KNOWN_PROFILES {
             let path = dir.join(format!("{}.toml", name));
             if !path.exists() {
-                // Create empty profile
-                let profile = WallpaperProfile {
+                // Create empty unified profile
+                let profile = UnifiedProfile {
                     name: name.to_string(),
                     monitor_wallpapers: HashMap::new(),
                     description: format!("VulcanOS {} profile", name),
+                    theme_id: None,
+                    binding_mode: BindingMode::Unbound,
                 };
-                let _ = save_profile(&profile);
+                let _ = save_unified_profile(&profile);
             }
         }
     }
@@ -200,11 +210,29 @@ pub fn load_unified_profile(name: &str) -> Result<UnifiedProfile> {
     let dir = profile_dir();
     let path = dir.join(format!("{}.toml", name));
 
-    let contents = fs::read_to_string(&path)
-        .context("Failed to read profile file")?;
+    // Try new location first
+    let contents = if path.exists() {
+        fs::read_to_string(&path)
+            .context("Failed to read profile file")?
+    } else {
+        // Check legacy location
+        let legacy_dir = legacy_profile_dir();
+        let legacy_path = legacy_dir.join(format!("{}.toml", name));
+
+        if legacy_path.exists() {
+            fs::read_to_string(&legacy_path)
+                .context("Failed to read legacy profile file")?
+        } else {
+            return Err(anyhow::anyhow!("Profile '{}' not found in new or legacy location", name));
+        }
+    };
 
     // Try new UnifiedProfile format first
     if let Ok(profile) = toml::from_str::<UnifiedProfile>(&contents) {
+        // If loaded from legacy location, save to new location
+        if !path.exists() {
+            let _ = save_unified_profile(&profile);
+        }
         return Ok(profile);
     }
 
@@ -212,13 +240,18 @@ pub fn load_unified_profile(name: &str) -> Result<UnifiedProfile> {
     let old_profile: WallpaperProfile = toml::from_str(&contents)
         .context("Failed to parse profile as either format")?;
 
-    Ok(UnifiedProfile {
+    let migrated = UnifiedProfile {
         name: old_profile.name,
         description: old_profile.description,
         theme_id: None,
         monitor_wallpapers: old_profile.monitor_wallpapers,
         binding_mode: BindingMode::Unbound,
-    })
+    };
+
+    // Save migrated profile to new location
+    let _ = save_unified_profile(&migrated);
+
+    Ok(migrated)
 }
 
 /// List all unified profiles (same as list_profiles)
@@ -229,6 +262,31 @@ pub fn list_unified_profiles() -> Result<Vec<String>> {
 /// Delete a unified profile
 pub fn delete_unified_profile(name: &str) -> Result<()> {
     delete_profile(name)
+}
+
+/// Migrate all profiles from legacy directory to new location
+pub fn migrate_legacy_profiles() -> Result<usize> {
+    let legacy_dir = legacy_profile_dir();
+    if !legacy_dir.exists() {
+        return Ok(0);
+    }
+
+    let mut count = 0;
+    for entry in fs::read_dir(&legacy_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.extension().and_then(|s| s.to_str()) == Some("toml") {
+            if let Some(name) = path.file_stem().and_then(|s| s.to_str()) {
+                // Load from legacy, save to new location
+                if let Ok(profile) = load_unified_profile(name) {
+                    let _ = save_unified_profile(&profile);
+                    count += 1;
+                }
+            }
+        }
+    }
+
+    Ok(count)
 }
 
 #[cfg(test)]
