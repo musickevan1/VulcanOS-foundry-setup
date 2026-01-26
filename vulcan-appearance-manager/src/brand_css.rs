@@ -294,6 +294,21 @@ row.expander:hover {
     border-radius: 8px;
     border: 1px solid @vulcan_ash;
 }
+
+/* Wallpaper corner preview on theme cards */
+.wallpaper-corner-preview {
+    border-radius: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Override badge (when user overrides theme wallpaper) */
+.override-badge {
+    background-color: @accent_color;
+    border-radius: 50%;
+    padding: 2px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+}
 "#;
 
 /// Complete CSS combining brand colors and widget styles
