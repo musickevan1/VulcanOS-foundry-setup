@@ -10,3 +10,10 @@ pub mod theme_browser;
 pub mod preview_panel;
 pub mod theme_editor;
 pub mod theme_view;
+pub mod binding_dialog;
+
+// Re-exports
+pub use binding_dialog::{BindingDialogModel, BindingDialogOutput, BindingDialogInit};
+
+// Profile components
+pub mod profile_card;
