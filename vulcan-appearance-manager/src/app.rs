@@ -277,6 +277,9 @@ impl SimpleComponent for App {
                 // Track current theme
                 self.current_theme_id = Some(theme_id.clone());
 
+                // Reload theme CSS for self-theming (vulcan-theme set generates new CSS)
+                load_theme_css();
+
                 // Sync state to profile view for saving
                 self.profile_view.emit(ProfileViewMsg::UpdateCurrentState {
                     theme_id: self.current_theme_id.clone(),
