@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 ## Current Position
 
 Phase: 8 of 10 (Theme-Wallpaper Binding) — IN PROGRESS
-Plan: 1 of 5 in current phase
-Status: Plan 08-01 complete
-Last activity: 2026-01-26 — Completed 08-01-PLAN.md (Foundation data models)
+Plan: 2 of 6 in current phase
+Status: Plans 08-01, 08-02 complete
+Last activity: 2026-01-26 — Completed 08-02-PLAN.md (Profile Storage)
 
-Progress: [███████████░░░░░░░░░░░░░░░] 26% (22/86 total plans from v1.0 complete)
+Progress: [███████████░░░░░░░░░░░░░░░] 27% (23/86 total plans from v1.0 complete)
 
 ## Performance Metrics
 
@@ -107,6 +107,12 @@ Progress: [███████████░░░░░░░░░░░░
 - resolve_theme_wallpaper() returns None for missing files (graceful degradation)
 - UnifiedProfile struct extends WallpaperProfile pattern with theme_id and binding_mode
 
+**From Phase 8 Plan 2 (08-02):**
+- Profile directory changed from vulcan-wallpaper to vulcan-appearance-manager
+- Automatic migration saves to new location when loading from legacy path
+- UnifiedProfile format is primary, WallpaperProfile support maintained for migration
+- Format detection via try-parse with fallback to old format
+
 ### Previous Milestone Summary
 
 **v1.0 VulcanOS Foundation** (Phase 5 shipped 2026-01-24):
@@ -132,6 +138,7 @@ Progress: [███████████░░░░░░░░░░░░
 
 **v2.0 Theme-Wallpaper Binding - Phase 8 IN PROGRESS:**
 - Plan 1: Foundation data models (BindingMode enum, UnifiedProfile struct, THEME_WALLPAPER validation) ✓
+- Plan 2: Profile Storage (UnifiedProfile CRUD, migration from WallpaperProfile, legacy directory support) ✓
 
 ### Pending Todos
 
@@ -147,18 +154,21 @@ None yet (v2.0 milestone just initialized).
 - Keyboard shortcuts Ctrl+1/Ctrl+2 ✓
 - Toast notifications ✓
 
-**Phase 8 Plan 1 Complete:**
+**Phase 8 Plans 1-2 Complete:**
 - BindingMode enum and UnifiedProfile struct created ✓
 - THEME_WALLPAPER security validation (relative paths only) ✓
 - resolve_theme_wallpaper() helper for path resolution ✓
-- All 23 theme parser tests passing ✓
+- UnifiedProfile CRUD operations with TOML persistence ✓
+- Automatic migration from WallpaperProfile format ✓
+- Legacy directory support (vulcan-wallpaper → vulcan-appearance-manager) ✓
+- All profile tests passing (roundtrip and migration) ✓
 
-**Ready for Plan 08-02:** Profile storage (persist UnifiedProfile as TOML)
+**Ready for Plan 08-03:** Profile selector UI with binding mode indicator
 
 ## Session Continuity
 
-Last session: 2026-01-26 (Phase 8 Plan 1 execution complete)
-Stopped at: Completed 08-01-PLAN.md (Foundation data models)
+Last session: 2026-01-26 (Phase 8 Plan 2 execution complete)
+Stopped at: Completed 08-02-PLAN.md (Profile Storage)
 Resume file: None
 
-**Next action:** Execute Phase 8 Plan 2 (Profile Storage) - persist UnifiedProfile as TOML, migration from WallpaperProfile.
+**Next action:** Execute Phase 8 Plan 3 (Profile Selector UI) - dropdown with binding mode indicator.
