@@ -4,5 +4,11 @@ PID=$(pgrep -f "nwg-dock-hyprland" | head -1)
 if [ -n "$PID" ]; then
     kill -35 "$PID"
 else
-    nwg-dock-hyprland -r -i 48 -mb 10 -l top -c 'wofi --show drun --allow-images --prompt "Launch"' &
+    # Use themed launcher icon if available
+    LAUNCHER_ICON="${HOME}/.config/nwg-dock-hyprland/launcher.svg"
+    if [[ -f "${LAUNCHER_ICON}" ]]; then
+        nwg-dock-hyprland -r -i 48 -mb 10 -l top -ico "${LAUNCHER_ICON}" -c 'wofi --show drun --allow-images --prompt "Launch"' &
+    else
+        nwg-dock-hyprland -r -i 48 -mb 10 -l top -c 'wofi --show drun --allow-images --prompt "Launch"' &
+    fi
 fi

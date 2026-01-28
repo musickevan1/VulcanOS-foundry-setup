@@ -55,10 +55,19 @@ vulcan_greeting() {
     if [[ -z "$VULCAN_GREETED" ]]; then
         export VULCAN_GREETED=1
 
-        # Colors
-        local O='\033[38;2;249;115;22m'  # Forge Orange
-        local G='\033[38;2;251;191;36m'  # Ember Gold
-        local R='\033[0m'                 # Reset
+        # Source theme colors (fallback to Vulcan Forge defaults)
+        local COLORS_FILE="${HOME}/.config/vulcan/greeting-colors.sh"
+        if [[ -f "${COLORS_FILE}" ]]; then
+            source "${COLORS_FILE}"
+            local O="${VULCAN_GREETING_COLOR1}"
+            local G="${VULCAN_GREETING_COLOR2}"
+            local R="${VULCAN_GREETING_RESET}"
+        else
+            # Fallback: Vulcan Forge theme colors
+            local O='\033[38;2;249;115;22m'  # Forge Orange
+            local G='\033[38;2;251;191;36m'  # Ember Gold
+            local R='\033[0m'                 # Reset
+        fi
 
         echo ""
         echo -e "${O} ██╗   ██╗██╗   ██╗██╗      ██████╗ █████╗ ███╗   ██╗${G} ██████╗ ███████╗${R}"
@@ -285,6 +294,25 @@ opencode() {
     # Run opencode with remaining arguments
     command opencode "${ARGS[@]}"
 }
+
+# =============================================================================
+# YAZI FILE MANAGER (with directory change on exit)
+# =============================================================================
+# 'y' launches yazi and cd's to directory when you exit with 'q'
+y() {
+    local tmp="$(mktemp -t "yazi-cwd.XXXXXX")"
+    yazi "$@" --cwd-file="$tmp"
+    if cwd="$(cat -- "$tmp")" && [ -n "$cwd" ] && [ "$cwd" != "$PWD" ]; then
+        cd -- "$cwd"
+    fi
+    rm -f -- "$tmp"
+}
+
+# Alias for full path launches (without directory change)
+alias yazi='yazi'
+
+# Quick drag-and-drop from current directory
+alias yd='ripdrag .'
 
 # =============================================================================
 # LOCAL CUSTOMIZATIONS
