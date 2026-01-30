@@ -48,23 +48,23 @@ find_vulcan_theme() {
     return 1
 }
 
-# Find vulcan-theme-manager
-find_vulcan_theme_manager() {
+# Find vulcan-appearance-manager (unified theme + wallpaper manager)
+find_vulcan_appearance_manager() {
     local candidates=(
-        "${HOME}/.local/bin/vulcan-theme-manager"
-        "${HOME}/VulcanOS/vulcan-theme-manager/target/release/vulcan-theme-manager"
-        "/usr/local/bin/vulcan-theme-manager"
+        "${HOME}/.local/bin/vulcan-appearance-manager"
+        "${HOME}/VulcanOS/vulcan-appearance-manager/target/release/vulcan-appearance-manager"
+        "/usr/local/bin/vulcan-appearance-manager"
     )
     for cmd in "${candidates[@]}"; do
         [[ -x "$cmd" ]] && echo "$cmd" && return 0
     done
-    command -v vulcan-theme-manager 2>/dev/null && return 0
+    command -v vulcan-appearance-manager 2>/dev/null && return 0
     return 1
 }
 
 # Cache the paths (called once at startup, || true to avoid set -e exit)
 VULCAN_THEME_CMD="$(find_vulcan_theme || true)"
-VULCAN_THEME_MANAGER_CMD="$(find_vulcan_theme_manager || true)"
+VULCAN_APPEARANCE_MANAGER_CMD="$(find_vulcan_appearance_manager || true)"
 
 run_in_terminal() {
     $TERMINAL -e "$@"
@@ -97,7 +97,7 @@ wofi_menu() {
 
 show_main_menu() {
     local options="$ICON_SYSTEM  System
-$ICON_STYLE  Style
+$ICON_STYLE  Appearance
 $ICON_QUICK  Quick Settings
 $ICON_INSTALL  Install
 $ICON_REMOVE  Remove
@@ -114,7 +114,7 @@ $ICON_POWER  Power"
 
     case "$action" in
         "system")         show_system_menu ;;
-        "style")          show_style_menu ;;
+        "appearance")     show_appearance_menu ;;
         "quick settings") show_quick_settings_menu ;;
         "install")        show_install_menu ;;
         "remove")         show_remove_menu ;;
@@ -539,10 +539,10 @@ $ICON_BACK  Back"
 }
 
 # =============================================================================
-# STYLE SUBMENU
+# APPEARANCE SUBMENU
 # =============================================================================
 
-show_style_menu() {
+show_appearance_menu() {
     # Get current theme for display
     local current_theme
     if [[ -n "$VULCAN_THEME_CMD" ]]; then
@@ -552,14 +552,14 @@ show_style_menu() {
     fi
 
     local options="󰏘  Theme: ${current_theme}
-󰔎  Theme Manager
-󰸉  Wallpaper
+󰔎  Appearance Manager
+󰸉  Quick Wallpaper
 󰛖  GTK Settings
 󰆍  Font Manager
 $ICON_BACK  Back"
 
     local choice
-    choice=$(wofi_menu "Style" "$options" 350 360)
+    choice=$(wofi_menu "Appearance" "$options" 350 360)
 
     local action
     action=$(echo "$choice" | sed 's/^[^ ]* *//' | cut -d':' -f1)
@@ -568,14 +568,14 @@ $ICON_BACK  Back"
         "Theme")
             show_theme_selector_menu
             ;;
-        "Theme Manager")
-            if [[ -n "$VULCAN_THEME_MANAGER_CMD" ]]; then
-                "$VULCAN_THEME_MANAGER_CMD" &
+        "Appearance Manager")
+            if [[ -n "$VULCAN_APPEARANCE_MANAGER_CMD" ]]; then
+                "$VULCAN_APPEARANCE_MANAGER_CMD" &
             else
-                notify "vulcan-theme-manager not found. Build with: cd vulcan-theme-manager && cargo build --release"
+                notify "vulcan-appearance-manager not found. Build with: cd vulcan-appearance-manager && cargo build --release"
             fi
             ;;
-        "Wallpaper")
+        "Quick Wallpaper")
             show_wallpaper_menu
             ;;
         "GTK Settings")
@@ -604,7 +604,7 @@ $ICON_BACK  Back"
 show_theme_selector_menu() {
     if [[ -z "$VULCAN_THEME_CMD" ]]; then
         notify "vulcan-theme not found"
-        show_style_menu
+        show_appearance_menu
         return
     fi
 
@@ -618,7 +618,7 @@ show_theme_selector_menu() {
 
     if [[ -z "$theme_list" ]]; then
         notify "No themes available"
-        show_style_menu
+        show_appearance_menu
         return
     fi
 
@@ -647,7 +647,7 @@ show_theme_selector_menu() {
 
     # Handle selection
     if [[ -z "$choice" ]] || [[ "$choice" == *"Back"* ]]; then
-        show_style_menu
+        show_appearance_menu
         return
     fi
 
@@ -686,7 +686,7 @@ show_theme_selector_menu() {
 
         # Return to style menu after a moment
         sleep 0.5
-        show_style_menu
+        show_appearance_menu
     else
         # Theme not found - show error and return to menu
         notify-send -u critical "Theme Error" "Could not find theme: $selected_theme_name"
@@ -741,7 +741,7 @@ show_wallpaper_menu() {
             fi
             ;;
         "Back")
-            show_style_menu
+            show_appearance_menu
             ;;
         *)
             exit 0
@@ -1662,16 +1662,16 @@ show_help() {
     echo "Usage: vulcan-menu [category]"
     echo ""
     echo "Categories:"
-    echo "  (none)    Show main menu"
-    echo "  system    System tools and monitoring"
-    echo "  style     Themes and appearance"
-    echo "  quick     Quick settings toggles"
-    echo "  install   Package installation"
-    echo "  remove    Package removal and cleanup"
-    echo "  setup     System configuration"
-    echo "  update    System updates"
-    echo "  t2        T2 MacBook specific options"
-    echo "  power     Power/session menu"
+    echo "  (none)      Show main menu"
+    echo "  system      System tools and monitoring"
+    echo "  appearance  Themes and appearance (alias: style)"
+    echo "  quick       Quick settings toggles"
+    echo "  install     Package installation"
+    echo "  remove      Package removal and cleanup"
+    echo "  setup       System configuration"
+    echo "  update      System updates"
+    echo "  t2          T2 MacBook specific options"
+    echo "  power       Power/session menu"
     echo ""
 }
 
@@ -1681,7 +1681,7 @@ main() {
     case "$category" in
         "")         show_main_menu ;;
         system)     show_system_menu ;;
-        style)      show_style_menu ;;
+        style|appearance) show_appearance_menu ;;
         quick)      show_quick_settings_menu ;;
         install)    show_install_menu ;;
         remove)     show_remove_menu ;;
