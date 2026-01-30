@@ -1,0 +1,41 @@
+# Vulcan Forge Wallpapers
+
+## Current Wallpapers
+
+Status: AI-generated wallpapers to be added
+
+## About Vulcan Forge
+
+Vulcan Forge is the original VulcanOS theme, designed for the T2 MacBook Pro development environment. This theme embodies the project's core values:
+- Professional, focused aesthetics
+- Ember-inspired accent colors (#ff6b35)
+- Dark, non-distracting backgrounds
+
+## Planned Wallpapers
+
+AI-generated wallpapers matching the Vulcan Forge palette will be created:
+- Background: #1a1a1a, #141414
+- Foreground: #e0e0e0, #a0a0a0
+- Accent: #ff6b35 (ember orange)
+- Supporting colors: #2a2a2a, #363636
+
+Themes may include:
+- Abstract volcanic/forge imagery
+- Minimalist geometric patterns
+- Developer-focused aesthetics
+
+## License
+
+All Vulcan Forge wallpapers will be:
+- Created specifically for VulcanOS
+- Licensed under the same terms as VulcanOS (GPL-compatible)
+- Optimized for 16:10 MacBook Pro displays
+
+## Adding Custom Wallpapers
+
+You can add your own wallpapers matching the Vulcan Forge theme:
+
+1. Create or find wallpapers with dark backgrounds and ember accents
+2. Place in this directory: `dotfiles/wallpapers/vulcan-forge/`
+3. Name primary wallpaper: `vulcan-forge.png`
+4. Update this LICENSE file if using external sources
