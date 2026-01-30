@@ -1,46 +1,52 @@
 #!/bin/bash
 # restore-monitor-config - Emergency restore for monitor configuration
-# Restores the desktop profile (most common home setup)
+# Uses vulcan-monitor-apply dynamic profiles instead of static files
 #
 # Usage: restore-monitor-config [profile-name]
 # Default: desktop profile
-# 
+#
 # Keybinding: Super + Shift + M
 
-PROFILE_DIR="$HOME/.config/hyprmon-desc/profiles"
 MONITORS_CONF="$HOME/.config/hypr/monitors.conf"
 DEFAULT_PROFILE="desktop"
 
 # Determine which profile to restore
 PROFILE="${1:-$DEFAULT_PROFILE}"
-PROFILE_FILE="$PROFILE_DIR/${PROFILE}.conf"
 
-if [ ! -f "$PROFILE_FILE" ]; then
-    notify-send -u critical "Monitor Restore Error" "Profile not found: $PROFILE\n\nFalling back to desktop profile"
+# Validate profile name
+VALID_PROFILES="desktop console laptop campus presentation"
+if ! echo "$VALID_PROFILES" | grep -qw "$PROFILE"; then
+    notify-send -u critical "Monitor Restore Error" "Unknown profile: $PROFILE\n\nValid: $VALID_PROFILES"
     PROFILE="desktop"
-    PROFILE_FILE="$PROFILE_DIR/desktop.conf"
 fi
 
-if [ ! -f "$PROFILE_FILE" ]; then
-    notify-send -u critical "Monitor Restore Failed" "Desktop profile not found!\n\nRun: hyprmon-desc --help"
-    echo "Error: Cannot find profile file: $PROFILE_FILE" >&2
-    exit 1
-fi
-
-# Backup current (broken) config
-if [ -f "$MONITORS_CONF" ]; then
+# Backup current (potentially broken) config
+if [[ -f "$MONITORS_CONF" ]]; then
     cp "$MONITORS_CONF" "${MONITORS_CONF}.broken-$(date +%Y%m%d-%H%M%S)"
 fi
 
-# Restore profile
-cp "$PROFILE_FILE" "$MONITORS_CONF"
-hyprctl reload >/dev/null 2>&1
+# Try to apply profile using dynamic system
+if vulcan-monitor-apply "$PROFILE" 2>/dev/null; then
+    notify-send -u normal "Monitors Restored" "Profile: $PROFILE\n\nConfiguration has been restored."
+    echo "✓ Monitor configuration restored to: $PROFILE"
+else
+    # Fallback: minimal config that auto-detects
+    echo "Warning: Dynamic profile failed, applying auto-detect fallback"
+    cat > "$MONITORS_CONF" << 'EOF'
+# Emergency fallback - auto-detect all monitors
+# Run 'vulcan-monitor-identify' to set up proper layout
+monitor = eDP-1, preferred, 0x0, 1.6
+monitor = , preferred, auto, 1
+EOF
+    hyprctl reload >/dev/null 2>&1
+    notify-send -u normal "Emergency Restore" "Applied auto-detect fallback.\n\nRun 'vulcan-monitor-identify' to fix proper layout."
+    echo "✓ Applied auto-detect fallback"
+fi
 
-# Success notification
-notify-send -u normal "Monitors Restored" "Profile: $PROFILE\n\nConfiguration has been restored."
-
-echo "✓ Monitor configuration restored to: $PROFILE"
-echo "  If this isn't the right setup, use:"
-echo "  - Super + F1  (desktop - 3 monitors)"
-echo "  - Super + F2  (campus - 2 monitors)"
-echo "  - Super + F3  (laptop - 1 monitor)"
+echo ""
+echo "If this isn't the right setup, use:"
+echo "  - Super + Alt + 1  (desktop - 5 monitors)"
+echo "  - Super + Alt + 2  (console - 4 monitors)"
+echo "  - Super + Alt + 3  (laptop - 1 monitor)"
+echo "  - Super + Alt + 4  (presentation - mirrored)"
+echo "  - Super + Alt + 5  (campus - 2 monitors)"

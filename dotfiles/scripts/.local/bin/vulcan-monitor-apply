@@ -3,7 +3,7 @@
 # Uses the mapping from vulcan-monitor-identify to handle DP port changes
 #
 # Usage: vulcan-monitor-apply [profile]
-#   profile: desktop (default), console, laptop, campus
+#   profile: desktop (default), console, laptop, campus, presentation
 
 set -euo pipefail
 
@@ -14,8 +14,21 @@ MONITORS_CONF="$HOME/.config/hypr/monitors.conf"
 
 PROFILE="${1:-desktop}"
 
-# Check for valid mapping
+# Check if profile requires Sceptre mapping
+profile_needs_mapping() {
+    case "$PROFILE" in
+        desktop|console) return 0 ;;  # Need Sceptre identification
+        *) return 1 ;;                 # laptop/campus/presentation use desc: or eDP-1 only
+    esac
+}
+
+# Check for valid mapping (only enforced for profiles that need it)
 check_mapping() {
+    # Profiles that only use eDP-1 and/or Float2 Pro (via desc:) don't need mapping
+    if ! profile_needs_mapping; then
+        return 0
+    fi
+
     if [[ ! -f "$MAPPING_FILE" ]]; then
         echo "Error: No monitor mapping found."
         echo "Run 'vulcan-monitor-identify' first."
@@ -36,10 +49,14 @@ check_mapping() {
     fi
 }
 
-# Load mapping
+# Load mapping (if it exists)
 load_mapping() {
-    # shellcheck source=/dev/null
-    source "$MAPPING_FILE"
+    if [[ -f "$MAPPING_FILE" ]]; then
+        # shellcheck source=/dev/null
+        source "$MAPPING_FILE"
+    fi
+    # Set defaults for profiles that use desc: syntax
+    FLOAT2_PRO="${FLOAT2_PRO:-desc:Invalid Vendor Codename - RTK Float2 Pro 0x01010130}"
 }
 
 # Generate desktop profile (5 monitors)
@@ -135,22 +152,53 @@ monitor = , disable
 EOF
 }
 
-# Generate campus profile (MacBook + Float2 Pro)
+# Generate campus profile (MacBook + Float2 Pro stacked vertically)
 generate_campus() {
     cat << EOF
 # VulcanOS Monitor Profile: CAMPUS (Auto-generated)
 # MacBook + Float2 Pro for portable setup
+# Layout: Float2 Pro on top, MacBook below
+#
+# ┌─────────────┐
+# │  Float2 Pro │  2560x1600 @ scale 1.333 = 1920x1200 logical
+# ├─────────────┤
+# │   MacBook   │  3072x1920 @ scale 1.6 = 1920x1200 logical
+# └─────────────┘
 
 # Disable Sceptre monitors
 monitor = ${LEFT_VERTICAL:-DP-1}, disable
 monitor = ${CENTER_TOP:-DP-2}, disable
 monitor = ${CENTER_BOTTOM:-DP-3}, disable
 
-# Float2 Pro - primary external
-monitor = ${FLOAT2_PRO:-desc:Invalid Vendor Codename - RTK Float2 Pro 0x01010130}, 2560x1600@120, 0x0, 1
+# Float2 Pro - top, scaled to match MacBook width
+monitor = ${FLOAT2_PRO:-desc:Invalid Vendor Codename - RTK Float2 Pro 0x01010130}, 2560x1600@120, 0x0, 1.333333
 
-# MacBook Laptop - to the right
-monitor = eDP-1, 3072x1920@60, 2560x200, 1.6
+# MacBook Laptop - below Float2 Pro (Y = 1200 after Float2's logical height)
+monitor = eDP-1, 3072x1920@60, 0x1200, 1.6
+
+# Fallback
+monitor = , disable
+EOF
+}
+
+# Generate presentation profile (Float2 Pro mirrors MacBook)
+generate_presentation() {
+    cat << EOF
+# VulcanOS Monitor Profile: PRESENTATION (Auto-generated)
+# Float2 Pro mirrors MacBook for presentations
+# Generated: $(date)
+
+# Disable Sceptre monitors
+monitor = ${LEFT_VERTICAL:-DP-1}, disable
+monitor = ${CENTER_TOP:-DP-2}, disable
+monitor = ${CENTER_BOTTOM:-DP-3}, disable
+
+# MacBook Laptop - primary at presentation-friendly resolution
+# Using 1920x1200 for compatibility with most projectors
+monitor = eDP-1, 1920x1200@60, 0x0, 1
+
+# Float2 Pro - mirrors the laptop display
+monitor = ${FLOAT2_PRO:-desc:Invalid Vendor Codename - RTK Float2 Pro 0x01010130}, 1920x1200@60, 0x0, 1, mirror, eDP-1
 
 # Fallback
 monitor = , disable
@@ -189,9 +237,12 @@ main() {
         campus)
             generate_campus > "$MONITORS_CONF"
             ;;
+        presentation)
+            generate_presentation > "$MONITORS_CONF"
+            ;;
         *)
             echo "Unknown profile: $PROFILE"
-            echo "Available: desktop, console, laptop, campus"
+            echo "Available: desktop, console, laptop, campus, presentation"
             exit 1
             ;;
     esac
