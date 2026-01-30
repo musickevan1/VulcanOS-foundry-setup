@@ -24,17 +24,17 @@ window#waybar.hidden {
 #custom-vulcan-menu {
     background-color: ${BG_SECONDARY};
     color: ${ACCENT};
-    padding: 0 12px;
-    margin: 4px 4px 4px 8px;
+    padding: 0 10px;
+    margin: 4px 2px 4px 4px;
     border-radius: 4px;
     border: 1px solid ${BG_TERTIARY};
-    font-size: 16px;
-    font-weight: bold;
+    font-size: 14px;
     font-family: "JetBrainsMono NF Vulcan";
 }
 
 #custom-vulcan-menu label {
     font-family: "JetBrainsMono NF Vulcan";
+    padding-bottom: 2px;
 }
 
 #custom-vulcan-menu:hover {
