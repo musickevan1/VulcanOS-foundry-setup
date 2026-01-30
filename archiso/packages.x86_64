@@ -111,6 +111,7 @@ fd
 fzf
 bat
 glow
+mdcat
 jq
 wtype
 eza
