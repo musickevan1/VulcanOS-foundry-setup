@@ -8,6 +8,7 @@ use super::theme_browser::{ThemeBrowserModel, ThemeBrowserInput, ThemeBrowserOut
 use super::preview_panel::{PreviewPanelModel, PreviewPanelInput};
 use super::theme_editor::{ThemeEditorModel, ThemeEditorOutput};
 use super::binding_dialog::{BindingDialogModel, BindingDialogOutput, BindingDialogInit};
+use super::discovery_section::DiscoverySection;
 
 #[derive(Debug)]
 pub enum ThemeViewMsg {
@@ -41,6 +42,7 @@ pub enum ThemeViewOutput {
 pub struct ThemeViewModel {
     theme_browser: Controller<ThemeBrowserModel>,
     preview_panel: Controller<PreviewPanelModel>,
+    discovery: Controller<DiscoverySection>,
     editor_dialog: Option<Controller<ThemeEditorModel>>,
     editor_window: Option<gtk::Window>,
     binding_dialog: Option<Controller<BindingDialogModel>>,
@@ -95,6 +97,14 @@ impl SimpleComponent for ThemeViewModel {
                     },
 
                     model.theme_browser.widget() {},
+
+                    // Discovery section in an expander
+                    gtk::Expander {
+                        set_label: Some("Third-Party Apps"),
+                        set_margin_top: 12,
+
+                        model.discovery.widget() {},
+                    },
                 },
             },
 
@@ -171,9 +181,15 @@ impl SimpleComponent for ThemeViewModel {
             .launch(())
             .detach();
 
+        // Create discovery section
+        let discovery = DiscoverySection::builder()
+            .launch(())
+            .detach();
+
         let model = ThemeViewModel {
             theme_browser,
             preview_panel,
+            discovery,
             editor_dialog: None,
             editor_window: None,
             binding_dialog: None,
