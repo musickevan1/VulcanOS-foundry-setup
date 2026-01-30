@@ -1,36 +1,41 @@
 #!/bin/bash
 # Dracula Theme - VulcanOS
-# https://github.com/dracula/dracula-theme
+# Official specification: https://draculatheme.com/spec
 
 export THEME_NAME="Dracula"
 export THEME_ID="dracula"
+export THEME_DESCRIPTION="Dark theme with purple accents"
 
-# Background colors
-export BG_PRIMARY="#282a36"
-export BG_SECONDARY="#44475a"
-export BG_TERTIARY="#6272a4"
-export BG_SURFACE="#21222c"
+# Official Dracula palette
+export BACKGROUND="#282a36"     # Background
+export CURRENT_LINE="#44475a"   # Current Line
+export FOREGROUND="#f8f8f2"     # Foreground
+export COMMENT="#6272a4"        # Comment
+export CYAN="#8be9fd"           # Cyan
+export GREEN="#50fa7b"          # Green
+export ORANGE="#ffb86c"         # Orange
+export PINK="#ff79c6"           # Pink
+export PURPLE="#bd93f9"         # Purple
+export RED="#ff5555"            # Red
+export YELLOW="#f1fa8c"         # Yellow
 
-# Foreground colors
-export FG_PRIMARY="#f8f8f2"
-export FG_SECONDARY="#f8f8f2"
-export FG_MUTED="#6272a4"
+# VulcanOS standard mappings
+export BG_PRIMARY="#282a36"     # Background
+export BG_SECONDARY="#44475a"   # Current Line
+export BG_TERTIARY="#6272a4"    # Comment
+export BG_SURFACE="#21222c"     # Slightly darker (derived)
 
-# Accent colors
-export ACCENT="#bd93f9"
-export ACCENT_ALT="#ff79c6"
+export FG_PRIMARY="#f8f8f2"     # Foreground
+export FG_SECONDARY="#f8f8f2"   # Foreground
+export FG_MUTED="#6272a4"       # Comment
+
+export ACCENT="#bd93f9"         # Purple
+export ACCENT_ALT="#ff79c6"     # Pink
 
 # Semantic colors
-export RED="#ff5555"
-export GREEN="#50fa7b"
-export YELLOW="#f1fa8c"
-export BLUE="#6272a4"
-export PURPLE="#bd93f9"
-export CYAN="#8be9fd"
-export ORANGE="#ffb86c"
-export PINK="#ff79c6"
+export BLUE="#6272a4"           # Comment blue
 
-# Bright variants
+# Bright variants (slightly lighter)
 export BRIGHT_RED="#ff6e6e"
 export BRIGHT_GREEN="#69ff94"
 export BRIGHT_YELLOW="#ffffa5"
@@ -39,14 +44,14 @@ export BRIGHT_PURPLE="#d6acff"
 export BRIGHT_CYAN="#a4ffff"
 
 # UI specific
-export BORDER_ACTIVE="#bd93f9"
-export BORDER_INACTIVE="#44475a"
-export SELECTION="#44475a"
-export CURSOR="#f8f8f2"
+export BORDER_ACTIVE="#bd93f9"  # Purple
+export BORDER_INACTIVE="#44475a" # Current Line
+export SELECTION="#44475a"      # Current Line
+export CURSOR="#f8f8f2"         # Foreground
 
 # Gradient colors (for Hyprland)
-export GRADIENT_START="#bd93f9"
-export GRADIENT_END="#ff79c6"
+export GRADIENT_START="#bd93f9" # Purple
+export GRADIENT_END="#ff79c6"   # Pink
 
 # GTK/Qt themes
 export GTK_THEME="Dracula"
@@ -56,3 +61,6 @@ export KVANTUM_THEME="Dracula"
 
 # Neovim colorscheme
 export NVIM_COLORSCHEME="dracula"
+
+# Wallpaper
+export THEME_WALLPAPER="dracula.png"
