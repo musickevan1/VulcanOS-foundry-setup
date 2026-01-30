@@ -61,8 +61,18 @@ kitty
 # ----------------------------------------------------------------------------
 # FILE MANAGEMENT
 # ----------------------------------------------------------------------------
-thunar
+# GUI: Nautilus (simple, intuitive, Mac-like)
+nautilus
 gvfs
+gvfs-mtp
+
+# TUI: Yazi (power users, vim-style)
+yazi
+ffmpegthumbnailer
+p7zip
+poppler
+imagemagick
+ripdrag
 
 # ----------------------------------------------------------------------------
 # WAYLAND UTILITIES
