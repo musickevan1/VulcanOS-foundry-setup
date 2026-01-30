@@ -50,7 +50,7 @@
         "all-outputs": false,
         "show-special": false,
         "sort-by-number": true,
-        "persistent-workspaces": {"DP-12": [1, 2, 3, 4, 5], "DP-9": [6, 7, 8, 9, 10], "DP-4": [11, 12, 13, 14, 15], "eDP-1": [16, 17, 18, 19, 20]}
+        "persistent-workspaces": {"eDP-1": [1, 2, 3, 4, 5]}
     },
 
     "custom/separator": {
