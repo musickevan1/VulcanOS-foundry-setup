@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 ## Current Position
 
 Phase: 10 of 10 (Preset Themes & Desktop Integration)
-Plan: 6 of 8 in current phase
-Status: In progress
-Last activity: 2026-01-30 — Completed 10-06-PLAN.md (Desktop Menu Integration)
+Plan: 7 of 8 in current phase
+Status: Human verification checkpoint (10-08)
+Last activity: 2026-01-30 — Plans 10-01 through 10-07 complete, awaiting 10-08 verification
 
-Progress: [██████████████████████████████░] 100% (34/35 total plans complete)
+Progress: [██████████████████████████████░] 97% (34/35 total plans complete)
 
 ## Performance Metrics
 
@@ -238,13 +238,13 @@ Progress: [███████████████████████
 
 **v2.0 Preset Themes & Desktop Integration - Phase 10 IN PROGRESS:**
 - Plan 1: Polish Preset Themes (verified official colors, 40+ exports each) ✓
-- Plan 2: Additional theme variants (pending)
+- Plan 2: Light Theme Variants (catppuccin-latte.sh, gruvbox-light.sh created) ✓
 - Plan 3: Wallpaper Library Structure (10 theme directories, 3 wallpapers, LICENSE docs) ✓
 - Plan 4: Third-Party App Discovery (6 app detectors, marketplace URLs, installation/config status) ✓
 - Plan 5: Discovery Section UI (badge-based app status display, expander in Themes tab) ✓
-- Plan 6: Compile and install (pending)
+- Plan 6: Desktop Menu Integration (vulcan-menu updated with Appearance submenu) ✓
 - Plan 7: Archiso Skeleton Sync (10 themes, vulcan-menu, wallpapers directory) ✓
-- Plan 8: Final integration (pending)
+- Plan 8: Human Verification (checkpoint - awaiting approval)
 
 ### Pending Todos
 
@@ -252,12 +252,26 @@ None.
 
 ### Blockers/Concerns
 
-None. Phase 9 complete.
+**Gap from human verification (10-08):**
+- Light themes (Catppuccin Latte, Gruvbox Light) files exist in dotfiles/themes/colors/ but NOT showing in Appearance Manager UI
+- Only 8 themes visible in app: Catppuccin Mocha, Dracula, Gruvbox Dark, Nord, One Dark, Rose Pine, Tokyo Night, Vulcan Forge
+- Need to investigate why theme_storage.rs or theme discovery isn't picking up the 2 new light themes
+
+**What IS working (confirmed via screenshots):**
+- ✓ Third-Party Apps discovery section visible and functional
+- ✓ App detection correct: Neovim/Kitty (Installed, Not Themed), Alacritty/btop/VS Code (Installed, Themed), Firefox (Not Installed)
+- ✓ Wallpapers tab working with monitor layout and wallpaper picker
+- ✓ Profiles tab working (empty state shown correctly)
+- ✓ vulcan-menu has Appearance submenu (confirmed working)
 
 ## Session Continuity
 
-Last session: 2026-01-30 (Phase 10 in progress)
-Stopped at: Completed 10-06-PLAN.md (Desktop Menu Integration)
+Last session: 2026-01-30 (Phase 10 human verification)
+Stopped at: Plan 10-08 checkpoint - user reviewed screenshots, found light themes missing from UI
 Resume file: None
 
-**Next action:** Execute remaining Phase 10 plans (10-07 and 10-08)
+**Next action:**
+1. Investigate why catppuccin-latte.sh and gruvbox-light.sh aren't discovered by theme_storage.rs
+2. Fix light theme discovery issue
+3. Complete 10-08 verification
+4. Finish Phase 10 and milestone
