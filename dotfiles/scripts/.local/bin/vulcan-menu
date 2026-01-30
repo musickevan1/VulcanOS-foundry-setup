@@ -696,39 +696,34 @@ show_theme_selector_menu() {
 
 show_wallpaper_menu() {
     local choice
-    choice=$(echo -e "Wallpaper Manager\nWallpaper Profiles\nBrowse Wallpapers\nRandom Wallpaper\nRotate Next\nBack" | wofi --dmenu \
-            --prompt "Wallpaper" \
+    choice=$(echo -e "󰔎  Open Appearance Manager
+󰸉  Random Wallpaper
+󱞊  Rotate Next
+󰏗  Browse Profiles
+$ICON_BACK  Back" | wofi --dmenu \
+            --prompt "Quick Wallpaper" \
             --cache-file /dev/null \
             --width 350 \
-            --height 420 \
+            --height 320 \
             --location center \
             --hide-scroll \
             --no-actions 2>/dev/null)
 
-    # No icon stripping needed - using plain text
-    local action="$choice"
+    local action
+    action=$(echo "$choice" | sed 's/^[^ ]* *//')
 
     case "$action" in
-        "Wallpaper Manager")
-            if command -v vulcan-wallpaper-manager &> /dev/null; then
-                vulcan-wallpaper-manager &
+        "Open Appearance Manager")
+            if [[ -n "$VULCAN_APPEARANCE_MANAGER_CMD" ]]; then
+                "$VULCAN_APPEARANCE_MANAGER_CMD" &
             else
-                notify "vulcan-wallpaper-manager not found. Build with: cargo build --release"
-            fi
-            ;;
-        "Wallpaper Profiles")
-            show_wallpaper_profiles_menu
-            ;;
-        "Browse Wallpapers")
-            if command -v vulcan-wallpaper-picker &> /dev/null; then
-                vulcan-wallpaper-picker &
-            else
-                notify "vulcan-wallpaper-picker not found"
+                notify "vulcan-appearance-manager not found"
             fi
             ;;
         "Random Wallpaper")
             if command -v vulcan-wallpaper &> /dev/null; then
                 vulcan-wallpaper random
+                notify "Random wallpaper applied"
             else
                 notify "vulcan-wallpaper not found"
             fi
@@ -736,9 +731,13 @@ show_wallpaper_menu() {
         "Rotate Next")
             if command -v vulcan-wallpaper &> /dev/null; then
                 vulcan-wallpaper rotate
+                notify "Wallpaper rotated"
             else
                 notify "vulcan-wallpaper not found"
             fi
+            ;;
+        "Browse Profiles")
+            show_wallpaper_profiles_menu
             ;;
         "Back")
             show_appearance_menu
