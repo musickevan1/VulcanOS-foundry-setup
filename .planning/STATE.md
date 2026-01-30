@@ -5,85 +5,71 @@
 See: .planning/PROJECT.md (updated 2026-01-30)
 
 **Core value:** Cohesive, recoverable, keyboard-driven
-**Current focus:** Planning next milestone
+**Current focus:** Phase 11 - Security Hardening
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-01-30 — Milestone v2.1 started
+Phase: 11 of 13 (Security Hardening)
+Plan: 0 of TBD in current phase
+Status: Ready to plan
+Last activity: 2026-01-30 — v2.1 roadmap created
 
-Progress: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0% (v2.1 started)
+Progress: [████████████████████░░░░] 79% (39/49 total plans across all milestones)
 
 ## Performance Metrics
 
-**v2.0 Vulcan Appearance Manager:**
-- Phases: 5 (6-10)
-- Plans: 28 total
-- Duration: 6 days (2026-01-24 → 2026-01-30)
-- Requirements: 33/33 satisfied
+**Velocity:**
+- Total plans completed: 39 (v1.0 + v2.0)
+- v1.0 Foundation: 11 plans
+- v2.0 Appearance Manager: 28 plans
+- v2.1 Maintenance: 0 plans (just started)
 
-**By Phase:**
+**By Milestone:**
 
-| Phase | Plans | Status |
-|-------|-------|--------|
-| 6. Foundation Architecture | 5 | Complete |
-| 7. Component Integration | 5 | Complete |
-| 8. Theme-Wallpaper Binding | 6 | Complete |
-| 9. Theming Infrastructure | 4 | Complete |
-| 10. Preset Themes & Desktop Integration | 8 | Complete |
+| Milestone | Phases | Plans | Status |
+|-----------|--------|-------|--------|
+| v1.0 Foundation | 2 | 11 | Shipped 2026-01-24 |
+| v2.0 Appearance Manager | 5 | 28 | Shipped 2026-01-30 |
+| v2.1 Maintenance | 3 | TBD | In progress |
+
+**Recent Trend:**
+- v2.0 completed in 6 days (5 phases, 28 plans)
+- Stable velocity, comprehensive depth setting
+
+*Updated after roadmap creation*
 
 ## Accumulated Context
 
 ### Decisions
 
-Carried forward to next milestone:
+Decisions are logged in PROJECT.md Key Decisions table.
+Recent decisions affecting current work:
 
-- GTK4/Libadwaita + Relm4 for native GNOME-style UI
-- swww backend for wallpapers (not hyprpaper)
-- TOML for profile serialization
-- anyhow for error handling in Rust apps
-- vulcan-theme CLI for theme application (delegate, not reimplement)
-- ViewStack for fixed app views (not TabView)
-- BindingMode enum (ThemeBound/CustomOverride/Unbound)
-- STYLE_PROVIDER_PRIORITY_USER (600) for runtime CSS
-
-### Previous Milestones
-
-**v1.0 VulcanOS Foundation** (shipped 2026-01-24):
-- T2 kernel protection system
-- Wallpaper manager with multi-monitor support
-- GTK4/Relm4 patterns established
-
-**v2.0 Vulcan Appearance Manager** (shipped 2026-01-30):
-- Unified theme + wallpaper app
-- Theme-wallpaper binding with unified profiles
-- Complete theme propagation to 6 components
-- 10 preset themes with official palettes
-- Third-party app discovery
-
-### Tech Debt
-
-Carried from v2.0 (can address in v2.1):
-- AppState state machine unused (built but not integrated)
-- parse_and_validate() bypassed (security function not wired)
-- CustomOverride detection not automatic (manual tracking)
-- 7 themes missing wallpapers (sources documented)
+- v2.0: Merged theme-manager + wallpaper-manager into unified app (BindingMode architecture)
+- v2.0: GTK4/Relm4 framework established as standard pattern
+- v2.0: Pre-made wallpapers instead of on-demand AI generation
+- v2.1: Maintenance milestone focuses on wiring existing infrastructure (AppState, validation, wallpapers)
 
 ### Pending Todos
 
-None.
+None yet. (Ideas captured during v2.1 will appear in .planning/todos/pending/)
 
 ### Blockers/Concerns
 
-None.
+**Known tech debt from v2.0 (now being addressed in v2.1):**
+- AppState state machine created but not integrated into UI components (Phase 13)
+- parse_and_validate() security function exists but bypassed (Phase 11)
+- BindingMode CustomOverride transition not automated (Phase 12)
+- 7 of 10 themes missing wallpapers (Phase 12)
+
+**Scope creep risk:**
+- AppState integration could expand beyond maintenance scope
+- Must defer UI enhancements (error dialogs, spinners) to v2.2+
 
 ## Session Continuity
 
-Last session: 2026-01-30
-Stopped at: v2.0 milestone archived
+Last session: 2026-01-30 (roadmap creation)
+Stopped at: v2.1 roadmap complete, ready to plan Phase 11
 Resume file: None
 
-**Next action:**
-Define requirements and create roadmap for v2.1.
+Next: `/gsd:plan-phase 11` to create execution plan for Security Hardening
