@@ -24,7 +24,7 @@ window#waybar.hidden {
 #custom-vulcan-menu {
     background-color: ${BG_SECONDARY};
     color: ${ACCENT};
-    padding: 0 10px;
+    padding: 0 10px 0 8px;
     margin: 4px 2px 4px 4px;
     border-radius: 4px;
     border: 1px solid ${BG_TERTIARY};
