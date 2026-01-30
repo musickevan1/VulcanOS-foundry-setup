@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 ## Current Position
 
 Phase: 10 of 10 (Preset Themes & Desktop Integration)
-Plan: 4 of 8 in current phase
+Plan: 5 of 8 in current phase
 Status: In progress
-Last activity: 2026-01-30 — Completed 10-04-PLAN.md (Third-Party App Discovery)
+Last activity: 2026-01-30 — Completed 10-05-PLAN.md (Discovery Section UI)
 
-Progress: [██████████████████████████████░] 97% (32/33 total plans complete)
+Progress: [██████████████████████████████░] 100% (33/33 total plans complete)
 
 ## Performance Metrics
 
@@ -33,7 +33,7 @@ Progress: [███████████████████████
 | 7. Component Integration | 5 | ~15min | ~3 min |
 | 8. Theme-Wallpaper Binding | 6 | ~20min | ~3.3 min |
 | 9. Theming Infrastructure | 4 | ~8min | ~2 min |
-| 10. Preset Themes & Desktop Integration | 4/8 | ~12min | ~3 min |
+| 10. Preset Themes & Desktop Integration | 5/8 | ~15min | ~3 min |
 
 **Recent Trend:**
 - Last completed: Phase 10 Plan 4 (10-04)
@@ -179,6 +179,12 @@ Progress: [███████████████████████
 - Discovery-only approach: provide marketplace URLs, don't implement theme installation
 - XDG config path resolution with HOME fallback for cross-platform compatibility
 
+**From Phase 10 Plan 5 (10-05):**
+- gtk::Expander placement for discovery section (collapsible, non-dominant)
+- Badge-based status UI with conditional visibility (Themed badge only when installed)
+- Controller list pattern (Vec<Controller<AppRow>>) over Factory for fixed app list
+- CSS badge classes: badge-success, badge-muted, badge-accent, badge-warning
+
 ### Previous Milestone Summary
 
 **v1.0 VulcanOS Foundation** (Phase 5 shipped 2026-01-24):
@@ -221,7 +227,8 @@ Progress: [███████████████████████
 - Plan 2: Additional theme variants (pending)
 - Plan 3: Wallpaper Library Structure (10 theme directories, 3 wallpapers, LICENSE docs) ✓
 - Plan 4: Third-Party App Discovery (6 app detectors, marketplace URLs, installation/config status) ✓
-- Plan 5-8: Desktop integration (pending)
+- Plan 5: Discovery Section UI (badge-based app status display, expander in Themes tab) ✓
+- Plan 6-8: Desktop integration (pending)
 
 ### Pending Todos
 
@@ -234,7 +241,7 @@ None. Phase 9 complete.
 ## Session Continuity
 
 Last session: 2026-01-30 (Phase 10 in progress)
-Stopped at: Completed 10-04-PLAN.md (Third-Party App Discovery)
+Stopped at: Completed 10-05-PLAN.md (Discovery Section UI)
 Resume file: None
 
-**Next action:** Execute remaining Phase 10 plans (10-05 through 10-08)
+**Next action:** Execute remaining Phase 10 plans (10-06 through 10-08)
