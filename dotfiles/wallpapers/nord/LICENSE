@@ -1,0 +1,38 @@
+# Nord Wallpapers
+
+## Current Wallpapers
+
+Status: Wallpapers to be added manually
+
+## Recommended Sources
+
+High-quality Nord wallpapers can be found at:
+- https://github.com/linuxdotexe/nordic-wallpapers (GPL-3.0 - Large collection)
+- https://github.com/dxnst/nord-backgrounds (MIT - Minimalist Nord backgrounds)
+- https://github.com/the-little-pedestrian/nord-wallpapers (Curated collection)
+- r/nordtheme subreddit wallpaper posts
+- r/unixporn Nord tag
+
+## Download Instructions
+
+To add Nord wallpapers manually:
+
+1. Visit one of the sources above
+2. Download wallpapers matching the Nord color palette:
+   - Polar Night: #2E3440, #3B4252, #434C5E, #4C566A
+   - Snow Storm: #D8DEE9, #E5E9F0, #ECEFF4
+   - Frost: #8FBCBB, #88C0D0, #81A1C1, #5E81AC
+   - Aurora: #BF616A, #D08770, #EBCB8B, #A3BE8C, #B48EAD
+
+3. Place in this directory: `dotfiles/wallpapers/nord/`
+4. Name primary wallpaper: `nord.png`
+5. Update this LICENSE file with source attribution
+
+## License Requirements
+
+All wallpapers added to this directory must be:
+- CC0 (Public Domain) OR
+- GPL-compatible (MIT, GPL, Apache, BSD) OR
+- Properly licensed for redistribution
+
+Always document the source and license when adding new wallpapers.
