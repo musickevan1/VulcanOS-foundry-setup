@@ -20,3 +20,6 @@ pub mod profile_card;
 pub mod profile_view;
 
 pub use profile_view::{ProfileViewModel, ProfileViewMsg, ProfileViewOutput};
+
+// Discovery components
+pub mod discovery_section;
