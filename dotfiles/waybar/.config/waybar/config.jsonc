@@ -7,6 +7,7 @@
     "margin-bottom": 0,
 
     "modules-left": [
+        "custom/vulcan-menu",
         "hyprland/workspaces",
         "custom/separator",
         "hyprland/window",
@@ -28,6 +29,12 @@
         "memory",
         "battery"
     ],
+
+    "custom/vulcan-menu": {
+        "format": "",
+        "tooltip": "Vulcan Menu",
+        "on-click": "~/.local/bin/vulcan-menu"
+    },
 
     "hyprland/workspaces": {
         "format": "{icon}",
