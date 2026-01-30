@@ -65,7 +65,7 @@ pub fn load_all_themes() -> Result<Vec<Theme>> {
         let path = entry.path();
 
         if path.extension().map_or(false, |ext| ext == "sh") {
-            match theme_parser::parse_theme_file(&path) {
+            match theme_parser::parse_and_validate(&path) {
                 Ok(mut theme) => {
                     // Mark as builtin (in the main colors directory)
                     theme.is_builtin = true;
@@ -86,7 +86,7 @@ pub fn load_all_themes() -> Result<Vec<Theme>> {
             let path = entry.path();
 
             if path.extension().map_or(false, |ext| ext == "sh") {
-                match theme_parser::parse_theme_file(&path) {
+                match theme_parser::parse_and_validate(&path) {
                     Ok(mut theme) => {
                         theme.is_builtin = false;
                         themes.push(theme);
@@ -111,7 +111,7 @@ pub fn load_theme(theme_id: &str) -> Result<Theme> {
     let theme_file = themes_path.join(format!("{}.sh", theme_id));
 
     if theme_file.exists() {
-        let mut theme = theme_parser::parse_theme_file(&theme_file)?;
+        let mut theme = theme_parser::parse_and_validate(&theme_file)?;
         theme.is_builtin = true;
         return Ok(theme);
     }
@@ -119,7 +119,7 @@ pub fn load_theme(theme_id: &str) -> Result<Theme> {
     // Check custom themes
     let custom_file = custom_themes_dir().join(format!("{}.sh", theme_id));
     if custom_file.exists() {
-        let mut theme = theme_parser::parse_theme_file(&custom_file)?;
+        let mut theme = theme_parser::parse_and_validate(&custom_file)?;
         theme.is_builtin = false;
         return Ok(theme);
     }
@@ -164,7 +164,7 @@ pub fn delete_theme(theme_id: &str) -> Result<()> {
 
 /// Import a theme from a file path
 pub fn import_theme(source_path: &Path) -> Result<Theme> {
-    let mut theme = theme_parser::parse_theme_file(source_path)?;
+    let mut theme = theme_parser::parse_and_validate(source_path)?;
     theme.is_builtin = false;
 
     // Save to custom themes directory
