@@ -9,33 +9,33 @@ Requirements for this milestone. Each maps to roadmap phases.
 
 ### Unified App Interface
 
-- [ ] **APP-01**: User can launch unified Vulcan Appearance Manager from menu or CLI
-- [ ] **APP-02**: App displays tabs for Themes and Wallpapers in single window
-- [ ] **APP-03**: Theme browser shows color preview cards for all available themes
-- [ ] **APP-04**: Theme browser shows suggested wallpaper thumbnail for each theme
-- [ ] **APP-05**: Wallpaper tab shows per-monitor layout with current assignments
-- [ ] **APP-06**: User can assign different wallpapers to each monitor
-- [ ] **APP-07**: User can split panoramic images across multiple monitors
-- [ ] **APP-08**: Theme editor allows editing all 50+ color variables in groups
+- [x] **APP-01**: User can launch unified Vulcan Appearance Manager from menu or CLI
+- [x] **APP-02**: App displays tabs for Themes and Wallpapers in single window
+- [x] **APP-03**: Theme browser shows color preview cards for all available themes
+- [x] **APP-04**: Theme browser shows suggested wallpaper thumbnail for each theme
+- [x] **APP-05**: Wallpaper tab shows per-monitor layout with current assignments
+- [x] **APP-06**: User can assign different wallpapers to each monitor
+- [x] **APP-07**: User can split panoramic images across multiple monitors
+- [x] **APP-08**: Theme editor allows editing all 50+ color variables in groups
 
 ### Theme-Wallpaper Binding
 
-- [ ] **BIND-01**: Each theme file includes optional wallpaper suggestion field
-- [ ] **BIND-02**: Selecting a theme displays its suggested wallpaper (if defined)
-- [ ] **BIND-03**: User can apply theme's suggested wallpaper with one click
-- [ ] **BIND-04**: User can override theme's suggested wallpaper with custom choice
-- [ ] **BIND-05**: Unified profiles save theme + wallpaper configuration together
-- [ ] **BIND-06**: User can save/load/delete unified profiles by name
+- [x] **BIND-01**: Each theme file includes optional wallpaper suggestion field
+- [x] **BIND-02**: Selecting a theme displays its suggested wallpaper (if defined)
+- [x] **BIND-03**: User can apply theme's suggested wallpaper with one click
+- [x] **BIND-04**: User can override theme's suggested wallpaper with custom choice
+- [x] **BIND-05**: Unified profiles save theme + wallpaper configuration together
+- [x] **BIND-06**: User can save/load/delete unified profiles by name
 
 ### Theming Infrastructure
 
-- [ ] **INFRA-01**: Theme changes propagate to waybar (status bar colors)
-- [ ] **INFRA-02**: Theme changes propagate to wofi (launcher colors)
-- [ ] **INFRA-03**: Theme changes propagate to swaync (notification colors)
-- [ ] **INFRA-04**: Theme changes propagate to hyprlock (lock screen colors)
-- [ ] **INFRA-05**: Theme changes propagate to kitty terminal colors
-- [ ] **INFRA-06**: Theme changes propagate to alacritty terminal colors
-- [ ] **INFRA-07**: Appearance Manager GUI uses current theme colors (self-theming)
+- [x] **INFRA-01**: Theme changes propagate to waybar (status bar colors)
+- [x] **INFRA-02**: Theme changes propagate to wofi (launcher colors)
+- [x] **INFRA-03**: Theme changes propagate to swaync (notification colors)
+- [x] **INFRA-04**: Theme changes propagate to hyprlock (lock screen colors)
+- [x] **INFRA-05**: Theme changes propagate to kitty terminal colors
+- [x] **INFRA-06**: Theme changes propagate to alacritty terminal colors
+- [x] **INFRA-07**: Appearance Manager GUI uses current theme colors (self-theming)
 - [x] **INFRA-08**: Shared CSS/variables file serves as single source of truth
 
 ### Preset Themes & Wallpapers
@@ -96,27 +96,27 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| APP-01 | Phase 7 | Pending |
-| APP-02 | Phase 7 | Pending |
-| APP-03 | Phase 7 | Pending |
-| APP-04 | Phase 8 | Pending |
-| APP-05 | Phase 7 | Pending |
-| APP-06 | Phase 7 | Pending |
-| APP-07 | Phase 7 | Pending |
-| APP-08 | Phase 7 | Pending |
-| BIND-01 | Phase 8 | Pending |
-| BIND-02 | Phase 8 | Pending |
-| BIND-03 | Phase 8 | Pending |
-| BIND-04 | Phase 8 | Pending |
-| BIND-05 | Phase 8 | Pending |
-| BIND-06 | Phase 8 | Pending |
-| INFRA-01 | Phase 9 | Pending |
-| INFRA-02 | Phase 9 | Pending |
-| INFRA-03 | Phase 9 | Pending |
-| INFRA-04 | Phase 9 | Pending |
-| INFRA-05 | Phase 9 | Pending |
-| INFRA-06 | Phase 9 | Pending |
-| INFRA-07 | Phase 9 | Pending |
+| APP-01 | Phase 7 | Complete |
+| APP-02 | Phase 7 | Complete |
+| APP-03 | Phase 7 | Complete |
+| APP-04 | Phase 8 | Complete |
+| APP-05 | Phase 7 | Complete |
+| APP-06 | Phase 7 | Complete |
+| APP-07 | Phase 7 | Complete |
+| APP-08 | Phase 7 | Complete |
+| BIND-01 | Phase 8 | Complete |
+| BIND-02 | Phase 8 | Complete |
+| BIND-03 | Phase 8 | Complete |
+| BIND-04 | Phase 8 | Complete |
+| BIND-05 | Phase 8 | Complete |
+| BIND-06 | Phase 8 | Complete |
+| INFRA-01 | Phase 9 | Complete |
+| INFRA-02 | Phase 9 | Complete |
+| INFRA-03 | Phase 9 | Complete |
+| INFRA-04 | Phase 9 | Complete |
+| INFRA-05 | Phase 9 | Complete |
+| INFRA-06 | Phase 9 | Complete |
+| INFRA-07 | Phase 9 | Complete |
 | INFRA-08 | Phase 6 | Complete |
 | PRESET-01 | Phase 10 | Pending |
 | PRESET-02 | Phase 10 | Pending |
@@ -146,4 +146,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-01-24*
-*Last updated: 2026-01-25 after Phase 6 completion*
+*Last updated: 2026-01-30 after Phase 9 completion*

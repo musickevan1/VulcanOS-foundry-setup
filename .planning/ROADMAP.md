@@ -153,10 +153,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 09-01-PLAN.md — Verify and fix theme propagation chain to all 6 components
-- [ ] 09-02-PLAN.md — GTK CSS generation for active theme (vulcan-theme + Rust service)
-- [ ] 09-03-PLAN.md — App self-theming integration (CssProvider runtime loading)
-- [ ] 09-04-PLAN.md — Human verification of complete theming infrastructure
+- [x] 09-01-PLAN.md — Verify and fix theme propagation chain to all 6 components
+- [x] 09-02-PLAN.md — GTK CSS generation for active theme (vulcan-theme + Rust service)
+- [x] 09-03-PLAN.md — App self-theming integration (CssProvider runtime loading)
+- [x] 09-04-PLAN.md — Human verification of complete theming infrastructure
 
 #### Phase 10: Preset Themes & Desktop Integration
 **Goal**: Polished preset themes with matching wallpapers, third-party app discovery, and complete desktop integration
@@ -195,9 +195,9 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 6. Foundation Architecture | v2.0 | 5/5 | Complete | 2026-01-25 |
 | 7. Component Integration | v2.0 | 5/5 | Complete | 2026-01-25 |
 | 8. Theme-Wallpaper Binding | v2.0 | 6/6 | Complete | 2026-01-25 |
-| 9. Theming Infrastructure | v2.0 | 0/4 | Planned | - |
+| 9. Theming Infrastructure | v2.0 | 4/4 | Complete | 2026-01-30 |
 | 10. Preset Themes & Desktop Integration | v2.0 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-01-23*
-*Last updated: 2026-01-25 after Phase 9 planning complete*
+*Last updated: 2026-01-30 after Phase 9 complete*
