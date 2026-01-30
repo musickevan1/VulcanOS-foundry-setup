@@ -2,13 +2,13 @@
 
 ## Milestones
 
-- ✅ **v1.0 VulcanOS Foundation** - Phases 1-5 (Phase 5 shipped 2026-01-24)
-- 🚧 **v2.0 Vulcan Appearance Manager** - Phases 6-10 (in progress)
+- **v1.0 VulcanOS Foundation** - Phases 1-5 (Phase 5 shipped 2026-01-24)
+- **v2.0 Vulcan Appearance Manager** - Phases 6-10 (in progress)
 
 ## Phases
 
 <details>
-<summary>✅ v1.0 VulcanOS Foundation (Phases 1-5) - Phase 5 shipped 2026-01-24</summary>
+<summary>v1.0 VulcanOS Foundation (Phases 1-5) - Phase 5 shipped 2026-01-24</summary>
 
 ### Phase 1: T2 Kernel Protection
 **Goal**: System is protected from catastrophic kernel update failures that make T2 MacBook Pro unbootable
@@ -23,9 +23,9 @@
 **Plans**: 3 plans
 
 Plans:
-- [x] 01-01-PLAN.md — Protection hooks and scripts
-- [x] 01-02-PLAN.md — Verification and fallback
-- [x] 01-03-PLAN.md — Archiso sync and testing
+- [x] 01-01-PLAN.md - Protection hooks and scripts
+- [x] 01-02-PLAN.md - Verification and fallback
+- [x] 01-03-PLAN.md - Archiso sync and testing
 
 ### Phase 2: Core Backup Engine
 **Goal**: User can create, list, restore, and manage system snapshots manually using proven backup tools
@@ -60,18 +60,18 @@ Plans:
 **Plans**: 8 plans
 
 Plans:
-- [x] 05-01-PLAN.md — Project scaffold and core infrastructure
-- [x] 05-02-PLAN.md — Main app window and monitor layout visualization
-- [x] 05-03-PLAN.md — Wallpaper picker with thumbnail grid and caching
-- [x] 05-04-PLAN.md — Component integration and swww IPC
-- [x] 05-05-PLAN.md — Profile management (save/load/sync)
-- [x] 05-06-PLAN.md — Adaptive wallpaper generation (panoramic splitting)
-- [x] 05-07-PLAN.md — Desktop integration (menu, .desktop file, archiso sync)
-- [x] 05-08-PLAN.md — Human verification checkpoint
+- [x] 05-01-PLAN.md - Project scaffold and core infrastructure
+- [x] 05-02-PLAN.md - Main app window and monitor layout visualization
+- [x] 05-03-PLAN.md - Wallpaper picker with thumbnail grid and caching
+- [x] 05-04-PLAN.md - Component integration and swww IPC
+- [x] 05-05-PLAN.md - Profile management (save/load/sync)
+- [x] 05-06-PLAN.md - Adaptive wallpaper generation (panoramic splitting)
+- [x] 05-07-PLAN.md - Desktop integration (menu, .desktop file, archiso sync)
+- [x] 05-08-PLAN.md - Human verification checkpoint
 
 </details>
 
-### 🚧 v2.0 Vulcan Appearance Manager (In Progress)
+### v2.0 Vulcan Appearance Manager (In Progress)
 
 **Milestone Goal:** Unified theme and wallpaper management with preset theme bundles and consistent theming across all VulcanOS tools.
 
@@ -88,11 +88,11 @@ Plans:
 **Plans**: 5 plans
 
 Plans:
-- [x] 06-01-PLAN.md — Rename crate and merge theme models/services
-- [x] 06-02-PLAN.md — Shared brand CSS module
-- [x] 06-03-PLAN.md — Explicit state machine (AppState)
-- [x] 06-04-PLAN.md — Wallpaper backend trait abstraction
-- [x] 06-05-PLAN.md — Theme parser hardening and validation
+- [x] 06-01-PLAN.md - Rename crate and merge theme models/services
+- [x] 06-02-PLAN.md - Shared brand CSS module
+- [x] 06-03-PLAN.md - Explicit state machine (AppState)
+- [x] 06-04-PLAN.md - Wallpaper backend trait abstraction
+- [x] 06-05-PLAN.md - Theme parser hardening and validation
 
 #### Phase 7: Component Integration
 **Goal**: Tab-based UI merges existing theme and wallpaper components into single cohesive application
@@ -110,11 +110,11 @@ Plans:
 **Plans**: 5 plans
 
 Plans:
-- [x] 07-01-PLAN.md — App shell with ViewStack + ViewSwitcher navigation
-- [x] 07-02-PLAN.md — Migrate theme UI components (browser, card, preview, editor)
-- [x] 07-03-PLAN.md — Create ThemeView container and integrate into ViewStack
-- [x] 07-04-PLAN.md — Create WallpaperView container and integrate into ViewStack
-- [x] 07-05-PLAN.md — Final integration, polish, and desktop entry
+- [x] 07-01-PLAN.md - App shell with ViewStack + ViewSwitcher navigation
+- [x] 07-02-PLAN.md - Migrate theme UI components (browser, card, preview, editor)
+- [x] 07-03-PLAN.md - Create ThemeView container and integrate into ViewStack
+- [x] 07-04-PLAN.md - Create WallpaperView container and integrate into ViewStack
+- [x] 07-05-PLAN.md - Final integration, polish, and desktop entry
 
 #### Phase 8: Theme-Wallpaper Binding
 **Goal**: Themes suggest wallpapers and unified profiles save coordinated appearance as single unit
@@ -131,12 +131,12 @@ Plans:
 **Plans**: 6 plans
 
 Plans:
-- [x] 08-01-PLAN.md — BindingMode enum, UnifiedProfile model, theme parser THEME_WALLPAPER extraction
-- [x] 08-02-PLAN.md — Unified profile storage with migration from old format
-- [x] 08-03-PLAN.md — Theme card wallpaper thumbnail overlay
-- [x] 08-04-PLAN.md — Binding dialog for "Apply theme wallpaper?" confirmation
-- [x] 08-05-PLAN.md — Profiles tab with profile cards (save/load/delete)
-- [x] 08-06-PLAN.md — Integration wiring and human verification
+- [x] 08-01-PLAN.md - BindingMode enum, UnifiedProfile model, theme parser THEME_WALLPAPER extraction
+- [x] 08-02-PLAN.md - Unified profile storage with migration from old format
+- [x] 08-03-PLAN.md - Theme card wallpaper thumbnail overlay
+- [x] 08-04-PLAN.md - Binding dialog for "Apply theme wallpaper?" confirmation
+- [x] 08-05-PLAN.md - Profiles tab with profile cards (save/load/delete)
+- [x] 08-06-PLAN.md - Integration wiring and human verification
 
 #### Phase 9: Theming Infrastructure
 **Goal**: Theme changes propagate automatically to all desktop components with self-theming GUI
@@ -153,10 +153,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [x] 09-01-PLAN.md — Verify and fix theme propagation chain to all 6 components
-- [x] 09-02-PLAN.md — GTK CSS generation for active theme (vulcan-theme + Rust service)
-- [x] 09-03-PLAN.md — App self-theming integration (CssProvider runtime loading)
-- [x] 09-04-PLAN.md — Human verification of complete theming infrastructure
+- [x] 09-01-PLAN.md - Verify and fix theme propagation chain to all 6 components
+- [x] 09-02-PLAN.md - GTK CSS generation for active theme (vulcan-theme + Rust service)
+- [x] 09-03-PLAN.md - App self-theming integration (CssProvider runtime loading)
+- [x] 09-04-PLAN.md - Human verification of complete theming infrastructure
 
 #### Phase 10: Preset Themes & Desktop Integration
 **Goal**: Polished preset themes with matching wallpapers, third-party app discovery, and complete desktop integration
@@ -175,15 +175,22 @@ Plans:
   10. Appearance Manager accessible from vulcan-menu "Appearance" submenu
   11. .desktop file created and installed for application launchers
   12. App binary and configs synced to archiso skeleton for fresh installs
-**Plans**: TBD
+**Plans**: 8 plans
 
 Plans:
-- TBD (will be created during `/gsd:plan-phase 10`)
+- [ ] 10-01-PLAN.md - Polish existing 8 preset themes with official palettes
+- [ ] 10-02-PLAN.md - Add 2 light theme variants (Catppuccin Latte, Gruvbox Light)
+- [ ] 10-03-PLAN.md - Create wallpaper library and curate community wallpapers
+- [ ] 10-04-PLAN.md - Implement third-party app discovery service
+- [ ] 10-05-PLAN.md - Create discovery section UI component
+- [ ] 10-06-PLAN.md - Update vulcan-menu with Appearance submenu
+- [ ] 10-07-PLAN.md - Sync themes and configs to archiso skeleton
+- [ ] 10-08-PLAN.md - Human verification checkpoint
 
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 → 9 → 10
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8 -> 9 -> 10
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -196,8 +203,8 @@ Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7 → 8 →
 | 7. Component Integration | v2.0 | 5/5 | Complete | 2026-01-25 |
 | 8. Theme-Wallpaper Binding | v2.0 | 6/6 | Complete | 2026-01-25 |
 | 9. Theming Infrastructure | v2.0 | 4/4 | Complete | 2026-01-30 |
-| 10. Preset Themes & Desktop Integration | v2.0 | 0/? | Not started | - |
+| 10. Preset Themes & Desktop Integration | v2.0 | 0/8 | Planned | - |
 
 ---
 *Roadmap created: 2026-01-23*
-*Last updated: 2026-01-30 after Phase 9 complete*
+*Last updated: 2026-01-30 after Phase 10 planning complete*
