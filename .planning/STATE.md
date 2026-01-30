@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 ## Current Position
 
 Phase: 10 of 10 (Preset Themes & Desktop Integration)
-Plan: 2 of 4 in current phase
+Plan: 1 of 8 in current phase
 Status: In progress
-Last activity: 2026-01-30 — Completed 10-02-PLAN.md (Light Theme Variants)
+Last activity: 2026-01-30 — Completed 10-01-PLAN.md (Polish Preset Themes)
 
-Progress: [██████████████████████████████░░] 94% (31/33 total plans complete)
+Progress: [██████████████████████████████░] 91% (30/33 total plans complete)
 
 ## Performance Metrics
 
@@ -33,11 +33,11 @@ Progress: [███████████████████████
 | 7. Component Integration | 5 | ~15min | ~3 min |
 | 8. Theme-Wallpaper Binding | 6 | ~20min | ~3.3 min |
 | 9. Theming Infrastructure | 4 | ~8min | ~2 min |
-| 10. Preset Themes & Desktop Integration | 2/4 | ~2min | ~1 min |
+| 10. Preset Themes & Desktop Integration | 1/8 | ~3min | ~3 min |
 
 **Recent Trend:**
-- Last completed: Phase 10 Plan 2 (10-02)
-- Trend: Fast execution with minimal deviations (97s for 2 light themes)
+- Last completed: Phase 10 Plan 1 (10-01)
+- Trend: Fast execution with minimal deviations (186s for 8 theme polishes)
 
 ## Accumulated Context
 
@@ -155,11 +155,13 @@ Progress: [███████████████████████
 - theme_* prefix for overrideable colors, vulcan_* for brand-fixed elements
 - CSS reload on ThemeApplied message covers all theme application paths
 
-**From Phase 10 Plan 2 (10-02):**
-- Use official palettes without modification (Catppuccin, Gruvbox)
-- Light themes use darker accents for contrast (#076678 vs #458588)
-- Light backgrounds (#eff1f5, #fbf1c7) with dark text (#4c4f69, #3c3836)
-- 10 total preset themes (8 dark + 2 light)
+**From Phase 10 Plan 1 (10-01):**
+- Use official palettes without modification for authenticity
+- Export 40+ colors per theme including official names (NORD0-15, MAUVE, etc.)
+- Preserve theme-specific color naming with prefixes (NORD_, TN_, RP_, OD_, GB_)
+- All themes have THEME_WALLPAPER references for future pairing
+- Verified colors against official documentation (catppuccin.com, nordtheme.com, etc.)
+- 8 polished preset themes with complete official color palettes
 
 ### Previous Milestone Summary
 
@@ -199,10 +201,10 @@ Progress: [███████████████████████
 - Plan 4: Human Verification (all 7 components confirmed working) ✓
 
 **v2.0 Preset Themes & Desktop Integration - Phase 10 IN PROGRESS:**
-- Plan 1: Research (identify 8-10 themes, wallpaper requirements) ✓
-- Plan 2: Light theme variants (Catppuccin Latte, Gruvbox Light) ✓
+- Plan 1: Polish Preset Themes (verified official colors, 40+ exports each) ✓
+- Plan 2: Additional theme variants (pending)
 - Plan 3: Wallpaper creation (pending)
-- Plan 4: Desktop integration (pending)
+- Plan 4-8: Desktop integration (pending)
 
 ### Pending Todos
 
@@ -215,7 +217,7 @@ None. Phase 9 complete.
 ## Session Continuity
 
 Last session: 2026-01-30 (Phase 10 in progress)
-Stopped at: Completed 10-02-PLAN.md (Light Theme Variants)
+Stopped at: Completed 10-01-PLAN.md (Polish Preset Themes)
 Resume file: None
 
-**Next action:** Execute 10-03-PLAN.md (Wallpaper Creation)
+**Next action:** Execute 10-02-PLAN.md (next plan in Phase 10)
