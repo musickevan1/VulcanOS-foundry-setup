@@ -1,273 +1,315 @@
-# Project Research Summary
+# v2.1 Maintenance Research Summary
 
-**Project:** VulcanOS Unified Appearance Manager
-**Domain:** Desktop appearance management (theme + wallpaper coordination)
-**Researched:** 2026-01-24
+**Project:** VulcanOS v2.1 Maintenance - Tech Debt Cleanup
+**Domain:** GTK4/Relm4 UI State Management, Security Hardening, UX Polish
+**Researched:** 2026-01-30
 **Confidence:** HIGH
 
 ## Executive Summary
 
-The VulcanOS Unified Appearance Manager merges two existing GTK4/Relm4 applications (vulcan-theme-manager and vulcan-wallpaper-manager) into a single cohesive interface. This is a **subsequent milestone** project that builds on proven foundations rather than a greenfield effort. Research confirms the existing GTK4/Relm4 stack is solid and should be preserved.
+VulcanOS v2.0 shipped with four known tech debt items that were intentionally deferred from earlier phases. This maintenance milestone focuses on connecting already-implemented functionality rather than building new features. All four items involve wiring existing code that was built but never integrated.
 
-**Recommended approach:** Tab-based UI merging pattern that preserves existing components while adding three new integration layers: (1) theme-wallpaper binding service, (2) shared CSS infrastructure for third-party apps, and (3) app discovery system. The critical architectural decision is to **delegate theme application to the existing vulcan-theme CLI** rather than reimplementing templating logic in Rust. This avoids duplicating 490 lines of working bash code and maintains consistency between CLI and GUI behavior.
+The research reveals that these are low-risk, high-value improvements with clear implementation paths. Three items (AppState, validation, BindingMode) are single-file changes requiring 5-25 lines of code each. The fourth (wallpapers) is a content acquisition task requiring 7 wallpaper downloads from documented GPL-compatible sources. Total estimated effort is 8-12 hours across all four items.
 
-**Key risks:** The most dangerous pitfall is state synchronization drift between three sources of truth (GUI state, CLI state, live system state). Prevention requires establishing the live system as the single source of truth with explicit state transitions for preview/apply operations. The second critical risk is theme-wallpaper binding coherence — when themes suggest wallpapers but users have multi-monitor profiles, conflicts arise. This requires an explicit binding mode system (theme-controlled vs profile-controlled vs user-override).
+The primary risk is not technical complexity but scope creep. These are maintenance fixes, not feature enhancements. The AppState integration in particular could expand into a multi-week project if not scoped correctly. Recommendation: implement minimal viable fixes for v2.1, defer UI enhancements (error dialogs, loading spinners) to v2.2+.
 
 ## Key Findings
 
-### Recommended Stack
+### AppState Integration (APPSTATE.md)
 
-The existing GTK4/Relm4 foundation is validated and should be kept unchanged. Research identifies minimal stack additions for unified functionality.
+**Status:** Fully implemented state machine (320 lines, 17 tests) completely bypassed by UI components
 
-**Core technologies (existing):**
-- **GTK4 0.10.3** — GUI toolkit with excellent Wayland support, already used
-- **Relm4 0.10.1** — Elm-inspired reactive framework for component communication, already used
-- **libadwaita 0.8.1** — Modern GNOME styling for integrated appearance, already used
-- **tokio 1.x** — Async runtime for wallpaper backend (swww calls), already used
-- **serde/serde_json 1.0** — Data serialization for profiles, already used
+**Current problem:**
+- Preview/Apply/Cancel operations call services directly without state tracking
+- No snapshot mechanism to restore previous state on Cancel
+- `revert_theme()` re-applies current theme but doesn't restore wallpapers
+- No state-based button disabling (can preview while already previewing)
 
-**New additions (minimal):**
-- **toml 0.8** — Unified config format (TOML beats JSON/YAML for readability and Rust conventions)
-- **walkdir 2.x** — Directory traversal for third-party app discovery
-- **notify 6.x** — File system watching (OPTIONAL, defer to post-MVP if users request live theme reload)
+**Architecture insight:**
+The AppState module was built in Phase 6 with clear state transitions (Idle → Previewing → Applying → Idle), but Relm4's component-based architecture doesn't have a natural "global state" location. The App struct already tracks appearance state (theme_id, wallpapers, binding_mode) but not preview/apply lifecycle state.
 
-**Explicit rejections:**
-- **cssparser** — Not needed for MVP, envsubst template approach works well
-- **D-Bus crates** — Over-engineering for single-user desktop system
-- **Custom config parsers** — TOML + serde handles everything
+**Implementation path:**
+1. Add `app_state: AppState` field to App struct (coordinator pattern)
+2. Capture snapshot before preview (uses existing state tracking)
+3. Wire state transitions via messages (RequestPreview → StateChanged → ExecutePreview)
+4. Restore snapshot on cancel (delegates to ThemeViewModel, WallpaperViewModel)
+5. Add state-based button sensitivity via #[watch] macros
 
-### Expected Features
+**Estimated effort:** 4-6 hours (foundation + core workflow)
 
-Research confirms most table-stakes features already exist in the separate apps. Unified app adds coordination features as differentiators.
+**Risk:** LOW - all infrastructure exists, Relm4 message-passing pattern is well-understood
 
-**Must have (table stakes):**
-- Theme browser with visual preview — ✅ Already implemented
-- Apply theme system-wide (GTK, Qt, terminal, compositor) — ✅ Already implemented via vulcan-theme CLI
-- Wallpaper picker with thumbnails — ✅ Already implemented
-- Per-monitor wallpaper assignment — ✅ Already implemented via swww
-- Save/load profiles — ✅ Already implemented for wallpapers
-- Instant apply with live preview — ✅ Already implemented
+### Theme Validation (VALIDATION.md)
 
-**Should have (competitive differentiators):**
-- **Theme-suggested wallpapers** — Each theme includes recommended wallpaper (LOW complexity, existing field)
-- **Wallpaper-suggested themes** — Extract colors from wallpaper, rank themes by similarity (MEDIUM complexity, pywal/matugen pattern)
-- **Unified theme+wallpaper profiles** — Save coordinated appearance as single profile (LOW complexity, combine existing storage)
-- **Third-party app discovery** — Detect VS Code, browsers, terminals and show theme status (MEDIUM complexity, filesystem scanning)
-- **Panoramic wallpaper splitting** — ✅ Already implemented
+**Status:** Security function `parse_and_validate()` exists with comprehensive checks but is bypassed by all call sites
 
-**Defer (v2+):**
-- Automatic theme generation from wallpaper (anti-feature — pywal produces ugly themes)
-- Online theme marketplace (anti-feature — maintenance burden, quality issues)
-- Per-application theme overrides (anti-feature — creates visual inconsistency)
-- Animated wallpapers (performance impact, battery drain)
-- Cloud sync (privacy concerns, network dependency)
+**Current problem:**
+- `theme_storage.rs` calls `parse_theme_file()` instead of `parse_and_validate()` in 5 locations
+- Theme imports from untrusted sources lack protection against command injection
+- No validation for dangerous patterns ($(), backticks, eval, etc.)
+- No enforcement of theme_id format, color hex validation, or wallpaper path security
 
-### Architecture Approach
+**Security implications:**
+- **HIGH risk:** `import_theme()` from arbitrary files (user downloads evil-theme.sh from internet)
+- **MEDIUM risk:** Custom theme creation with path traversal or malicious IDs
+- **LOW risk:** Builtin theme corruption detection
 
-Tab-based merging pattern using libadwaita TabView to combine two apps without complete rewrite. The architecture preserves clean separation of concerns while adding three new service layers for integration.
+**Implementation path:**
+Replace `parse_theme_file()` with `parse_and_validate()` in 5 call sites (lines 68, 89, 114, 122, 167 of theme_storage.rs). No signature changes needed - functions have identical APIs.
 
-**Major components:**
-1. **AppModel (new)** — Tab orchestration with message routing, coordinates existing components via Relm4 channels
-2. **theme_tab/** (existing) — Theme browser, editor, preview panel from theme-manager (moved, not rewritten)
-3. **wallpaper_tab/** (existing) — Monitor layout, wallpaper picker, profile manager from wallpaper-manager (moved, not rewritten)
-4. **binding_tab/** (new) — Theme-wallpaper binding editor, binding list
-5. **apps_tab/** (new) — Third-party app discovery browser, config editor
-6. **binding_manager service** (new) — Coordinates theme+wallpaper application atomically
-7. **css_generator service** (new) — Generates app-specific CSS from theme model
-8. **app_discovery service** (new) — Scans ~/.config/ for supported apps
+**Estimated effort:** 1-2 hours (5-line changes + testing with malicious themes)
 
-**Critical pattern:** CLI tool delegation. The Rust app calls `vulcan-theme set <id>` via Command::new() rather than reimplementing envsubst templating. This preserves the battle-tested bash implementation and maintains consistency.
+**Risk:** VERY LOW - validation is well-tested (18 tests), only rejects malformed input
+
+**Critical difference from CLI:** The bash `vulcan-theme` script uses `source "${color_file}"` which executes theme files as bash scripts (HIGH RISK). The Rust GUI only parses with regex and never executes (SAFE). Fixing the GUI is trivial; fixing the CLI requires rewrite.
+
+### BindingMode Auto-Detection (BINDINGMODE.md)
+
+**Status:** BindingMode enum has `CustomOverride` state but automatic transition never implemented
+
+**Current problem:**
+- User applies theme+wallpaper (→ ThemeBound)
+- User manually changes wallpaper
+- UI still shows "Theme Wallpaper" even though user customized
+- Profile saves incorrect binding mode
+
+**Architecture insight:**
+The `WallpaperViewOutput::WallpapersChanged` event already propagates to App level, but App doesn't check if this breaks an existing theme binding. The detection logic is a simple 15-line addition to the existing message handler.
+
+**Implementation path:**
+In `app.rs:294-307` (WallpapersChanged handler):
+1. Check if `current_binding_mode == ThemeBound`
+2. Load current theme and resolve its wallpaper path
+3. Compare new wallpapers with theme wallpaper
+4. If different → transition to `CustomOverride`
+5. Optionally show toast: "Wallpaper customized (keeping theme colors)"
+
+**Estimated effort:** 2-3 hours (implementation + edge case testing)
+
+**Risk:** LOW - uses existing helpers (`resolve_theme_wallpaper()`, `theme_storage::load_theme()`)
+
+**UX improvement:** Automatic state tracking improves profile accuracy and user trust in the UI
+
+### Missing Wallpapers (WALLPAPERS.md)
+
+**Status:** 7 of 10 preset themes missing wallpapers (70% incomplete)
+
+**Themes with wallpapers:** Catppuccin Latte/Mocha, Dracula (3/10)
+
+**Themes needing wallpapers:** Gruvbox Dark/Light, Nord, One Dark, Rosé Pine, Tokyo Night (6/10)
+
+**Themes needing creation:** Vulcan Forge (1/10 - requires AI generation or custom design)
+
+**Implementation path:**
+1. Download 6 wallpapers from documented GPL-compatible sources
+2. Verify color palette matches theme definitions
+3. Update LICENSE files with attribution
+4. Create/commission 1 wallpaper for Vulcan Forge theme
+5. Sync to archiso skeleton for ISO inclusion
+
+**Estimated effort:** 2-4 hours (download + quality verification + Vulcan Forge creation)
+
+**Risk:** VERY LOW - content acquisition task, no code changes
+
+**Quality standards:** 4K resolution (3840x2160), PNG format, under 5MB, matches theme color palette
 
 ### Critical Pitfalls
 
-Research identified 13 pitfalls across critical/moderate/minor severity. Top 5 that could derail the project:
+1. **Scope creep on AppState integration** — The state machine enables many future features (undo/redo, error dialogs, wallpaper preview workflow), but v2.1 should only implement core preview/cancel workflow. Defer UI enhancements to v2.2+.
 
-1. **State synchronization drift (CRITICAL)** — Three sources of truth (GUI, CLI, live system) can diverge. **Prevention:** Make live system state the single source of truth. Query actual state on startup (`swww query`, `vulcan-theme current`). Use explicit state transitions (Idle/Previewing/Applying) with stateless preview implementation (apply new + store original, cancel = restore original). Add startup reconciliation to detect and warn about inconsistencies.
+2. **Breaking existing workflows** — All three code items modify core application behavior. Regression testing is critical: verify theme application, profile saving/loading, wallpaper changes, and binding mode persistence.
 
-2. **Shell script parsing fragility (CRITICAL)** — Theme files are bash .sh scripts parsed with regex. Breaks on nested quotes, spaces in paths, multiline strings. **Prevention:** Validate before parse with `bash -n theme.sh`. Normalize on save with consistent safe format (single-quoted values, double-quoted paths). Whitelist simple `export VAR="value"` syntax only. Add parser tests with malformed themes.
+3. **Wallpaper licensing violations** — Avoid Unsplash (license restricts redistribution), stock photos without licensing, or copyrighted artwork. All sources must be GPL-compatible (MIT, GPL-3.0, CC0).
 
-3. **Wallpaper backend assumption mismatch (CRITICAL)** — Code assumes swww but documentation references hyprpaper, old configs exist. Four failure modes: old config loaded, backend detection fails, transition period with both configs, future backend change requires rewrite. **Prevention:** Runtime backend detection (check which daemon is running). Backend abstraction trait (WallpaperBackend with apply/query/preload methods). Explicit backend selection in UI with detected backend shown in status bar.
+4. **CLI/GUI divergence** — The bash `vulcan-theme` script sources theme files (executes as bash), while the GUI parses safely. Fixing validation in the GUI creates a security discrepancy. Document this gap for v2.2 CLI rewrite.
 
-4. **Component lifecycle memory leaks (CRITICAL)** — Relm4 Controllers for child components stored in parent without cleanup. GTK4 cairo renderer has known ~70kb leak per window. Memory grows with each preview. **Prevention:** Explicit cleanup with `Controller.take()` and drop when dialog closes. Detach read-only child components. Update colors in existing widgets rather than recreating preview panel. Resource pooling for thumbnails with LRU cache.
-
-5. **Theme-wallpaper binding coherence (CRITICAL)** — Theme files have optional THEME_WALLPAPER field. Wallpaper profiles have per-monitor paths. Conflicts arise when both exist, single vs multi-monitor mismatch, profile switching, missing wallpaper files, circular dependencies. **Prevention:** Explicit binding modes (ThemeControlled, ProfileControlled, ThemeDefaulted, UserOverride). Per-monitor theme wallpaper support in theme format. Binding state saved in profile. Clear UI indicator (lock icon when wallpaper "locked to theme"). Smart application order based on binding mode.
+5. **Multi-monitor edge cases** — BindingMode detection must handle partial overrides (user changes one monitor but not others). Any customization breaks theme binding.
 
 ## Implications for Roadmap
 
-Based on research, the project naturally divides into 4 phases following dependency order and risk mitigation priorities.
+Based on research, recommended phase structure for v2.1:
 
-### Phase 1: Foundation Architecture (Week 1)
-**Rationale:** Must establish single source of truth pattern and backend abstraction before building unified UI. All critical pitfalls (#1, #2, #3) must be addressed in foundation to avoid rewrites later.
+### Phase 1: Security Hardening (Validation)
+**Rationale:** Security fixes should always come first. This is the lowest-effort, highest-impact item.
 
-**Delivers:**
-- New vulcan-appearance-manager crate with merged models and services
-- State management architecture with explicit transitions (Idle/Previewing/Applying)
-- Wallpaper backend abstraction trait (supports swww + hyprpaper)
-- Hardened theme parser with validation
-- Shared CSS module extracted from duplicated code
+**Delivers:** Theme import security via `parse_and_validate()` integration
 
-**Addresses features:**
-- Infrastructure for all future features (no user-facing features yet)
+**Addresses:**
+- Command injection protection for untrusted theme imports
+- Malformed theme rejection with specific error messages
+- Input sanitization for theme_id, colors, wallpaper paths
 
-**Avoids pitfalls:**
-- Pitfall #1: State synchronization drift (establishes live system as truth)
-- Pitfall #2: Shell script parsing fragility (hardens parser)
-- Pitfall #3: Wallpaper backend mismatch (abstracts backends)
-- Pitfall #13: Hardcoded paths (audit and fix /home/evan references)
+**Implementation:**
+- Replace 5 function calls in `theme_storage.rs`
+- Test with malicious themes (dangerous patterns, invalid IDs, bad colors)
+- Document validation behavior in error messages
 
-**Research needs:** NONE (standard patterns)
+**Avoids:** Command injection (CRITICAL), path traversal (MEDIUM), theme corruption (LOW)
 
-### Phase 2: Component Integration & Tab Merging (Week 1-2)
-**Rationale:** With foundation solid, merge existing components into tabbed interface. Memory profiling must happen during this phase to catch leaks early. CSS conflicts must be tested with extreme themes.
+**Estimated effort:** 1-2 hours
 
-**Delivers:**
-- app.rs with libadwaita TabView skeleton
-- theme_tab/ with moved theme-manager components
-- wallpaper_tab/ with moved wallpaper-manager components
-- Existing functionality working in tabs (feature parity with separate apps)
-- Memory leak prevention patterns implemented
+**Research flags:** SKIP - implementation path is trivial, well-tested function
 
-**Addresses features:**
-- Theme browser (table stakes, existing)
-- Wallpaper picker (table stakes, existing)
-- Visual theme preview (table stakes, existing)
-- Per-monitor wallpaper (table stakes, existing)
-
-**Avoids pitfalls:**
-- Pitfall #4: Component lifecycle memory leaks (profile memory, implement cleanup)
-- Pitfall #6: GTK CSS cascading conflicts (namespace app CSS, test with extreme themes)
-- Pitfall #7: Config file format fragmentation (format abstraction layer)
-- Pitfall #12: No validation on theme import (validate before parse, sandbox)
-
-**Research needs:** NONE (Relm4 tab patterns well-documented)
-
-### Phase 3: Theme-Wallpaper Binding System (Week 2)
-**Rationale:** Core differentiation feature. Requires Phase 1's state management foundation and Phase 2's merged UI. This phase addresses the most complex architectural challenge (binding coherence, pitfall #5).
+### Phase 2: UX Polish (BindingMode + Wallpapers)
+**Rationale:** Group user-visible improvements together. Both items enhance theme/wallpaper experience.
 
 **Delivers:**
-- models/binding.rs with ThemeWallpaperBinding struct
-- services/binding_manager.rs with binding mode logic
-- binding_tab/ UI for creating/editing bindings
-- Modified theme_applier.rs with binding hooks
-- Unified profile format (theme_id + wallpaper_profile + binding_mode)
+- Automatic CustomOverride detection on manual wallpaper change
+- Complete wallpaper library for all 10 preset themes
 
-**Addresses features:**
-- Theme-suggested wallpapers (differentiator, LOW complexity)
-- Unified theme+wallpaper profiles (differentiator, LOW complexity)
-- Apply theme system-wide atomically with wallpaper (table stakes enhancement)
+**Addresses:**
+- UI accuracy (binding mode reflects reality)
+- Content completeness (all themes visually complete)
+- Profile accuracy (saved binding mode matches actual state)
 
-**Avoids pitfalls:**
-- Pitfall #5: Theme-wallpaper binding coherence (explicit binding modes)
-- Pitfall #8: Live reload race conditions (atomic writes, synchronous reload)
+**Implementation:**
+- Add detection logic to `WallpapersChanged` handler (15-20 lines)
+- Download 6 wallpapers from documented sources
+- Create/commission Vulcan Forge wallpaper
+- Update LICENSE files with attribution
 
-**Research needs:** NONE (data model and state patterns established in Phase 1)
+**Avoids:** Confusing UX where UI state doesn't match reality, incomplete theme library
 
-### Phase 4: Third-Party App Discovery & Polish (Week 3)
-**Rationale:** Adds competitive differentiator (app discovery) after core functionality stable. Polish items (thumbnail performance, undo) can be prioritized based on testing feedback.
+**Estimated effort:** 4-6 hours (2-3 code + 2-4 wallpapers)
+
+**Research flags:** SKIP - BindingMode integration point identified, wallpaper sources documented
+
+### Phase 3: Architecture Cleanup (AppState)
+**Rationale:** Most complex item; implement after simpler fixes prove workflow. Enables future features.
 
 **Delivers:**
-- services/app_discovery.rs with extensible discovery algorithm
-- services/css_generator.rs (start with VS Code, add incrementally)
-- apps_tab/ UI showing discovered apps and theme status
-- Thumbnail cache with async loading
-- Undo/history stack (separate for themes and wallpapers)
+- AppState integration in App (coordinator pattern)
+- Preview → Cancel restores theme AND wallpapers
+- State-based button sensitivity (prevent preview during preview)
+- Foundation for future error dialogs, undo/redo
 
-**Addresses features:**
-- Third-party app discovery (differentiator, MEDIUM complexity)
-- Wallpaper-suggested themes (differentiator, MEDIUM complexity — color extraction)
+**Addresses:**
+- Snapshot restoration (currently broken for wallpapers)
+- State machine validation (prevent invalid transitions)
+- Error state tracking (currently only toasts)
 
-**Avoids pitfalls:**
-- Pitfall #9: Thumbnail performance (implement cache, async generation)
-- Pitfall #10: Undo complexity (separate stacks, diff-based history)
-- Pitfall #11: File picker default directory (set to known locations)
+**Implementation:**
+1. Add `app_state: AppState` field to App
+2. Wire state transitions (RequestPreview, ApplyChanges, CancelPreview messages)
+3. Capture snapshot before preview
+4. Restore snapshot on cancel (theme + wallpapers + binding_mode)
+5. Add state-based button sensitivity via #[watch] macros
 
-**Research needs:** MEDIUM for wallpaper color extraction
-- Need research on color extraction algorithms (palette generation)
-- Need research on color similarity/matching algorithms for theme ranking
-- Investigate existing libraries (image-rs palette extraction, CIEDE2000 color distance)
-- Could use `/gsd:research-phase` if color matching proves complex
+**Deferred to v2.2+:**
+- Error state UI (modal dialog instead of toast)
+- Loading spinner during Applying state
+- Wallpaper preview workflow (currently wallpapers apply immediately)
+- Undo/redo stack (multiple snapshots)
+
+**Avoids:** Feature creep - implement minimal viable state tracking, not full workflow enhancements
+
+**Estimated effort:** 4-6 hours (foundation + core workflow only)
+
+**Research flags:** STANDARD - Relm4 message-passing pattern is well-documented, AppState API is clear
 
 ### Phase Ordering Rationale
 
-1. **Foundation first** — Addresses all critical architectural risks (state drift, backend abstraction, parser hardening) before building UI. Prevents rewrites.
+**Security first:** Validation is the most critical fix and has zero dependencies on other items.
 
-2. **Component merge second** — Once foundation solid, moving existing components is low-risk. Memory profiling during this phase catches leaks before adding complex features.
+**UX together:** BindingMode and Wallpapers both enhance the theme/wallpaper experience. Wallpaper downloads can happen in parallel with BindingMode coding.
 
-3. **Binding system third** — Core differentiation feature depends on Phase 1's state management and Phase 2's merged UI. This is the complex integration challenge that defines product value.
+**Architecture last:** AppState is the most complex item and benefits from proving the workflow with simpler fixes first. It's also the only item that could expand beyond v2.1 scope if not carefully bounded.
 
-4. **Discovery and polish last** — Competitive features that can be prioritized based on user testing. Color extraction for wallpaper-suggested themes is only moderately complex research item.
+**Parallelization opportunity:** Wallpaper acquisition (Phase 2) can start immediately and run in parallel with validation coding (Phase 1).
 
-**Dependency chain:**
-```
-Phase 1 (Foundation)
-  ↓
-Phase 2 (Component Integration) — depends on state management, backend abstraction
-  ↓
-Phase 3 (Binding System) — depends on merged UI, state management
-  ↓
-Phase 4 (Discovery & Polish) — depends on stable core functionality
-```
+**Testing strategy:** Each phase produces working, testable output. No phase depends on another, so they can be tested independently.
 
 ### Research Flags
 
-Phases likely needing deeper research during planning:
-- **Phase 4 (wallpaper-suggested themes):** Color extraction and matching algorithms moderately complex. If color similarity proves difficult, use `/gsd:research-phase` for palette generation and CIEDE2000 color distance research.
+**All phases:** SKIP deeper research - standard patterns with clear implementation paths
 
-Phases with standard patterns (skip research-phase):
-- **Phase 1 (Foundation):** State management, backend abstraction, parser hardening are standard Rust patterns
-- **Phase 2 (Component Integration):** Relm4 tab merging well-documented, memory profiling is standard testing
-- **Phase 3 (Binding System):** Data model and coordination patterns established in Phase 1 architecture
+**Why skip research:**
+- AppState: Relm4 message-passing is well-documented, module already exists with tests
+- Validation: Function exists, integration is trivial (5 function renames)
+- BindingMode: Integration point identified, helper functions exist
+- Wallpapers: Sources documented, licensing verified, no code changes
+
+**Future research needed (v2.2+):**
+- CLI validation rewrite (replace `source` with safe parsing)
+- Error state UI patterns in GTK4/Relm4
+- Wallpaper preview workflow architecture
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | All versions verified from docs.rs, existing stack proven in production |
-| Features | MEDIUM | Table stakes confirmed via competitive analysis, differentiators based on existing codebase analysis and domain research |
-| Architecture | HIGH | Existing codebase provides working components, tab-based merging is proven Relm4 pattern |
-| Pitfalls | HIGH | State drift, parser fragility, backend mismatch directly observed in codebase; GTK4 memory leaks confirmed by upstream bug reports |
+| AppState | HIGH | Verified by reading src/state.rs (320 lines, 17 tests pass), component integration points identified |
+| Validation | HIGH | Verified function exists in theme_parser.rs:235-250, call sites identified in theme_storage.rs |
+| BindingMode | HIGH | Event propagation verified in source, integration point is WallpapersChanged handler |
+| Wallpapers | HIGH | All sources documented with GPL-compatible licenses, quality standards defined |
+| Effort estimates | HIGH | All items are bounded tasks with clear implementation paths |
+| Risk assessment | HIGH | Based on code inspection and understanding of Relm4 patterns |
 
 **Overall confidence:** HIGH
 
+All research was conducted via direct source code inspection. No speculative implementation - all required functions, structs, and integration points were verified to exist.
+
 ### Gaps to Address
 
-Areas where research was inconclusive or needs validation during implementation:
+**During implementation:**
 
-- **Color extraction algorithm selection:** Phase 4 feature (wallpaper-suggested themes) requires color palette extraction from images and color similarity matching. Research identified pywal/matugen as prior art but didn't validate specific algorithms. Consider using `/gsd:research-phase` if implementation proves complex. Alternatively, defer to v2 if color matching is harder than expected.
+1. **AppState message flow testing** — Relm4 message patterns are understood, but haven't tested RequestPreview → StateChanged → ExecutePreview flow in this codebase. Add debug logging for state transitions during development.
 
-- **Third-party app config format diversity:** App discovery research covered standard apps (VS Code, Firefox, Thunderbird) but actual config paths and CSS injection methods need per-app validation. Start with VS Code (JSON settings) as known-good case, expand incrementally during Phase 4.
+2. **Snapshot restoration completeness** — Verify snapshot restores ALL state (theme + wallpapers + binding_mode). Current research assumes binding_mode should be restored, but this needs validation.
 
-- **Actual memory usage thresholds:** Pitfall #4 (memory leaks) prevention strategies are general best practices. Actual memory growth rates and acceptable thresholds need profiling during Phase 2 implementation. GTK4 cairo leak is ~70kb per window (upstream confirmed) but compounding effect with Relm4 controllers needs measurement.
+3. **Multi-monitor wallpaper comparison** — BindingMode detection compares wallpapers per-monitor. Confirm behavior when theme has one wallpaper but user has multiple monitors.
 
-- **Thumbnail generation performance:** Pitfall #9 mitigation suggests async generation and caching, but actual batch sizes and cache eviction policies need tuning based on real wallpaper directories (100 images vs 1000 images vs 10000 images). Defer optimization to Phase 4 based on user feedback.
+4. **Vulcan Forge wallpaper aesthetics** — AI-generated wallpapers may require iteration to match theme palette. Budget extra time for quality verification.
 
-- **Binding mode UX design:** Phase 3's binding coherence solution (ThemeControlled/ProfileControlled/ThemeDefaulted/UserOverride) is architecturally sound but UX presentation needs design iteration. Mock up UI during Phase 3 planning to validate users can understand the mental model.
+**No gaps for:**
+- Validation integration (trivial function rename)
+- BindingMode detection logic (helper functions verified)
+- Wallpaper licensing (all sources pre-verified)
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- [GTK4 Rust Bindings Documentation](https://gtk-rs.org/gtk4-rs/stable/latest/docs/gtk4/)
-- [Relm4 Book](https://relm4.org/book/stable/)
-- [Cargo Configuration Reference](https://doc.rust-lang.org/cargo/reference/config.html)
-- [Relm4 GitHub Repository](https://github.com/Relm4/Relm4)
-- [swww GitHub - Wayland Wallpaper Solution](https://github.com/LGFae/swww)
-- [Hyprland Wiki - Wallpapers](https://wiki.hypr.land/Useful-Utilities/Wallpapers/)
-- VulcanOS codebase (vulcan-theme-manager, vulcan-wallpaper-manager, dotfiles/themes)
+
+**Source code (verified by direct inspection):**
+- `vulcan-appearance-manager/src/state.rs` (320 lines, AppState implementation + 17 tests)
+- `vulcan-appearance-manager/src/app.rs` (App struct, message handlers, state tracking)
+- `vulcan-appearance-manager/src/services/theme_parser.rs` (parse_and_validate function + tests)
+- `vulcan-appearance-manager/src/services/theme_storage.rs` (validation bypass locations)
+- `vulcan-appearance-manager/src/components/theme_view.rs` (ThemeViewModel state and operations)
+- `vulcan-appearance-manager/src/components/wallpaper_view.rs` (WallpaperView events and output)
+- `vulcan-appearance-manager/src/models/binding.rs` (BindingMode enum + resolve_theme_wallpaper helper)
+- `dotfiles/scripts/.local/bin/vulcan-theme` (bash CLI implementation, source command usage)
+
+**Planning documents (context):**
+- `.planning/phases/06-foundation-architecture/06-VERIFICATION.md` (AppState + validation documented as expected tech debt)
+- `.planning/milestones/v2.0-MILESTONE-AUDIT.md` (all four items identified as known tech debt)
+- `.planning/STATE.md` (current state tracking)
+
+**Wallpaper sources (GPL-compatible):**
+- AngelJumbo/gruvbox-wallpapers (MIT) - Gruvbox Dark/Light
+- linuxdotexe/nordic-wallpapers (GPL-3.0) - Nord
+- joshdick/onedark.vim (MIT) - One Dark
+- rose-pine/wallpapers (MIT) - Rosé Pine
+- enkia/tokyo-night-vscode-theme (MIT) - Tokyo Night
 
 ### Secondary (MEDIUM confidence)
-- [GTK4 memory leak in cairo renderer - Issue #6404](https://gitlab.gnome.org/GNOME/gtk/-/issues/6404)
-- [Suspected memory leak in GTK4 NGL renderer - Issue #7045](https://gitlab.gnome.org/GNOME/gtk/-/issues/7045)
-- [nwg-look GitHub Repository](https://github.com/nwg-piotr/nwg-look) — Wayland GTK theme manager patterns
-- [KDE System Settings - Appearance Documentation](https://userbase.kde.org/System_Settings/Appearance)
-- [JSON vs YAML vs TOML Comparison](https://dev.to/jsontoall_tools/json-vs-yaml-vs-toml-which-configuration-format-should-you-use-in-2026-1hlb)
-- [ArchWiki: Desktop Entries](https://wiki.archlinux.org/title/Desktop_entries)
 
-### Tertiary (LOW confidence)
-- [Material You Color Generation - matugen](https://github.com/InioX/matugen) — Reference for color extraction anti-pattern
-- [GTK CSS Theming - ArchWiki](https://wiki.archlinux.org/title/GTK) — CSS cascading issues
-- Community discussions on wallpaper-theme coordination strategies
-- Interior design color coordination principles (applied to digital themes)
+**Relm4 patterns:**
+- Relm4 documentation (message-passing architecture, #[watch] macros, component communication)
+- Centralized state via App struct is idiomatic pattern (verified in Relm4 examples)
+
+**Security best practices:**
+- Input sanitization for shell-adjacent formats (theme files use bash export syntax)
+- Defense in depth (validate even trusted sources)
 
 ---
-*Research completed: 2026-01-24*
-*Ready for roadmap: yes*
+
+**Research completed:** 2026-01-30
+
+**Ready for roadmap:** YES
+
+**Total estimated effort:** 8-12 hours across 3 phases
+
+**Risk level:** LOW - all items are maintenance fixes with clear implementation paths
+
+**Recommended for:** v2.1 Maintenance Milestone (tech debt cleanup between major features)
