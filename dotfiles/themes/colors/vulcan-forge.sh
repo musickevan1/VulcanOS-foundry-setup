@@ -1,5 +1,5 @@
 #!/bin/bash
-# VulcanOS - Vulcan Forge Theme
+# Vulcan Forge Theme - VulcanOS Original
 # A warm, forge-inspired color palette evoking molten metal and craftsman aesthetics
 #
 # Primary: Forge Orange (#f97316) - molten metal glow
