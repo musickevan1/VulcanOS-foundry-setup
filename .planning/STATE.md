@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-24)
 ## Current Position
 
 Phase: 10 of 10 (Preset Themes & Desktop Integration)
-Plan: 3 of 8 in current phase
+Plan: 4 of 8 in current phase
 Status: In progress
-Last activity: 2026-01-30 — Completed 10-03-PLAN.md (Wallpaper Library Structure)
+Last activity: 2026-01-30 — Completed 10-04-PLAN.md (Third-Party App Discovery)
 
-Progress: [██████████████████████████████░] 94% (31/33 total plans complete)
+Progress: [██████████████████████████████░] 97% (32/33 total plans complete)
 
 ## Performance Metrics
 
@@ -33,10 +33,10 @@ Progress: [███████████████████████
 | 7. Component Integration | 5 | ~15min | ~3 min |
 | 8. Theme-Wallpaper Binding | 6 | ~20min | ~3.3 min |
 | 9. Theming Infrastructure | 4 | ~8min | ~2 min |
-| 10. Preset Themes & Desktop Integration | 3/8 | ~10min | ~3.3 min |
+| 10. Preset Themes & Desktop Integration | 4/8 | ~12min | ~3 min |
 
 **Recent Trend:**
-- Last completed: Phase 10 Plan 3 (10-03)
+- Last completed: Phase 10 Plan 4 (10-04)
 - Trend: Fast execution with minimal deviations
 
 ## Accumulated Context
@@ -171,6 +171,14 @@ Progress: [███████████████████████
 - GPL-compatible licensing required for all wallpapers
 - 3 high-resolution wallpapers downloaded (4K and 8K)
 
+**From Phase 10 Plan 4 (10-04):**
+- which crate for binary detection via PATH lookup
+- open crate for non-blocking URL opening in default browser
+- 6 app detectors: Neovim, Kitty, Alacritty, btop, VS Code, Firefox
+- Detection checks installation (binary presence) and configuration (theme keywords in config files)
+- Discovery-only approach: provide marketplace URLs, don't implement theme installation
+- XDG config path resolution with HOME fallback for cross-platform compatibility
+
 ### Previous Milestone Summary
 
 **v1.0 VulcanOS Foundation** (Phase 5 shipped 2026-01-24):
@@ -212,7 +220,8 @@ Progress: [███████████████████████
 - Plan 1: Polish Preset Themes (verified official colors, 40+ exports each) ✓
 - Plan 2: Additional theme variants (pending)
 - Plan 3: Wallpaper Library Structure (10 theme directories, 3 wallpapers, LICENSE docs) ✓
-- Plan 4-8: Desktop integration (pending)
+- Plan 4: Third-Party App Discovery (6 app detectors, marketplace URLs, installation/config status) ✓
+- Plan 5-8: Desktop integration (pending)
 
 ### Pending Todos
 
@@ -225,7 +234,7 @@ None. Phase 9 complete.
 ## Session Continuity
 
 Last session: 2026-01-30 (Phase 10 in progress)
-Stopped at: Completed 10-03-PLAN.md (Wallpaper Library Structure)
+Stopped at: Completed 10-04-PLAN.md (Third-Party App Discovery)
 Resume file: None
 
-**Next action:** Execute remaining Phase 10 plans (10-04 through 10-08)
+**Next action:** Execute remaining Phase 10 plans (10-05 through 10-08)
