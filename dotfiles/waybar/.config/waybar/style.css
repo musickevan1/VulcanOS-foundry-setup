@@ -1,7 +1,7 @@
-/* Waybar Style - Gruvbox Dark Theme */
+/* Waybar Style - Vulcan Forge Theme */
 
 * {
-    font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", monospace;
+    font-family: "JetBrainsMono NF Vulcan", "JetBrainsMono Nerd Font", "JetBrains Mono", monospace;
     font-size: 13px;
     font-weight: 500;
     min-height: 0;
@@ -10,84 +10,95 @@
 }
 
 window#waybar {
-    background-color: #282828;
-    color: #ebdbb2;
-    transition-property: background-color;
-    transition-duration: 0.5s;
+    background-color: #1c1917;
+    color: #fafaf9;
 }
 
 window#waybar.hidden {
     opacity: 0.2;
 }
 
+/* Vulcan Menu Button */
+#custom-vulcan-menu {
+    background-color: #292524;
+    color: #f97316;
+    padding: 0 10px 0 8px;
+    margin: 4px 2px 4px 4px;
+    border-radius: 4px;
+    border: 1px solid #44403c;
+    font-size: 14px;
+    font-family: "JetBrainsMono NF Vulcan";
+}
+
+#custom-vulcan-menu:hover {
+    background-color: #f97316;
+    color: #1c1917;
+    border-color: #f97316;
+}
+
+/* Separator */
+#custom-separator {
+    color: #44403c;
+    padding: 0 6px;
+}
+
+/* Workspaces - no boxes, just icons */
 #workspaces {
     background-color: transparent;
-    margin: 0 4px;
+    margin: 0;
 }
 
 #workspaces button {
-    background-color: #3c3836;
-    color: #928374;
-    padding: 0 8px;
-    margin: 4px 2px;
-    border-radius: 4px;
-    border: 1px solid #504945;
-    transition: all 0.3s ease;
+    background-color: transparent;
+    color: #78716c;
+    padding: 0 6px;
+    margin: 0;
+    border: none;
 }
 
 #workspaces button:hover {
-    background-color: #458588;
-    color: #282828;
-    border-color: #458588;
+    color: #fafaf9;
 }
 
 #workspaces button.active {
-    background-color: #458588;
-    color: #282828;
-    border-color: #458588;
-    font-weight: bold;
+    color: #f97316;
 }
 
 #workspaces button.urgent {
-    background-color: #cc241d;
-    color: #282828;
-    border-color: #cc241d;
+    color: #ef4444;
 }
 
-#custom-separator {
-    color: #504945;
-    padding: 0 4px;
-}
-
+/* Window title */
 #window {
-    color: #d5c4a1;
+    color: #a8a29e;
     padding: 0 10px;
     margin: 4px 0;
 }
 
-/* Clock - Primary Accent */
+/* Clock */
 #clock {
-    background-color: #3c3836;
-    color: #458588;
+    background-color: #292524;
+    color: #f97316;
     padding: 0 12px;
     margin: 4px 0;
     border-radius: 4px;
-    border: 1px solid #504945;
+    border: 1px solid #44403c;
     font-weight: bold;
 }
 
 #clock:hover {
-    background-color: #458588;
-    color: #282828;
-    border-color: #458588;
+    background-color: #f97316;
+    color: #1c1917;
+    border-color: #f97316;
 }
 
+/* Tray */
 #tray {
-    background-color: #3c3836;
+    background-color: #292524;
     padding: 0 8px;
     margin: 4px 2px;
     border-radius: 4px;
-    border: 1px solid #504945;
+    border: 1px solid #44403c;
 }
 
 #tray > .passive {
@@ -95,131 +106,62 @@ window#waybar.hidden {
 }
 
 #tray > .needs-attention {
-    -gtk-icon-effect: highlight;
-    background-color: #cc241d;
+    background-color: #ef4444;
 }
 
-/* Alternating modules: ACCENT (orange) and ACCENT_ALT (yellow) */
-
-#bluetooth {
-    background-color: #3c3836;
-    color: #458588;
+/* All right-side modules - consistent accent color */
+#custom-notification,
+#custom-hyprwhspr,
+#bluetooth,
+#network,
+#pulseaudio,
+#cpu,
+#memory,
+#battery {
+    background-color: #292524;
+    color: #f97316;
     padding: 0 10px;
     margin: 4px 2px;
     border-radius: 4px;
-    border: 1px solid #504945;
+    border: 1px solid #44403c;
 }
 
-#bluetooth:hover {
-    background-color: #458588;
-    color: #282828;
-    border-color: #458588;
+#custom-notification:hover,
+#custom-hyprwhspr:hover,
+#bluetooth:hover,
+#network:hover,
+#pulseaudio:hover,
+#cpu:hover,
+#memory:hover,
+#battery:hover {
+    background-color: #f97316;
+    color: #1c1917;
+    border-color: #f97316;
 }
 
-#bluetooth.connected {
-    color: #98971a;
+/* State-based colors */
+#bluetooth.connected,
+#battery.charging,
+#battery.plugged {
+    color: #22c55e;
 }
 
-#bluetooth.disabled {
-    color: #928374;
-}
-
-#network {
-    background-color: #3c3836;
-    color: #b16286;
-    padding: 0 10px;
-    margin: 4px 2px;
-    border-radius: 4px;
-    border: 1px solid #504945;
-}
-
-#network:hover {
-    background-color: #b16286;
-    color: #282828;
-    border-color: #b16286;
+#bluetooth.disabled,
+#pulseaudio.muted {
+    color: #78716c;
 }
 
 #network.disconnected {
-    color: #cc241d;
+    color: #ef4444;
 }
-
-#network.linked {
-    color: #458588;
-}
-
-#pulseaudio {
-    background-color: #3c3836;
-    color: #458588;
-    padding: 0 10px;
-    margin: 4px 2px;
-    border-radius: 4px;
-    border: 1px solid #504945;
-}
-
-#pulseaudio:hover {
-    background-color: #458588;
-    color: #282828;
-    border-color: #458588;
-}
-
-#pulseaudio.muted {
-    color: #928374;
-}
-
-#cpu {
-    background-color: #3c3836;
-    color: #b16286;
-    padding: 0 10px;
-    margin: 4px 2px;
-    border-radius: 4px;
-    border: 1px solid #504945;
-}
-
-#cpu:hover {
-    background-color: #b16286;
-    color: #282828;
-    border-color: #b16286;
-}
-
-#memory {
-    background-color: #3c3836;
-    color: #458588;
-    padding: 0 10px;
-    margin: 4px 2px;
-    border-radius: 4px;
-    border: 1px solid #504945;
-}
-
-#memory:hover {
-    background-color: #458588;
-    color: #282828;
-    border-color: #458588;
-}
-
-#battery {
-    background-color: #3c3836;
-    color: #b16286;
-    padding: 0 10px;
-    margin: 4px 2px 4px 2px;
-    border-radius: 4px;
-    border: 1px solid #504945;
-}
-
-#battery:hover {
-    background-color: #b16286;
-    color: #282828;
-    border-color: #b16286;
-}
-
-/* Battery stays yellow regardless of charging state */
 
 #battery.warning:not(.charging) {
-    color: #458588;
+    color: #fbbf24;
 }
 
 #battery.critical:not(.charging) {
-    background-color: #cc241d;
-    color: #282828;
+    background-color: #ef4444;
+    color: #1c1917;
     animation-name: blink;
     animation-duration: 0.5s;
     animation-timing-function: linear;
@@ -229,18 +171,19 @@ window#waybar.hidden {
 
 @keyframes blink {
     to {
-        background-color: #282828;
-        color: #cc241d;
+        background-color: #1c1917;
+        color: #ef4444;
     }
 }
 
+/* Tooltips */
 tooltip {
-    background-color: #282828;
-    border: 1px solid #504945;
+    background-color: #1c1917;
+    border: 1px solid #44403c;
     border-radius: 4px;
 }
 
 tooltip label {
-    color: #ebdbb2;
+    color: #fafaf9;
     padding: 4px;
 }

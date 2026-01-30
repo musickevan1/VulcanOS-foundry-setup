@@ -12,15 +12,13 @@
 window#waybar {
     background-color: ${BG_PRIMARY};
     color: ${FG_PRIMARY};
-    transition-property: background-color;
-    transition-duration: 0.5s;
 }
 
 window#waybar.hidden {
     opacity: 0.2;
 }
 
-/* Vulcan Menu Button - uses U+E900 from patched Vulcan font */
+/* Vulcan Menu Button */
 #custom-vulcan-menu {
     background-color: ${BG_SECONDARY};
     color: ${ACCENT};
@@ -32,63 +30,52 @@ window#waybar.hidden {
     font-family: "JetBrainsMono NF Vulcan";
 }
 
-#custom-vulcan-menu label {
-    font-family: "JetBrainsMono NF Vulcan";
-    padding-bottom: 2px;
-}
-
 #custom-vulcan-menu:hover {
     background-color: ${ACCENT};
     color: ${BG_PRIMARY};
     border-color: ${ACCENT};
 }
 
+/* Separator */
+#custom-separator {
+    color: ${BG_TERTIARY};
+    padding: 0 6px;
+}
+
+/* Workspaces - no boxes, just icons */
 #workspaces {
     background-color: transparent;
-    margin: 0 4px;
+    margin: 0;
 }
 
 #workspaces button {
-    background-color: ${BG_SECONDARY};
+    background-color: transparent;
     color: ${FG_MUTED};
-    padding: 0 8px;
-    margin: 4px 2px;
-    border-radius: 4px;
-    border: 1px solid ${BG_TERTIARY};
-    transition: all 0.3s ease;
+    padding: 0 6px;
+    margin: 0;
+    border: none;
 }
 
 #workspaces button:hover {
-    background-color: ${ACCENT};
-    color: ${BG_PRIMARY};
-    border-color: ${ACCENT};
+    color: ${FG_PRIMARY};
 }
 
 #workspaces button.active {
-    background-color: ${ACCENT};
-    color: ${BG_PRIMARY};
-    border-color: ${ACCENT};
-    font-weight: bold;
+    color: ${ACCENT};
 }
 
 #workspaces button.urgent {
-    background-color: ${RED};
-    color: ${BG_PRIMARY};
-    border-color: ${RED};
+    color: ${RED};
 }
 
-#custom-separator {
-    color: ${BG_TERTIARY};
-    padding: 0 4px;
-}
-
+/* Window title */
 #window {
     color: ${FG_SECONDARY};
     padding: 0 10px;
     margin: 4px 0;
 }
 
-/* Clock - Primary Accent */
+/* Clock */
 #clock {
     background-color: ${BG_SECONDARY};
     color: ${ACCENT};
@@ -105,6 +92,7 @@ window#waybar.hidden {
     border-color: ${ACCENT};
 }
 
+/* Tray */
 #tray {
     background-color: ${BG_SECONDARY};
     padding: 0 8px;
@@ -118,13 +106,18 @@ window#waybar.hidden {
 }
 
 #tray > .needs-attention {
-    -gtk-icon-effect: highlight;
     background-color: ${RED};
 }
 
-/* Alternating modules: ACCENT (orange) and ACCENT_ALT (yellow) */
-
-#bluetooth {
+/* All right-side modules - consistent accent color */
+#custom-notification,
+#custom-hyprwhspr,
+#bluetooth,
+#network,
+#pulseaudio,
+#cpu,
+#memory,
+#battery {
     background-color: ${BG_SECONDARY};
     color: ${ACCENT};
     padding: 0 10px;
@@ -133,114 +126,37 @@ window#waybar.hidden {
     border: 1px solid ${BG_TERTIARY};
 }
 
-#bluetooth:hover {
+#custom-notification:hover,
+#custom-hyprwhspr:hover,
+#bluetooth:hover,
+#network:hover,
+#pulseaudio:hover,
+#cpu:hover,
+#memory:hover,
+#battery:hover {
     background-color: ${ACCENT};
     color: ${BG_PRIMARY};
     border-color: ${ACCENT};
 }
 
-#bluetooth.connected {
+/* State-based colors */
+#bluetooth.connected,
+#battery.charging,
+#battery.plugged {
     color: ${GREEN};
 }
 
-#bluetooth.disabled {
+#bluetooth.disabled,
+#pulseaudio.muted {
     color: ${FG_MUTED};
-}
-
-#network {
-    background-color: ${BG_SECONDARY};
-    color: ${ACCENT_ALT};
-    padding: 0 10px;
-    margin: 4px 2px;
-    border-radius: 4px;
-    border: 1px solid ${BG_TERTIARY};
-}
-
-#network:hover {
-    background-color: ${ACCENT_ALT};
-    color: ${BG_PRIMARY};
-    border-color: ${ACCENT_ALT};
 }
 
 #network.disconnected {
     color: ${RED};
 }
 
-#network.linked {
-    color: ${ACCENT};
-}
-
-#pulseaudio {
-    background-color: ${BG_SECONDARY};
-    color: ${ACCENT};
-    padding: 0 10px;
-    margin: 4px 2px;
-    border-radius: 4px;
-    border: 1px solid ${BG_TERTIARY};
-}
-
-#pulseaudio:hover {
-    background-color: ${ACCENT};
-    color: ${BG_PRIMARY};
-    border-color: ${ACCENT};
-}
-
-#pulseaudio.muted {
-    color: ${FG_MUTED};
-}
-
-#cpu {
-    background-color: ${BG_SECONDARY};
-    color: ${ACCENT_ALT};
-    padding: 0 10px;
-    margin: 4px 2px;
-    border-radius: 4px;
-    border: 1px solid ${BG_TERTIARY};
-}
-
-#cpu:hover {
-    background-color: ${ACCENT_ALT};
-    color: ${BG_PRIMARY};
-    border-color: ${ACCENT_ALT};
-}
-
-#memory {
-    background-color: ${BG_SECONDARY};
-    color: ${ACCENT};
-    padding: 0 10px;
-    margin: 4px 2px;
-    border-radius: 4px;
-    border: 1px solid ${BG_TERTIARY};
-}
-
-#memory:hover {
-    background-color: ${ACCENT};
-    color: ${BG_PRIMARY};
-    border-color: ${ACCENT};
-}
-
-#battery {
-    background-color: ${BG_SECONDARY};
-    color: ${ACCENT_ALT};
-    padding: 0 10px;
-    margin: 4px 2px 4px 2px;
-    border-radius: 4px;
-    border: 1px solid ${BG_TERTIARY};
-}
-
-#battery:hover {
-    background-color: ${ACCENT_ALT};
-    color: ${BG_PRIMARY};
-    border-color: ${ACCENT_ALT};
-}
-
-#battery.charging,
-#battery.plugged {
-    color: ${GREEN};
-}
-
 #battery.warning:not(.charging) {
-    color: ${ACCENT};
+    color: ${YELLOW};
 }
 
 #battery.critical:not(.charging) {
@@ -260,6 +176,7 @@ window#waybar.hidden {
     }
 }
 
+/* Tooltips */
 tooltip {
     background-color: ${BG_PRIMARY};
     border: 1px solid ${BG_TERTIARY};
