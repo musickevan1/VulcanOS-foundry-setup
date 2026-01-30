@@ -1,7 +1,7 @@
 /* Waybar Style - ${THEME_NAME} Theme */
 
 * {
-    font-family: "JetBrainsMono Nerd Font", "JetBrains Mono", monospace;
+    font-family: "JetBrainsMono NF Vulcan", "JetBrainsMono Nerd Font", "JetBrains Mono", monospace;
     font-size: 13px;
     font-weight: 500;
     min-height: 0;
@@ -18,6 +18,29 @@ window#waybar {
 
 window#waybar.hidden {
     opacity: 0.2;
+}
+
+/* Vulcan Menu Button - uses U+E900 from patched Vulcan font */
+#custom-vulcan-menu {
+    background-color: ${BG_SECONDARY};
+    color: ${ACCENT};
+    padding: 0 12px;
+    margin: 4px 4px 4px 8px;
+    border-radius: 4px;
+    border: 1px solid ${BG_TERTIARY};
+    font-size: 16px;
+    font-weight: bold;
+    font-family: "JetBrainsMono NF Vulcan";
+}
+
+#custom-vulcan-menu label {
+    font-family: "JetBrainsMono NF Vulcan";
+}
+
+#custom-vulcan-menu:hover {
+    background-color: ${ACCENT};
+    color: ${BG_PRIMARY};
+    border-color: ${ACCENT};
 }
 
 #workspaces {
