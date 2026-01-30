@@ -36,3 +36,9 @@ lazy_static = "1.4"
 
 # Const string concatenation for CSS module
 const_format = "0.2"
+
+# Binary detection
+which = "6"
+
+# URL opening
+open = "5"
