@@ -20,12 +20,15 @@ VulcanOS now has a unified Vulcan Appearance Manager that combines theme and wal
 - 6 desktop components with automatic theme propagation
 - Third-party app discovery for 6 themeable apps
 
-## Next Milestone Goals
+## Current Milestone: v2.1 Maintenance
 
-Planning next milestone. Options:
-- **v2.1 Maintenance** — Tech debt cleanup (AppState integration, theme validation, wallpaper downloads)
-- **v3.0 Backup System** — Core backup engine from deferred Phases 2-4
-- **v3.0 New Feature** — TBD based on user needs
+**Goal:** Clean up technical debt from v2.0 to solidify the Appearance Manager codebase before adding new features.
+
+**Target features:**
+- AppState state machine integration into UI components
+- Theme validation via parse_and_validate() security function
+- Automatic CustomOverride detection on manual wallpaper change
+- Download missing wallpapers for 7 themes
 
 ## Requirements
 
@@ -62,7 +65,11 @@ Capabilities shipped and working:
 
 ### Active
 
-No active requirements — next milestone not started.
+**v2.1 Maintenance:**
+- [ ] AppState state machine wired into UI components for proper state transitions
+- [ ] parse_and_validate() connected in theme_storage.rs for theme security
+- [ ] BindingMode auto-transitions to CustomOverride on manual wallpaper change
+- [ ] Missing wallpapers downloaded for 7 themes (sources in LICENSE files)
 
 ### Out of Scope
 
@@ -107,4 +114,4 @@ No active requirements — next milestone not started.
 | STYLE_PROVIDER_PRIORITY_USER | Runtime CSS overrides brand defaults | ✓ Good — self-theming works |
 
 ---
-*Last updated: 2026-01-30 after v2.0 milestone*
+*Last updated: 2026-01-30 after v2.1 milestone started*

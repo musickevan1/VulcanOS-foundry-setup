@@ -9,12 +9,12 @@ See: .planning/PROJECT.md (updated 2026-01-30)
 
 ## Current Position
 
-Phase: Not started (milestone complete)
-Plan: N/A
-Status: v2.0 SHIPPED
-Last activity: 2026-01-30 — Milestone v2.0 complete
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-01-30 — Milestone v2.1 started
 
-Progress: [████████████████████████████████] 100% (v2.0 complete)
+Progress: [░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░] 0% (v2.1 started)
 
 ## Performance Metrics
 
@@ -86,4 +86,4 @@ Stopped at: v2.0 milestone archived
 Resume file: None
 
 **Next action:**
-Run `/gsd:new-milestone` to start next milestone (v2.1 or v3.0).
+Define requirements and create roadmap for v2.1.
