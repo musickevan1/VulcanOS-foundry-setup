@@ -8,7 +8,7 @@
 # Line 2: prompt character
 format = """
 [](fg:${ACCENT})\
-[ 1 ](bg:${ACCENT} fg:${BG_PRIMARY} bold)\
+[  ](bg:${ACCENT} fg:${BG_PRIMARY} bold)\
 $username\
 [](bg:${ACCENT_ALT} fg:${ACCENT})\
 $directory\
