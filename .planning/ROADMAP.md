@@ -116,10 +116,10 @@ Plans:
   2. Theme import rejects files with dangerous patterns (command injection, eval, pipes)
   3. Theme import rejects files with path traversal attempts (../, absolute paths)
   4. User receives clear error message when importing malformed or malicious theme
-**Plans**: TBD
+**Plans**: 1 plan
 
 Plans:
-- [ ] 11-01: TBD
+- [ ] 11-01-PLAN.md — Wire parse_and_validate() into all theme loading paths
 
 #### Phase 12: UX Polish
 **Goal**: Complete theme/wallpaper experience with binding detection and wallpaper library
@@ -160,9 +160,9 @@ Plans:
 | 8. Theme-Wallpaper Binding | v2.0 | 5/5 | Complete | 2026-01-28 |
 | 9. Preset Theme Library | v2.0 | 6/6 | Complete | 2026-01-29 |
 | 10. Preset Themes + Desktop Integration | v2.0 | 6/6 | Complete | 2026-01-30 |
-| 11. Security Hardening | v2.1 | 0/TBD | Not started | - |
+| 11. Security Hardening | v2.1 | 0/1 | Ready | - |
 | 12. UX Polish | v2.1 | 0/TBD | Not started | - |
 | 13. Architecture Cleanup | v2.1 | 0/TBD | Not started | - |
 
 ---
-*Last updated: 2026-01-30 (v2.1 roadmap created)*
+*Last updated: 2026-01-30 (Phase 11 planned)*
