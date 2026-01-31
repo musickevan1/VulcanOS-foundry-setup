@@ -9,9 +9,9 @@ Maintenance milestone — wiring existing infrastructure, not building new featu
 
 ### Security
 
-- [ ] **SEC-01**: Theme loading uses parse_and_validate() for all paths (builtin, custom, import)
-- [ ] **SEC-02**: Theme import rejects files with dangerous patterns (command injection, eval, pipes)
-- [ ] **SEC-03**: Theme import rejects files with path traversal attempts
+- [x] **SEC-01**: Theme loading uses parse_and_validate() for all paths (builtin, custom, import)
+- [x] **SEC-02**: Theme import rejects files with dangerous patterns (command injection, eval, pipes)
+- [x] **SEC-03**: Theme import rejects files with path traversal attempts
 
 ### UX Polish
 
@@ -40,9 +40,9 @@ Explicitly excluded from v2.1:
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| SEC-01 | Phase 11 | Pending |
-| SEC-02 | Phase 11 | Pending |
-| SEC-03 | Phase 11 | Pending |
+| SEC-01 | Phase 11 | Complete |
+| SEC-02 | Phase 11 | Complete |
+| SEC-03 | Phase 11 | Complete |
 | UX-01 | Phase 12 | Pending |
 | UX-02 | Phase 12 | Pending |
 | UX-03 | Phase 12 | Pending |
@@ -58,4 +58,4 @@ Explicitly excluded from v2.1:
 
 ---
 *Requirements defined: 2026-01-30*
-*Last updated: 2026-01-30 after roadmap creation*
+*Last updated: 2026-01-30 (Phase 11 complete)*

@@ -119,7 +119,7 @@ Plans:
 **Plans**: 1 plan
 
 Plans:
-- [ ] 11-01-PLAN.md — Wire parse_and_validate() into all theme loading paths
+- [x] 11-01: Wire parse_and_validate() into all theme loading paths
 
 #### Phase 12: UX Polish
 **Goal**: Complete theme/wallpaper experience with binding detection and wallpaper library
@@ -160,9 +160,9 @@ Plans:
 | 8. Theme-Wallpaper Binding | v2.0 | 5/5 | Complete | 2026-01-28 |
 | 9. Preset Theme Library | v2.0 | 6/6 | Complete | 2026-01-29 |
 | 10. Preset Themes + Desktop Integration | v2.0 | 6/6 | Complete | 2026-01-30 |
-| 11. Security Hardening | v2.1 | 0/1 | Ready | - |
+| 11. Security Hardening | v2.1 | 1/1 | Complete | 2026-01-30 |
 | 12. UX Polish | v2.1 | 0/TBD | Not started | - |
 | 13. Architecture Cleanup | v2.1 | 0/TBD | Not started | - |
 
 ---
-*Last updated: 2026-01-30 (Phase 11 planned)*
+*Last updated: 2026-01-30 (Phase 11 complete)*
