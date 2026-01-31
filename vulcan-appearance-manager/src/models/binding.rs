@@ -65,27 +65,38 @@ impl UnifiedProfile {
 /// Resolve theme's wallpaper path to absolute filesystem path
 ///
 /// Extracts the theme_wallpaper field from the theme and resolves it
-/// relative to the theme's source directory. Returns None if:
+/// to the wallpapers directory structure. Wallpapers are stored at:
+/// `dotfiles/wallpapers/{theme_id}/{filename}`
+///
+/// Returns None if:
 /// - Theme has no wallpaper suggestion
 /// - Theme has no source_path
 /// - Resolved path doesn't exist
 pub fn resolve_theme_wallpaper(theme: &Theme) -> Option<PathBuf> {
-    // Extract theme_wallpaper field
-    let wallpaper_rel = theme.theme_wallpaper.as_ref()?;
+    // Extract theme_wallpaper field (just the filename, e.g., "catppuccin-mocha.png")
+    let wallpaper_filename = theme.theme_wallpaper.as_ref()?;
+    let theme_id = &theme.theme_id;
 
-    // Get theme source directory
-    let theme_dir = theme.source_path.as_ref()?.parent()?;
+    // Get the theme source path to navigate to dotfiles directory
+    // Theme files are at: dotfiles/themes/colors/{theme}.sh
+    let theme_source = theme.source_path.as_ref()?;
 
-    // Join relative path to theme directory
-    let abs_path = theme_dir.join(wallpaper_rel);
+    // Navigate up to dotfiles/ directory (3 levels: colors/ -> themes/ -> dotfiles/)
+    let dotfiles_dir = theme_source.parent()?.parent()?.parent()?;
+
+    // Build path to wallpapers directory: dotfiles/wallpapers/{theme_id}/{filename}
+    let wallpaper_path = dotfiles_dir
+        .join("wallpapers")
+        .join(theme_id)
+        .join(wallpaper_filename);
 
     // Return only if path exists
-    if abs_path.exists() {
-        Some(abs_path)
+    if wallpaper_path.exists() {
+        Some(wallpaper_path)
     } else {
         eprintln!(
             "Warning: Theme '{}' suggests wallpaper '{}' but file not found at {:?}",
-            theme.theme_name, wallpaper_rel, abs_path
+            theme.theme_name, wallpaper_filename, wallpaper_path
         );
         None
     }
