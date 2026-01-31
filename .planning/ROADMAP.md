@@ -130,10 +130,12 @@ Plans:
   2. All 10 preset themes have matching wallpapers bundled
   3. Wallpaper LICENSE files contain proper attribution for all downloaded sources
   4. User can apply any preset theme and see coordinated wallpaper immediately
-**Plans**: TBD
+**Plans**: 3 plans
 
 Plans:
-- [ ] 12-01: TBD
+- [ ] 12-01: BindingMode auto-transition (ThemeBound -> CustomOverride)
+- [ ] 12-02: Fix wallpaper path resolution
+- [ ] 12-03: Download missing wallpapers and update LICENSE attribution
 
 #### Phase 13: Architecture Cleanup
 **Goal**: AppState integration for proper preview/apply/cancel workflow
@@ -161,8 +163,8 @@ Plans:
 | 9. Preset Theme Library | v2.0 | 6/6 | Complete | 2026-01-29 |
 | 10. Preset Themes + Desktop Integration | v2.0 | 6/6 | Complete | 2026-01-30 |
 | 11. Security Hardening | v2.1 | 1/1 | Complete | 2026-01-30 |
-| 12. UX Polish | v2.1 | 0/TBD | Not started | - |
+| 12. UX Polish | v2.1 | 0/3 | Planned | - |
 | 13. Architecture Cleanup | v2.1 | 0/TBD | Not started | - |
 
 ---
-*Last updated: 2026-01-30 (Phase 11 complete)*
+*Last updated: 2026-01-30 (Phase 12 planned)*
