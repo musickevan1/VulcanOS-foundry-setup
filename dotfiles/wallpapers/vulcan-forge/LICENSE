@@ -2,40 +2,38 @@
 
 ## Current Wallpapers
 
-Status: AI-generated wallpapers to be added
+### vulcan-forge.png
 
-## About Vulcan Forge
+- **Source:** VulcanOS Project (branding/wallpapers/vulcan-gradient.png)
+- **License:** VulcanOS Project License (GPL-compatible)
+- **Resolution:** 3840x2160 (4K)
+- **Created:** 2024-12-12
+- **Author:** VulcanOS Project
 
-Vulcan Forge is the original VulcanOS theme, designed for the T2 MacBook Pro development environment. This theme embodies the project's core values:
-- Professional, focused aesthetics
-- Ember-inspired accent colors (#ff6b35)
-- Dark, non-distracting backgrounds
+## About This Wallpaper
 
-## Planned Wallpapers
+This wallpaper is the original VulcanOS gradient design, created specifically
+for the VulcanOS project. It features ember-orange accent colors on a dark
+background, embodying the project's "forge" aesthetic.
 
-AI-generated wallpapers matching the Vulcan Forge palette will be created:
-- Background: #1a1a1a, #141414
-- Foreground: #e0e0e0, #a0a0a0
-- Accent: #ff6b35 (ember orange)
-- Supporting colors: #2a2a2a, #363636
+The wallpaper was generated as part of the VulcanOS branding assets and is
+included in the dotfiles for use with the Vulcan Forge theme.
 
-Themes may include:
-- Abstract volcanic/forge imagery
-- Minimalist geometric patterns
-- Developer-focused aesthetics
+## License Text
 
-## License
+This wallpaper is part of the VulcanOS project and is licensed under the
+same terms as the VulcanOS project itself. You are free to use, modify,
+and redistribute this wallpaper as part of VulcanOS or derivative works,
+provided you comply with the project's license terms.
 
-All Vulcan Forge wallpapers will be:
-- Created specifically for VulcanOS
-- Licensed under the same terms as VulcanOS (GPL-compatible)
-- Optimized for 16:10 MacBook Pro displays
+## Recommended Sources
 
-## Adding Custom Wallpapers
+For custom Vulcan Forge wallpapers:
+- Create abstract volcanic/forge imagery with ember accents (#ff6b35)
+- Use dark backgrounds (#1a1a1a, #141414)
+- Minimalist geometric patterns work well with this theme
 
-You can add your own wallpapers matching the Vulcan Forge theme:
+## Usage
 
-1. Create or find wallpapers with dark backgrounds and ember accents
-2. Place in this directory: `dotfiles/wallpapers/vulcan-forge/`
-3. Name primary wallpaper: `vulcan-forge.png`
-4. Update this LICENSE file if using external sources
+This wallpaper is included in VulcanOS as the default for the Vulcan Forge theme.
+Redistribution must maintain attribution to the VulcanOS project.
