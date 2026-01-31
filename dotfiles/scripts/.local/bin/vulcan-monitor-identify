@@ -19,10 +19,53 @@ mkdir -p "$CACHE_DIR"
 
 CURRENT_BOOT_ID=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null || echo "unknown")
 
+# Detect DRM card with active DP connectors that have EDID data
+# Caches result for current boot session to avoid repeated scans
+detect_drm_card() {
+    local cache_file="$CACHE_DIR/drm-card"
+
+    # Check cache first (valid only for current boot)
+    if [[ -f "$cache_file" && -f "$BOOT_ID_FILE" ]]; then
+        local saved_boot cached_card
+        saved_boot=$(cat "$BOOT_ID_FILE" 2>/dev/null)
+        if [[ "$saved_boot" == "$CURRENT_BOOT_ID" ]]; then
+            cached_card=$(cat "$cache_file" 2>/dev/null)
+            if [[ -n "$cached_card" && -d "/sys/class/drm/${cached_card}" ]]; then
+                echo "$cached_card"
+                return 0
+            fi
+        fi
+    fi
+
+    # Scan for card with connected DP displays (prioritize card1 for Thunderbolt/eGPU)
+    local detected_card=""
+    for card in card1 card0 card2 card3; do
+        [[ -d "/sys/class/drm/${card}" ]] || continue
+
+        for conn_dir in /sys/class/drm/${card}-DP-*/; do
+            [[ -d "$conn_dir" ]] || continue
+            local edid_file="${conn_dir}edid"
+
+            if [[ -f "$edid_file" ]] && head -c 8 "$edid_file" 2>/dev/null | grep -q .; then
+                detected_card="$card"
+                break 2
+            fi
+        done
+    done
+
+    # Fallback to card1 if nothing found (common for T2 Macs)
+    detected_card="${detected_card:-card1}"
+
+    echo "$detected_card" > "$cache_file"
+    echo "$detected_card"
+}
+
 # Get EDID fingerprint for a connector (uses full EDID hash for uniqueness)
 get_edid_fingerprint() {
     local connector="$1"  # e.g., DP-9
-    local drm_path="/sys/class/drm/card2-${connector}/edid"
+    local card
+    card=$(detect_drm_card)
+    local drm_path="/sys/class/drm/${card}-${connector}/edid"
 
     if [[ -f "$drm_path" ]]; then
         # Use full EDID hash as fingerprint
@@ -33,7 +76,7 @@ get_edid_fingerprint() {
 }
 
 # Get connector name from Hyprland monitor name
-# Hyprland uses DP-X, DRM uses card2-DP-X
+# Hyprland uses DP-X, DRM uses cardN-DP-X (N detected dynamically)
 get_all_connected_sceptres() {
     hyprctl monitors -j | jq -r '.[] | select(.description | contains("Sceptre")) | .name'
 }
