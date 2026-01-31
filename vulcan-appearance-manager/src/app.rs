@@ -295,6 +295,11 @@ impl SimpleComponent for App {
                 // Track current wallpapers
                 self.current_wallpapers = wallpapers.clone();
 
+                // Auto-transition: ThemeBound -> CustomOverride when user manually changes wallpaper
+                if self.current_binding_mode == BindingMode::ThemeBound {
+                    self.current_binding_mode = BindingMode::CustomOverride;
+                }
+
                 // Notify profile manager of wallpaper changes
                 self.profile_manager.emit(ProfileManagerInput::UpdateWallpapers(wallpapers.clone()));
 
