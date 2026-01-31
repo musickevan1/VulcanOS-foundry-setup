@@ -10,19 +10,19 @@ See: .planning/PROJECT.md (updated 2026-01-30)
 ## Current Position
 
 Phase: 12 of 13 (UX Polish)
-Plan: 1 of TBD in current phase
+Plan: 2 of TBD in current phase
 Status: In progress
-Last activity: 2026-01-31 — Completed 12-01-PLAN.md
+Last activity: 2026-01-31 — Completed 12-02-PLAN.md
 
-Progress: [█████████████████████░░░] 82% (41/50 total plans across all milestones)
+Progress: [█████████████████████░░░] 84% (42/50 total plans across all milestones)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 41 (v1.0 + v2.0 + v2.1)
+- Total plans completed: 42 (v1.0 + v2.0 + v2.1)
 - v1.0 Foundation: 11 plans
 - v2.0 Appearance Manager: 28 plans
-- v2.1 Maintenance: 2 plans
+- v2.1 Maintenance: 3 plans
 
 **By Milestone:**
 
@@ -30,14 +30,14 @@ Progress: [█████████████████████░░
 |-----------|--------|-------|--------|
 | v1.0 Foundation | 2 | 11 | Shipped 2026-01-24 |
 | v2.0 Appearance Manager | 5 | 28 | Shipped 2026-01-30 |
-| v2.1 Maintenance | 3 | 2 complete | In progress |
+| v2.1 Maintenance | 3 | 3 complete | In progress |
 
 **Recent Trend:**
 - v2.0 completed in 6 days (5 phases, 28 plans)
 - v2.1 Phase 11: 1 plan, 2 min execution
-- v2.1 Phase 12: 1 plan, ~1 min execution
+- v2.1 Phase 12: 2 plans, ~2 min each
 
-*Updated after 12-01 execution*
+*Updated after 12-02 execution*
 
 ## Accumulated Context
 
@@ -52,6 +52,7 @@ Recent decisions affecting current work:
 - v2.1: Maintenance milestone focuses on wiring existing infrastructure (AppState, validation, wallpapers)
 - 11-01: All theme loading MUST use parse_and_validate() not parse_theme_file()
 - 12-01: BindingMode auto-transition wired (ThemeBound -> CustomOverride on manual wallpaper change)
+- 12-02: Wallpaper path resolution uses dotfiles/wallpapers/{theme_id}/ structure
 
 ### Pending Todos
 
@@ -72,7 +73,7 @@ None yet. (Ideas captured during v2.1 will appear in .planning/todos/pending/)
 ## Session Continuity
 
 Last session: 2026-01-31
-Stopped at: Completed 12-01-PLAN.md
+Stopped at: Completed 12-02-PLAN.md
 Resume file: None
 
-Next: Execute 12-02-PLAN.md (theme wallpaper artwork)
+Next: Execute 12-03-PLAN.md (wallpaper generation for remaining 7 themes)
