@@ -45,6 +45,7 @@ pub enum AppMsg {
     BindingModeChanged(BindingMode),
     ApplyThemeWallpaper(PathBuf),
     RestoreWallpapers(HashMap<String, PathBuf>),
+    PreviewStateChanged { is_previewing: bool, theme_id: Option<String> },
 }
 
 pub struct App {
@@ -58,6 +59,9 @@ pub struct App {
     current_binding_mode: BindingMode,
     current_theme_id: Option<String>,
     current_wallpapers: HashMap<String, PathBuf>,
+    // Preview state tracking for close-time implicit apply
+    is_previewing: bool,
+    previewing_theme_id: Option<String>,
 }
 
 #[relm4::component(pub)]
@@ -162,6 +166,8 @@ impl SimpleComponent for App {
                     ThemeViewOutput::ApplyWallpaper(path) => AppMsg::ApplyThemeWallpaper(path),
                     ThemeViewOutput::BindingModeChanged(mode) => AppMsg::BindingModeChanged(mode),
                     ThemeViewOutput::RestoreWallpapers(wallpapers) => AppMsg::RestoreWallpapers(wallpapers),
+                    ThemeViewOutput::PreviewStateChanged { is_previewing, theme_id } =>
+                        AppMsg::PreviewStateChanged { is_previewing, theme_id },
                 }
             });
 
@@ -233,6 +239,8 @@ impl SimpleComponent for App {
             current_binding_mode: BindingMode::Unbound,
             current_theme_id: None,
             current_wallpapers: HashMap::new(),
+            is_previewing: false,
+            previewing_theme_id: None,
         };
 
         // Load theme CSS for self-theming (if a theme has been applied previously)
@@ -355,6 +363,11 @@ impl SimpleComponent for App {
             AppMsg::RestoreWallpapers(wallpapers) => {
                 // Restore wallpapers via wallpaper view's profile apply mechanism
                 self.wallpaper_view.emit(WallpaperViewMsg::ApplyProfile(wallpapers));
+            }
+
+            AppMsg::PreviewStateChanged { is_previewing, theme_id } => {
+                self.is_previewing = is_previewing;
+                self.previewing_theme_id = theme_id;
             }
         }
     }
