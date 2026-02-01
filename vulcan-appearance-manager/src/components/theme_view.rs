@@ -39,6 +39,7 @@ pub enum ThemeViewOutput {
     ApplyWallpaper(std::path::PathBuf),  // Request wallpaper application
     BindingModeChanged(crate::models::BindingMode),  // Notify binding state change
     RestoreWallpapers(std::collections::HashMap<String, std::path::PathBuf>),  // Restore wallpapers from snapshot
+    PreviewStateChanged { is_previewing: bool, theme_id: Option<String> },  // Notify preview state changes
 }
 
 pub struct ThemeViewModel {
@@ -295,6 +296,11 @@ impl SimpleComponent for ThemeViewModel {
                                 self.previewing_theme_id = None;
                             } else {
                                 sender.output(ThemeViewOutput::ShowToast(format!("Previewing: {}", theme.theme_name))).ok();
+                                // Notify parent of preview state change
+                                sender.output(ThemeViewOutput::PreviewStateChanged {
+                                    is_previewing: true,
+                                    theme_id: self.previewing_theme_id.clone(),
+                                }).ok();
                             }
                         }
                         Err(e) => {
@@ -309,6 +315,11 @@ impl SimpleComponent for ThemeViewModel {
                         sender.output(ThemeViewOutput::ShowToast(format!("Preview failed: {}", e))).ok();
                     } else {
                         sender.output(ThemeViewOutput::ShowToast(format!("Previewing: {}", theme.theme_name))).ok();
+                        // Notify parent of preview switch
+                        sender.output(ThemeViewOutput::PreviewStateChanged {
+                            is_previewing: true,
+                            theme_id: self.previewing_theme_id.clone(),
+                        }).ok();
                     }
                 }
                 // If in Applying or Error state, ignore click (handled by button sensitivity)
@@ -366,6 +377,11 @@ impl SimpleComponent for ThemeViewModel {
                                             sender.output(ThemeViewOutput::ShowToast(
                                                 format!("Applied: {}", theme_name)
                                             )).ok();
+                                            // Notify parent of state change to Idle
+                                            sender.output(ThemeViewOutput::PreviewStateChanged {
+                                                is_previewing: false,
+                                                theme_id: None,
+                                            }).ok();
                                         }
                                         Err(e) => {
                                             eprintln!("Invalid finish transition: {}", e);
@@ -442,6 +458,11 @@ impl SimpleComponent for ThemeViewModel {
                         sender.output(ThemeViewOutput::ShowToast(
                             "Reverted to original theme".to_string()
                         )).ok();
+                        // Notify parent of state change to Idle
+                        sender.output(ThemeViewOutput::PreviewStateChanged {
+                            is_previewing: false,
+                            theme_id: None,
+                        }).ok();
                     }
                     Err(e) => {
                         eprintln!("Invalid cancel transition: {}", e);
@@ -664,6 +685,11 @@ impl ThemeViewModel {
                                 self.theme_browser.emit(ThemeBrowserInput::SetCurrentTheme(theme_id.to_string()));
                                 sender.output(ThemeViewOutput::ShowToast(format!("Applied theme: {}", theme_id))).ok();
                                 sender.output(ThemeViewOutput::ThemeApplied(theme_id.to_string())).ok();
+                                // Notify parent of state change to Idle
+                                sender.output(ThemeViewOutput::PreviewStateChanged {
+                                    is_previewing: false,
+                                    theme_id: None,
+                                }).ok();
                             }
                             Err(e) => {
                                 eprintln!("Invalid finish transition: {}", e);
