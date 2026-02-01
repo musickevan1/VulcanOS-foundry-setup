@@ -4,6 +4,7 @@ use adw::prelude::*;
 
 use crate::models::{Theme, resolve_theme_wallpaper};
 use crate::services::{theme_applier, theme_storage};
+use crate::state::{AppState, PreviewSnapshot};
 use super::theme_browser::{ThemeBrowserModel, ThemeBrowserInput, ThemeBrowserOutput};
 use super::preview_panel::{PreviewPanelModel, PreviewPanelInput};
 use super::theme_editor::{ThemeEditorModel, ThemeEditorOutput};
@@ -49,6 +50,9 @@ pub struct ThemeViewModel {
     binding_window: Option<gtk::Window>,
     selected_theme: Option<Theme>,
     original_theme_id: String,
+    app_state: AppState,
+    preview_snapshot: Option<PreviewSnapshot>,
+    previewing_theme_id: Option<String>,
 }
 
 #[relm4::component(pub)]
@@ -196,6 +200,9 @@ impl SimpleComponent for ThemeViewModel {
             binding_window: None,
             selected_theme: None,
             original_theme_id,
+            app_state: AppState::Idle,
+            preview_snapshot: None,
+            previewing_theme_id: None,
         };
 
         let widgets = view_output!();
