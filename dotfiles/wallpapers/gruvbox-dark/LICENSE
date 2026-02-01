@@ -4,30 +4,24 @@
 
 ### gruvbox-dark.png
 
-- **Source:** https://github.com/AngelJumbo/gruvbox-wallpapers
-- **File:** wallpapers/minimalistic/elegant.png
-- **License:** Community collection (no explicit license)
+- **Source:** VulcanOS Original / AI Generated
+- **Style:** Retro computing stripes with VulcanOS logo
+- **License:** VulcanOS Project License
 - **Resolution:** 1920x1080 (FHD)
-- **Downloaded:** 2026-01-31
-- **Author:** AngelJumbo/gruvbox-wallpapers community
+- **Created:** 2026-01-31
+- **Author:** VulcanOS Project (generated with Nano Banana Pro)
 
-## License Text
+## Description
 
-This wallpaper is from a community wallpaper collection. The repository
-does not specify an explicit license. The wallpapers are community-contributed
-for the Gruvbox theme ecosystem.
+Custom wallpaper featuring the VulcanOS logo (inverted Arch Linux symbol forming a "V")
+centered on retro-style horizontal stripes using Gruvbox palette colors:
+- Green (#b8bb26)
+- Teal (#8ec07c)
+- Orange (#fe8019)
+- Red (#fb4934)
 
-See: https://github.com/AngelJumbo/gruvbox-wallpapers
-
-## Recommended Sources
-
-Additional Gruvbox Dark wallpapers can be found at:
-- https://github.com/AngelJumbo/gruvbox-wallpapers (Community collection)
-- https://github.com/lukejagg/gruvbox-wallpapers (Various gruvbox variants)
-- https://github.com/pavel-corsaghin/Gruvbox-Wallpapers (Curated collection)
-- r/unixporn Gruvbox tag
+Background uses Gruvbox dark background (#282828).
 
 ## Usage
 
-This wallpaper is included in VulcanOS for the Gruvbox Dark theme.
-If the source repository adds an explicit license, this file will be updated.
+This wallpaper is the default for the Gruvbox Dark theme in VulcanOS.
