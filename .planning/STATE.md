@@ -10,19 +10,19 @@ See: .planning/PROJECT.md (updated 2026-01-30)
 ## Current Position
 
 Phase: 13 of 13 (Architecture Cleanup)
-Plan: 0 of TBD in current phase
-Status: Phase 12 complete, Phase 13 not yet planned
-Last activity: 2026-02-01 — Completed Phase 12 (UX Polish)
+Plan: 1 of 3 in current phase
+Status: In progress
+Last activity: 2026-02-01 — Completed 13-01-PLAN.md
 
-Progress: [█████████████████████░░░] 86% (43/50 total plans across all milestones)
+Progress: [█████████████████████░░░] 88% (44/50 total plans across all milestones)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 43 (v1.0 + v2.0 + v2.1)
+- Total plans completed: 44 (v1.0 + v2.0 + v2.1)
 - v1.0 Foundation: 11 plans
 - v2.0 Appearance Manager: 28 plans
-- v2.1 Maintenance: 4 plans
+- v2.1 Maintenance: 5 plans
 
 **By Milestone:**
 
@@ -30,14 +30,15 @@ Progress: [█████████████████████░░
 |-----------|--------|-------|--------|
 | v1.0 Foundation | 2 | 11 | Shipped 2026-01-24 |
 | v2.0 Appearance Manager | 5 | 28 | Shipped 2026-01-30 |
-| v2.1 Maintenance | 3 | 4 complete | In progress |
+| v2.1 Maintenance | 3 | 5 complete | In progress |
 
 **Recent Trend:**
 - v2.0 completed in 6 days (5 phases, 28 plans)
 - v2.1 Phase 11: 1 plan, 2 min execution
 - v2.1 Phase 12: 3 plans complete (12-01, 12-02, 12-03)
+- v2.1 Phase 13: 1 plan complete (13-01), 2 min execution
 
-*Updated after 12-03 execution*
+*Updated after 13-01 execution*
 
 ## Accumulated Context
 
@@ -54,6 +55,8 @@ Recent decisions affecting current work:
 - 12-01: BindingMode auto-transition wired (ThemeBound -> CustomOverride on manual wallpaper change)
 - 12-02: Wallpaper path resolution uses dotfiles/wallpapers/{theme_id}/ structure
 - 12-03: All 10 preset themes have wallpapers with CC0/MIT licensing and attribution
+- 13-01: ThemeViewModel preview applies immediately on theme selection (Idle -> Previewing on first click)
+- 13-01: Multi-preview workflow keeps ORIGINAL snapshot for cancel, not previous preview
 
 ### Pending Todos
 
@@ -62,7 +65,9 @@ None yet. (Ideas captured during v2.1 will appear in .planning/todos/pending/)
 ### Blockers/Concerns
 
 **Known tech debt from v2.0 (now being addressed in v2.1):**
-- AppState state machine created but not integrated into UI components (Phase 13)
+- AppState state machine integration in progress (Phase 13)
+  - 13-01: ThemeViewModel wired ✓
+  - Remaining: Action bar visibility (13-02), Cancel/Apply handlers (13-03)
 - ~~parse_and_validate() security function exists but bypassed (Phase 11)~~ RESOLVED
 - ~~BindingMode CustomOverride transition not automated (Phase 12)~~ RESOLVED in 12-01
 - ~~7 of 10 themes missing wallpapers (Phase 12)~~ RESOLVED in 12-03
@@ -80,7 +85,7 @@ None yet. (Ideas captured during v2.1 will appear in .planning/todos/pending/)
 ## Session Continuity
 
 Last session: 2026-02-01
-Stopped at: Completed quick task 001: fix workspace keybinds for dynamic monitors
+Stopped at: Completed 13-01-PLAN.md (AppState integration into ThemeViewModel)
 Resume file: None
 
-Next: Plan Phase 13 (Architecture Cleanup - AppState integration)
+Next: Execute 13-02 (Action bar visibility based on AppState)
