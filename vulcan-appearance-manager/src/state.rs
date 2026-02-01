@@ -116,6 +116,23 @@ impl AppState {
         }
     }
 
+    /// Rollback from Applying to Previewing after a failure.
+    /// Only valid from Applying state. Requires the snapshot to restore to.
+    pub fn rollback(self, snapshot: PreviewSnapshot) -> Result<AppState> {
+        match self {
+            AppState::Applying => Ok(AppState::Previewing { previous: snapshot }),
+            AppState::Idle => {
+                bail!("Cannot rollback from state: Idle (not applying)")
+            }
+            AppState::Previewing { .. } => {
+                bail!("Cannot rollback from state: Previewing (not applying)")
+            }
+            AppState::Error { .. } => {
+                bail!("Cannot rollback from state: Error (must recover first)")
+            }
+        }
+    }
+
     /// Check if the state is Idle
     pub fn is_idle(&self) -> bool {
         matches!(self, AppState::Idle)
@@ -315,5 +332,32 @@ mod tests {
 
         let state = AppState::Applying;
         assert_eq!(state.previous_snapshot(), None);
+    }
+
+    #[test]
+    fn test_applying_to_previewing_rollback() {
+        let state = AppState::Applying;
+        let snapshot = make_snapshot();
+        let result = state.rollback(snapshot.clone());
+        assert!(result.is_ok());
+        let new_state = result.unwrap();
+        assert!(new_state.is_previewing());
+        assert_eq!(new_state.previous_snapshot(), Some(&snapshot));
+    }
+
+    #[test]
+    fn test_cannot_rollback_from_idle() {
+        let state = AppState::Idle;
+        let snapshot = make_snapshot();
+        let result = state.rollback(snapshot);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_cannot_rollback_from_previewing() {
+        let snapshot = make_snapshot();
+        let state = AppState::Previewing { previous: snapshot.clone() };
+        let result = state.rollback(snapshot);
+        assert!(result.is_err());
     }
 }

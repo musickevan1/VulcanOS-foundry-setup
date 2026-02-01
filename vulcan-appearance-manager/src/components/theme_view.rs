@@ -127,7 +127,7 @@ impl SimpleComponent for ThemeViewModel {
 
                     model.preview_panel.widget() {},
 
-                    // Action buttons
+                    // Edit button (theme management)
                     gtk::Box {
                         set_orientation: gtk::Orientation::Horizontal,
                         set_spacing: 8,
@@ -139,29 +139,6 @@ impl SimpleComponent for ThemeViewModel {
                             #[watch]
                             set_sensitive: model.selected_theme.as_ref().map(|t| !t.is_builtin).unwrap_or(false),
                             connect_clicked => ThemeViewMsg::EditTheme,
-                        },
-
-                        gtk::Button {
-                            set_label: "Preview",
-                            set_tooltip_text: Some("Preview theme (temporary)"),
-                            #[watch]
-                            set_sensitive: model.selected_theme.is_some(),
-                            connect_clicked => ThemeViewMsg::PreviewTheme,
-                        },
-
-                        gtk::Button {
-                            set_label: "Cancel",
-                            set_tooltip_text: Some("Revert to original theme"),
-                            connect_clicked => ThemeViewMsg::CancelPreview,
-                        },
-
-                        gtk::Button {
-                            set_label: "Apply",
-                            add_css_class: "suggested-action",
-                            set_tooltip_text: Some("Apply theme permanently"),
-                            #[watch]
-                            set_sensitive: model.selected_theme.is_some(),
-                            connect_clicked => ThemeViewMsg::ApplyTheme,
                         },
                     },
                 },
