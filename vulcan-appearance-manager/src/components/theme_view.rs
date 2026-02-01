@@ -351,6 +351,27 @@ impl SimpleComponent for ThemeViewModel {
 }
 
 impl ThemeViewModel {
+    fn create_preview_snapshot(&self) -> PreviewSnapshot {
+        // Query current wallpapers from system
+        // Use wallpaper_backend::detect_backend() and query_active()
+        use crate::services::wallpaper_backend::detect_backend;
+        use std::path::PathBuf;
+
+        let wallpapers = detect_backend()
+            .and_then(|backend| backend.query_active())
+            .map(|wps| {
+                wps.into_iter()
+                    .map(|(k, v)| (k, PathBuf::from(v)))
+                    .collect()
+            })
+            .unwrap_or_default();
+
+        PreviewSnapshot {
+            wallpapers,
+            theme_id: Some(self.original_theme_id.clone()),
+        }
+    }
+
     fn open_editor(&mut self, theme: Option<Theme>, is_new: bool, sender: ComponentSender<Self>) {
         let editor = ThemeEditorModel::builder()
             .launch((theme, is_new))
