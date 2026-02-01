@@ -5,12 +5,8 @@
 #   workspace-switch 3 move  - Move active window to workspace 3 on current monitor
 #
 # Maps relative workspace (1-5) to absolute workspace based on focused monitor.
-# Uses VulcanOS workspace order (main first, then left-to-right):
-#   DP-15 (main): workspaces 1-5
-#   DP-11 (left): workspaces 6-10
-#   DP-13 (top):  workspaces 11-15
-#   DP-4 (float): workspaces 16-20
-#   eDP-1 (laptop): workspaces 21-25
+# Uses EDID-based monitor detection from vulcan-monitor-identify cache.
+# Workspace order: eDP-1 -> CENTER_BOTTOM -> FLOAT2_PRO -> CENTER_TOP -> LEFT_VERTICAL
 
 RELATIVE_WS="$1"
 ACTION="${2:-switch}"  # "switch" or "move"
@@ -20,47 +16,73 @@ if [[ -z "$RELATIVE_WS" || "$RELATIVE_WS" -lt 1 || "$RELATIVE_WS" -gt 5 ]]; then
     exit 1
 fi
 
-# VulcanOS workspace order - main monitor first, then left-to-right
-# This must match the order in vulcan-workspace-init
-declare -A MONITOR_INDEX
-MONITOR_INDEX[DP-15]=0   # Main curved monitor
-MONITOR_INDEX[DP-11]=1   # Left vertical
-MONITOR_INDEX[DP-13]=2   # Center top
-MONITOR_INDEX[DP-4]=3    # Float2 Pro
-MONITOR_INDEX[eDP-1]=4   # MacBook laptop
+# Cache file from vulcan-monitor-identify
+CACHE_DIR="$HOME/.cache/vulcan-monitors"
+MAPPING_FILE="$CACHE_DIR/sceptre-mapping"
 
 WS_PER_MONITOR=5
+
+# Build monitor order dynamically from EDID cache
+build_monitor_order() {
+    local -a ordered_monitors=()
+
+    # Default order for user's preference:
+    # Desktop (5): eDP-1 -> CENTER_BOTTOM -> FLOAT2_PRO -> CENTER_TOP -> LEFT_VERTICAL
+    # Campus (2): eDP-1 -> external
+    # Laptop (1): eDP-1
+
+    # Always start with eDP-1 (laptop screen, workspaces 1-5)
+    ordered_monitors+=("eDP-1")
+
+    # If cache exists, load monitor names from EDID detection
+    if [[ -f "$MAPPING_FILE" ]]; then
+        # shellcheck disable=SC1090
+        source "$MAPPING_FILE"
+
+        # Add monitors in user's preferred order, only if connected
+        for mon in "$CENTER_BOTTOM" "$FLOAT2_PRO" "$CENTER_TOP" "$LEFT_VERTICAL"; do
+            if [[ -n "$mon" ]] && hyprctl monitors -j | jq -e --arg m "$mon" '.[] | select(.name == $m)' > /dev/null 2>&1; then
+                ordered_monitors+=("$mon")
+            fi
+        done
+    fi
+
+    printf '%s\n' "${ordered_monitors[@]}"
+}
+
+# Get monitor index from dynamically-built order
+declare -A MONITOR_INDEX
+
+# Build monitor index
+build_monitor_index() {
+    local index=0
+    while IFS= read -r mon; do
+        MONITOR_INDEX[$mon]=$index
+        ((index++))
+    done < <(build_monitor_order)
+}
 
 # Get focused monitor name
 get_focused_monitor() {
     hyprctl monitors -j | jq -r '.[] | select(.focused) | .name'
 }
 
-# Get monitor index from our defined order
+# Get monitor index from dynamically-built order
 get_monitor_index() {
     local mon_name="$1"
 
-    # Check if monitor is in our predefined order
+    # Check if monitor is in our built index
     if [[ -v "MONITOR_INDEX[$mon_name]" ]]; then
         echo "${MONITOR_INDEX[$mon_name]}"
         return 0
     fi
 
-    # Fallback: calculate index by counting connected monitors in order
-    local index=0
-    for mon in DP-15 DP-11 DP-13 DP-4 eDP-1; do
-        if hyprctl monitors -j | jq -e --arg m "$mon" '.[] | select(.name == $m)' > /dev/null 2>&1; then
-            if [[ "$mon" == "$mon_name" ]]; then
-                echo "$index"
-                return 0
-            fi
-            ((index++))
-        fi
-    done
-
-    # Final fallback: return 0 for unknown monitors
+    # Fallback: return 0 (eDP-1, laptop screen)
     echo "0"
 }
+
+# Build the monitor index on startup
+build_monitor_index
 
 FOCUSED_MON=$(get_focused_monitor)
 MONITOR_IDX=$(get_monitor_index "$FOCUSED_MON")
