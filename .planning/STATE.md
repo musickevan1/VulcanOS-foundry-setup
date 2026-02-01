@@ -11,10 +11,10 @@ See: .planning/PROJECT.md (updated 2026-01-30)
 
 Phase: 13 of 13 (Architecture Cleanup)
 Plan: 5 of 5 in current phase
-Status: In progress
-Last activity: 2026-02-01 — Completed 13-05-PLAN.md
+Status: Phase complete
+Last activity: 2026-02-01 — Completed 13-04-PLAN.md
 
-Progress: [█████████████████████░░░] 94% (47/50 total plans across all milestones)
+Progress: [████████████████████████] 100% (50/50 total plans across all milestones)
 
 ## Performance Metrics
 
@@ -36,9 +36,10 @@ Progress: [█████████████████████░░
 - v2.0 completed in 6 days (5 phases, 28 plans)
 - v2.1 Phase 11: 1 plan, 2 min execution
 - v2.1 Phase 12: 3 plans complete (12-01, 12-02, 12-03)
-- v2.1 Phase 13: 5 plans complete (13-01, 13-02, 13-03, 13-04, 13-05), 12 min total execution
+- v2.1 Phase 13: 5 plans complete (13-01, 13-02, 13-03, 13-04, 13-05), 24 min total execution
+- v2.1 completed in 1 day (3 phases, 9 plans)
 
-*Updated after 13-05 execution*
+*Updated after 13-04 execution*
 
 ## Accumulated Context
 
@@ -59,6 +60,7 @@ Recent decisions affecting current work:
 - 13-01: Multi-preview workflow keeps ORIGINAL snapshot for cancel, not previous preview
 - 13-02: Action bar slides up with Cancel/Apply buttons during preview state
 - 13-03: Cancel restores theme AND wallpapers from original snapshot via RestoreWallpapers message
+- 13-04: Closing app while previewing implicitly applies the previewed theme via close-request handler
 - 13-05: Apply failure returns to Previewing state (not Idle) so user can retry or cancel
 - 13-05: rollback() method enables Applying -> Previewing transition with snapshot restoration
 
@@ -90,8 +92,8 @@ None yet. (Ideas captured during v2.1 will appear in .planning/todos/pending/)
 
 ## Session Continuity
 
-Last session: 2026-02-01
-Stopped at: Completed quick task 002 (VulcanOS VS Code theme)
+Last session: 2026-02-01 22:25:13 UTC
+Stopped at: Completed 13-04-PLAN.md (Phase 13 complete)
 Resume file: None
 
-Next: Continue Phase 13 remaining plans or close phase
+Next: v2.1 milestone complete - all phases finished (11, 12, 13)
