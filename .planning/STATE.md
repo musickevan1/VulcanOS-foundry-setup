@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-01-30)
 
 **Core value:** Cohesive, recoverable, keyboard-driven
-**Current focus:** Phase 12 - UX Polish
+**Current focus:** Phase 13 - Architecture Cleanup
 
 ## Current Position
 
-Phase: 12 of 13 (UX Polish)
-Plan: 3 of TBD in current phase
-Status: In progress
-Last activity: 2026-02-01 — Completed 12-03-PLAN.md
+Phase: 13 of 13 (Architecture Cleanup)
+Plan: 0 of TBD in current phase
+Status: Phase 12 complete, Phase 13 not yet planned
+Last activity: 2026-02-01 — Completed Phase 12 (UX Polish)
 
 Progress: [█████████████████████░░░] 86% (43/50 total plans across all milestones)
 
@@ -77,4 +77,4 @@ Last session: 2026-02-01
 Stopped at: Completed 12-03-PLAN.md
 Resume file: None
 
-Next: Check if more 12-XX plans exist, or proceed to Phase 13 (AppState)
+Next: Plan Phase 13 (Architecture Cleanup - AppState integration)

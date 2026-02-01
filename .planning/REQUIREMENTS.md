@@ -15,9 +15,9 @@ Maintenance milestone — wiring existing infrastructure, not building new featu
 
 ### UX Polish
 
-- [ ] **UX-01**: BindingMode auto-transitions to CustomOverride when user manually changes wallpaper after theme apply
-- [ ] **UX-02**: All 10 preset themes have matching wallpapers
-- [ ] **UX-03**: Missing wallpaper LICENSE files updated with attribution
+- [x] **UX-01**: BindingMode auto-transitions to CustomOverride when user manually changes wallpaper after theme apply
+- [x] **UX-02**: All 10 preset themes have matching wallpapers
+- [x] **UX-03**: Missing wallpaper LICENSE files updated with attribution
 
 ### Architecture
 
@@ -43,9 +43,9 @@ Explicitly excluded from v2.1:
 | SEC-01 | Phase 11 | Complete |
 | SEC-02 | Phase 11 | Complete |
 | SEC-03 | Phase 11 | Complete |
-| UX-01 | Phase 12 | Pending |
-| UX-02 | Phase 12 | Pending |
-| UX-03 | Phase 12 | Pending |
+| UX-01 | Phase 12 | Complete |
+| UX-02 | Phase 12 | Complete |
+| UX-03 | Phase 12 | Complete |
 | ARCH-01 | Phase 13 | Pending |
 | ARCH-02 | Phase 13 | Pending |
 | ARCH-03 | Phase 13 | Pending |
@@ -58,4 +58,4 @@ Explicitly excluded from v2.1:
 
 ---
 *Requirements defined: 2026-01-30*
-*Last updated: 2026-01-30 (Phase 11 complete)*
+*Last updated: 2026-02-01 (Phase 12 complete)*

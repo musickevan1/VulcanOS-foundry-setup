@@ -133,9 +133,9 @@ Plans:
 **Plans**: 3 plans
 
 Plans:
-- [ ] 12-01: BindingMode auto-transition (ThemeBound -> CustomOverride)
-- [ ] 12-02: Fix wallpaper path resolution
-- [ ] 12-03: Download missing wallpapers and update LICENSE attribution
+- [x] 12-01: BindingMode auto-transition (ThemeBound -> CustomOverride)
+- [x] 12-02: Fix wallpaper path resolution
+- [x] 12-03: Download missing wallpapers and update LICENSE attribution
 
 #### Phase 13: Architecture Cleanup
 **Goal**: AppState integration for proper preview/apply/cancel workflow
@@ -163,8 +163,8 @@ Plans:
 | 9. Preset Theme Library | v2.0 | 6/6 | Complete | 2026-01-29 |
 | 10. Preset Themes + Desktop Integration | v2.0 | 6/6 | Complete | 2026-01-30 |
 | 11. Security Hardening | v2.1 | 1/1 | Complete | 2026-01-30 |
-| 12. UX Polish | v2.1 | 0/3 | Planned | - |
+| 12. UX Polish | v2.1 | 3/3 | Complete | 2026-02-01 |
 | 13. Architecture Cleanup | v2.1 | 0/TBD | Not started | - |
 
 ---
-*Last updated: 2026-01-30 (Phase 12 planned)*
+*Last updated: 2026-02-01 (Phase 12 complete)*
