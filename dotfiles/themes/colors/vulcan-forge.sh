@@ -65,4 +65,4 @@ export NVIM_COLORSCHEME="tokyonight-night"  # Neovim colorscheme
 
 # Optional wallpaper (uncomment when available)
 # export THEME_WALLPAPER="vulcan-forge-dark.png"
-export THEME_WALLPAPER="vulcan-gradient.png"
+export THEME_WALLPAPER="vulcan-forge.png"
