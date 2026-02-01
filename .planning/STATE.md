@@ -10,11 +10,11 @@ See: .planning/PROJECT.md (updated 2026-01-30)
 ## Current Position
 
 Phase: 13 of 13 (Architecture Cleanup)
-Plan: 1 of 3 in current phase
-Status: In progress
-Last activity: 2026-02-01 — Completed 13-01-PLAN.md
+Plan: 3 of 3 in current phase
+Status: Phase complete
+Last activity: 2026-02-01 — Completed 13-03-PLAN.md
 
-Progress: [█████████████████████░░░] 88% (44/50 total plans across all milestones)
+Progress: [█████████████████████░░░] 92% (46/50 total plans across all milestones)
 
 ## Performance Metrics
 
@@ -36,9 +36,9 @@ Progress: [█████████████████████░░
 - v2.0 completed in 6 days (5 phases, 28 plans)
 - v2.1 Phase 11: 1 plan, 2 min execution
 - v2.1 Phase 12: 3 plans complete (12-01, 12-02, 12-03)
-- v2.1 Phase 13: 1 plan complete (13-01), 2 min execution
+- v2.1 Phase 13: 3 plans complete (13-01, 13-02, 13-03), 7 min total execution
 
-*Updated after 13-01 execution*
+*Updated after 13-03 execution*
 
 ## Accumulated Context
 
@@ -57,6 +57,8 @@ Recent decisions affecting current work:
 - 12-03: All 10 preset themes have wallpapers with CC0/MIT licensing and attribution
 - 13-01: ThemeViewModel preview applies immediately on theme selection (Idle -> Previewing on first click)
 - 13-01: Multi-preview workflow keeps ORIGINAL snapshot for cancel, not previous preview
+- 13-02: Action bar slides up with Cancel/Apply buttons during preview state
+- 13-03: Cancel restores theme AND wallpapers from original snapshot via RestoreWallpapers message
 
 ### Pending Todos
 
@@ -65,9 +67,10 @@ None yet. (Ideas captured during v2.1 will appear in .planning/todos/pending/)
 ### Blockers/Concerns
 
 **Known tech debt from v2.0 (now being addressed in v2.1):**
-- AppState state machine integration in progress (Phase 13)
+- ~~AppState state machine integration in progress (Phase 13)~~ RESOLVED
   - 13-01: ThemeViewModel wired ✓
-  - Remaining: Action bar visibility (13-02), Cancel/Apply handlers (13-03)
+  - 13-02: Action bar visibility ✓
+  - 13-03: Cancel/Apply handlers ✓
 - ~~parse_and_validate() security function exists but bypassed (Phase 11)~~ RESOLVED
 - ~~BindingMode CustomOverride transition not automated (Phase 12)~~ RESOLVED in 12-01
 - ~~7 of 10 themes missing wallpapers (Phase 12)~~ RESOLVED in 12-03
@@ -85,7 +88,7 @@ None yet. (Ideas captured during v2.1 will appear in .planning/todos/pending/)
 ## Session Continuity
 
 Last session: 2026-02-01
-Stopped at: Completed 13-01-PLAN.md (AppState integration into ThemeViewModel)
+Stopped at: Completed 13-03-PLAN.md (Cancel restore logic with wallpaper restoration)
 Resume file: None
 
-Next: Execute 13-02 (Action bar visibility based on AppState)
+Next: Phase 13 complete - all v2.1 maintenance work finished
