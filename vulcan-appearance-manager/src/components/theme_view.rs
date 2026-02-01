@@ -215,7 +215,45 @@ impl SimpleComponent for ThemeViewModel {
             ThemeViewMsg::ThemeSelected(theme) => {
                 println!("Selected theme: {}", theme.theme_name);
                 self.preview_panel.emit(PreviewPanelInput::SetTheme(Some(theme.clone())));
-                self.selected_theme = Some(theme);
+                self.selected_theme = Some(theme.clone());
+
+                // STATE MACHINE: Handle preview based on current state
+                if self.app_state.is_idle() {
+                    // First click: Idle -> Previewing
+                    let snapshot = self.create_preview_snapshot();
+                    match self.app_state.clone().start_preview(snapshot.clone()) {
+                        Ok(new_state) => {
+                            self.app_state = new_state;
+                            self.preview_snapshot = Some(snapshot);
+                            self.previewing_theme_id = Some(theme.theme_id.clone());
+
+                            // Apply preview immediately
+                            if let Err(e) = theme_applier::preview_theme(&theme.theme_id) {
+                                eprintln!("Preview failed: {}", e);
+                                sender.output(ThemeViewOutput::ShowToast(format!("Preview failed: {}", e))).ok();
+                                // Revert state on failure
+                                self.app_state = AppState::Idle;
+                                self.preview_snapshot = None;
+                                self.previewing_theme_id = None;
+                            } else {
+                                sender.output(ThemeViewOutput::ShowToast(format!("Previewing: {}", theme.theme_name))).ok();
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("Invalid state transition: {}", e);
+                        }
+                    }
+                } else if self.app_state.is_previewing() {
+                    // Subsequent click: Switch preview, keep ORIGINAL snapshot
+                    self.previewing_theme_id = Some(theme.theme_id.clone());
+                    if let Err(e) = theme_applier::preview_theme(&theme.theme_id) {
+                        eprintln!("Preview switch failed: {}", e);
+                        sender.output(ThemeViewOutput::ShowToast(format!("Preview failed: {}", e))).ok();
+                    } else {
+                        sender.output(ThemeViewOutput::ShowToast(format!("Previewing: {}", theme.theme_name))).ok();
+                    }
+                }
+                // If in Applying or Error state, ignore click (handled by button sensitivity)
             }
 
             ThemeViewMsg::PreviewTheme => {
