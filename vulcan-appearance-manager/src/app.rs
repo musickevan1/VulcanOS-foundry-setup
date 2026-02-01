@@ -46,6 +46,7 @@ pub enum AppMsg {
     ApplyThemeWallpaper(PathBuf),
     RestoreWallpapers(HashMap<String, PathBuf>),
     PreviewStateChanged { is_previewing: bool, theme_id: Option<String> },
+    WindowCloseRequested,
 }
 
 pub struct App {
@@ -74,6 +75,15 @@ impl SimpleComponent for App {
         adw::ApplicationWindow {
             set_title: Some("VulcanOS Appearance Manager"),
             set_default_size: (1000, 700),
+
+            // Handle window close - implicit apply if previewing
+            connect_close_request[sender] => move |_window| {
+                // Send message to self to handle implicit apply
+                sender.input(AppMsg::WindowCloseRequested);
+                // Return Propagation::Proceed to allow close
+                // (the apply happens sync, so window closes after)
+                gtk::glib::Propagation::Proceed
+            },
 
             #[local_ref]
             toast_overlay -> adw::ToastOverlay {
@@ -368,6 +378,21 @@ impl SimpleComponent for App {
             AppMsg::PreviewStateChanged { is_previewing, theme_id } => {
                 self.is_previewing = is_previewing;
                 self.previewing_theme_id = theme_id;
+            }
+
+            AppMsg::WindowCloseRequested => {
+                // Implicit apply: if previewing, apply the theme before closing
+                if self.is_previewing {
+                    if let Some(ref theme_id) = self.previewing_theme_id {
+                        // Apply theme directly via theme_applier
+                        // (ThemeView may be getting destroyed, so use direct call)
+                        use crate::services::theme_applier;
+                        if let Err(e) = theme_applier::apply_theme(theme_id) {
+                            eprintln!("Implicit apply on close failed: {}", e);
+                            // Don't block close - theme preview is already visible anyway
+                        }
+                    }
+                }
             }
         }
     }
