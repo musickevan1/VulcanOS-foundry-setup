@@ -327,14 +327,82 @@ impl SimpleComponent for ThemeViewModel {
 
             ThemeViewMsg::ApplyTheme => {
                 if let Some(ref theme) = self.selected_theme {
+                    // Check if we're in a valid state for apply
+                    if !self.app_state.is_previewing() && !self.app_state.is_idle() {
+                        return;
+                    }
+
                     // Check if theme has a suggested wallpaper
                     if let Some(wallpaper_path) = resolve_theme_wallpaper(theme) {
-                        // Show binding dialog
+                        // Show binding dialog (existing logic)
                         self.show_binding_dialog(theme.clone(), wallpaper_path, sender.clone());
-                    } else {
-                        // No wallpaper - apply theme only
-                        let theme_id = theme.theme_id.clone();
-                        self.apply_theme_only(&theme_id, sender.clone());
+                        return;
+                    }
+
+                    // No wallpaper - apply theme with state transitions
+                    let theme_id = theme.theme_id.clone();
+                    let theme_name = theme.theme_name.clone();
+
+                    // Save snapshot before transitioning (needed for rollback)
+                    let snapshot_for_rollback = self.preview_snapshot.clone();
+
+                    // Transition to Applying state
+                    match self.app_state.clone().start_apply() {
+                        Ok(new_state) => {
+                            self.app_state = new_state;
+
+                            // Perform apply
+                            match theme_applier::apply_theme(&theme_id) {
+                                Ok(_) => {
+                                    // Success - transition to Idle
+                                    match self.app_state.clone().finish() {
+                                        Ok(final_state) => {
+                                            self.app_state = final_state;
+                                            self.preview_snapshot = None;
+                                            self.previewing_theme_id = None;
+                                            self.original_theme_id = theme_id.clone();
+                                            self.theme_browser.emit(ThemeBrowserInput::SetCurrentTheme(theme_id.clone()));
+                                            sender.output(ThemeViewOutput::ThemeApplied(theme_id)).ok();
+                                            sender.output(ThemeViewOutput::ShowToast(
+                                                format!("Applied: {}", theme_name)
+                                            )).ok();
+                                        }
+                                        Err(e) => {
+                                            eprintln!("Invalid finish transition: {}", e);
+                                        }
+                                    }
+                                }
+                                Err(e) => {
+                                    // Apply failed - rollback to Previewing state
+                                    // Per CONTEXT.md: "Apply failure shows inline error, stays in preview mode"
+                                    if let Some(snapshot) = snapshot_for_rollback {
+                                        match self.app_state.clone().rollback(snapshot.clone()) {
+                                            Ok(rollback_state) => {
+                                                self.app_state = rollback_state;
+                                                self.preview_snapshot = Some(snapshot);
+                                                // previewing_theme_id stays the same
+                                            }
+                                            Err(re) => {
+                                                eprintln!("Rollback failed: {}", re);
+                                                // Fallback: force to Idle
+                                                self.app_state = AppState::Idle;
+                                                self.preview_snapshot = None;
+                                                self.previewing_theme_id = None;
+                                            }
+                                        }
+                                    } else {
+                                        // No snapshot - go to Idle
+                                        self.app_state = AppState::Idle;
+                                    }
+                                    sender.output(ThemeViewOutput::ShowToast(
+                                        format!("Apply failed: {}. You can retry or cancel.", e)
+                                    )).ok();
+                                }
+                            }
+                        }
+                        Err(e) => {
+                            eprintln!("Cannot apply from current state: {}", e);
+                        }
                     }
                 }
             }
@@ -576,14 +644,58 @@ impl ThemeViewModel {
     }
 
     fn apply_theme_only(&mut self, theme_id: &str, sender: ComponentSender<Self>) {
-        if let Err(e) = theme_applier::apply_theme(theme_id) {
-            eprintln!("Apply failed: {}", e);
-            sender.output(ThemeViewOutput::ShowToast(format!("Apply failed: {}", e))).ok();
-        } else {
-            self.original_theme_id = theme_id.to_string();
-            self.theme_browser.emit(ThemeBrowserInput::SetCurrentTheme(theme_id.to_string()));
-            sender.output(ThemeViewOutput::ShowToast(format!("Applied theme: {}", theme_id))).ok();
-            sender.output(ThemeViewOutput::ThemeApplied(theme_id.to_string())).ok();
+        // Save snapshot before transitioning (needed for rollback)
+        let snapshot_for_rollback = self.preview_snapshot.clone();
+
+        // Transition to Applying state
+        match self.app_state.clone().start_apply() {
+            Ok(new_state) => {
+                self.app_state = new_state;
+
+                match theme_applier::apply_theme(theme_id) {
+                    Ok(_) => {
+                        // Success - transition to Idle
+                        match self.app_state.clone().finish() {
+                            Ok(final_state) => {
+                                self.app_state = final_state;
+                                self.preview_snapshot = None;
+                                self.previewing_theme_id = None;
+                                self.original_theme_id = theme_id.to_string();
+                                self.theme_browser.emit(ThemeBrowserInput::SetCurrentTheme(theme_id.to_string()));
+                                sender.output(ThemeViewOutput::ShowToast(format!("Applied theme: {}", theme_id))).ok();
+                                sender.output(ThemeViewOutput::ThemeApplied(theme_id.to_string())).ok();
+                            }
+                            Err(e) => {
+                                eprintln!("Invalid finish transition: {}", e);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        // Apply failed - rollback to Previewing
+                        if let Some(snapshot) = snapshot_for_rollback {
+                            match self.app_state.clone().rollback(snapshot.clone()) {
+                                Ok(rollback_state) => {
+                                    self.app_state = rollback_state;
+                                    self.preview_snapshot = Some(snapshot);
+                                }
+                                Err(re) => {
+                                    eprintln!("Rollback failed: {}", re);
+                                    self.app_state = AppState::Idle;
+                                    self.preview_snapshot = None;
+                                    self.previewing_theme_id = None;
+                                }
+                            }
+                        } else {
+                            self.app_state = AppState::Idle;
+                        }
+                        sender.output(ThemeViewOutput::ShowToast(format!("Apply failed: {}", e))).ok();
+                    }
+                }
+            }
+            Err(e) => {
+                eprintln!("Cannot apply from current state: {}", e);
+                sender.output(ThemeViewOutput::ShowToast(format!("Apply failed: {}", e))).ok();
+            }
         }
     }
 }
