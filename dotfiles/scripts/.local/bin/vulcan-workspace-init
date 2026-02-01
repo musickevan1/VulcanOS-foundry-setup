@@ -18,6 +18,10 @@ PROFILE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/hyprmon-desc/profiles"
 WORKSPACE_CONF="$HYPR_CONF_DIR/workspaces.conf"
 WAYBAR_WORKSPACES_CONF="$WAYBAR_CONF_DIR/workspaces.json"
 
+# EDID cache from vulcan-monitor-identify
+MONITOR_CACHE_DIR="$HOME/.cache/vulcan-monitors"
+MAPPING_FILE="$MONITOR_CACHE_DIR/sceptre-mapping"
+
 # Number of workspaces per monitor
 WS_PER_MONITOR=5
 
@@ -65,14 +69,58 @@ detect_active_profile() {
     esac
 }
 
-# Define workspace order for each profile
-# Order: Main monitor first, then left-to-right, top-to-bottom
-# Note: DP numbers can change on replug - update these if monitors shift
-declare -A PROFILE_WORKSPACE_ORDER
-PROFILE_WORKSPACE_ORDER[desktop]="DP-12 DP-9 DP-10 DP-4 eDP-1"    # Main curved, left, top, float2, laptop
-PROFILE_WORKSPACE_ORDER[console]="DP-12 DP-9 DP-4 eDP-1"          # 4 monitors (no center top)
-PROFILE_WORKSPACE_ORDER[campus]="DP-4 eDP-1"                       # Float2 + laptop
-PROFILE_WORKSPACE_ORDER[laptop]="eDP-1"                            # Just laptop
+# Resolve monitor order using EDID cache
+# Returns ordered list of monitor names based on profile and EDID detection
+resolve_monitor_order() {
+    local profile="${1:-}"
+    local -a ordered_monitors=()
+
+    # Load EDID cache if available
+    local LEFT_VERTICAL="" CENTER_TOP="" CENTER_BOTTOM="" FLOAT2_PRO=""
+    if [[ -f "$MAPPING_FILE" ]]; then
+        # shellcheck disable=SC1090
+        source "$MAPPING_FILE"
+    fi
+
+    # User's preferred workspace order:
+    # Desktop (5): eDP-1 -> CENTER_BOTTOM -> FLOAT2_PRO -> CENTER_TOP -> LEFT_VERTICAL
+    # Console (4): eDP-1 -> CENTER_BOTTOM -> FLOAT2_PRO -> CENTER_TOP
+    # Campus (2): FLOAT2_PRO -> eDP-1
+    # Laptop (1): eDP-1
+
+    case "$profile" in
+        desktop)
+            # 5 monitors: laptop + 4 externals
+            ordered_monitors=("eDP-1" "$CENTER_BOTTOM" "$FLOAT2_PRO" "$CENTER_TOP" "$LEFT_VERTICAL")
+            ;;
+        console)
+            # 4 monitors: laptop + main curved + float2 + top (no left vertical)
+            ordered_monitors=("eDP-1" "$CENTER_BOTTOM" "$FLOAT2_PRO" "$CENTER_TOP")
+            ;;
+        campus)
+            # 2 monitors: float2 + laptop (portable setup)
+            ordered_monitors=("$FLOAT2_PRO" "eDP-1")
+            ;;
+        laptop)
+            # 1 monitor: just laptop
+            ordered_monitors=("eDP-1")
+            ;;
+        *)
+            # Unknown profile: fallback to eDP-1 + any externals from cache
+            ordered_monitors=("eDP-1" "$CENTER_BOTTOM" "$FLOAT2_PRO" "$CENTER_TOP" "$LEFT_VERTICAL")
+            ;;
+    esac
+
+    # Filter to only connected monitors
+    local connected
+    connected=$(get_connected_monitors)
+
+    for mon in "${ordered_monitors[@]}"; do
+        if [[ -n "$mon" ]] && echo "$connected" | grep -q "^${mon}$"; then
+            echo "$mon"
+        fi
+    done
+}
 
 # Get monitors in the order they should be assigned workspaces
 get_ordered_monitors() {
@@ -84,37 +132,31 @@ get_ordered_monitors() {
         log "Auto-detected profile: $profile"
     fi
 
-    # Get the predefined workspace order for this profile
-    local order="${PROFILE_WORKSPACE_ORDER[$profile]:-}"
+    # Try EDID-based resolution first
+    local monitors_from_cache
+    monitors_from_cache=$(resolve_monitor_order "$profile")
 
-    if [[ -n "$order" ]]; then
-        log "Using workspace order for profile: $profile"
-        # Get connected monitors to filter the order
+    if [[ -n "$monitors_from_cache" ]]; then
+        log "Using EDID cache for workspace order (profile: $profile)"
+        echo "$monitors_from_cache"
+        return 0
+    fi
+
+    # Fallback: use profile file order or connected monitor order
+    local profile_file="$PROFILE_DIR/${profile}.conf"
+    if [[ -f "$profile_file" ]]; then
+        log "Fallback: Using monitor order from profile file: $profile"
         local connected
         connected=$(get_connected_monitors)
 
-        for mon in $order; do
+        while read -r mon; do
             if echo "$connected" | grep -q "^${mon}$"; then
                 echo "$mon"
             fi
-        done
+        done < <(get_profile_monitors "$profile_file")
     else
-        # Fallback: use profile file order
-        local profile_file="$PROFILE_DIR/${profile}.conf"
-        if [[ -f "$profile_file" ]]; then
-            log "Using monitor order from profile file: $profile"
-            local connected
-            connected=$(get_connected_monitors)
-
-            while read -r mon; do
-                if echo "$connected" | grep -q "^${mon}$"; then
-                    echo "$mon"
-                fi
-            done < <(get_profile_monitors "$profile_file")
-        else
-            log "No profile found, using connected monitor order"
-            get_connected_monitors
-        fi
+        log "Fallback: Using connected monitor order"
+        get_connected_monitors
     fi
 }
 
