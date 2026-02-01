@@ -174,7 +174,71 @@ impl SimpleComponent for ThemeViewModel {
                 #[watch]
                 set_reveal_child: model.app_state.is_previewing() || model.app_state.is_error(),
 
-                // Action bar content added in Task 2
+                gtk::ActionBar {
+                    // Status indicator (left side)
+                    pack_start = &gtk::Box {
+                        set_orientation: gtk::Orientation::Horizontal,
+                        set_spacing: 8,
+
+                        gtk::Label {
+                            #[watch]
+                            set_markup: &{
+                                if model.app_state.is_previewing() || model.app_state.is_applying() {
+                                    format!(
+                                        "Applied: <b>{}</b> / Previewing: <b>{}</b>",
+                                        model.original_theme_id,
+                                        model.previewing_theme_id.as_deref().unwrap_or("None")
+                                    )
+                                } else if let crate::state::AppState::Error { message, .. } = &model.app_state {
+                                    format!("<span color='#ff5555'>Error: {}</span>", message)
+                                } else {
+                                    String::new()
+                                }
+                            },
+                            set_use_markup: true,
+                        },
+                    },
+
+                    // Action buttons (right side)
+                    pack_end = &gtk::Box {
+                        set_orientation: gtk::Orientation::Horizontal,
+                        set_spacing: 8,
+
+                        gtk::Button {
+                            set_label: "Cancel",
+                            set_tooltip_text: Some("Revert to original theme and wallpaper"),
+                            #[watch]
+                            set_sensitive: model.app_state.is_previewing() && !model.app_state.is_applying(),
+                            connect_clicked => ThemeViewMsg::CancelPreview,
+                        },
+
+                        gtk::Button {
+                            add_css_class: "suggested-action",
+                            #[watch]
+                            set_sensitive: model.app_state.is_previewing() && !model.app_state.is_applying(),
+
+                            #[wrap(Some)]
+                            set_child = &gtk::Box {
+                                set_orientation: gtk::Orientation::Horizontal,
+                                set_spacing: 6,
+
+                                gtk::Spinner {
+                                    #[watch]
+                                    set_spinning: model.app_state.is_applying(),
+                                    #[watch]
+                                    set_visible: model.app_state.is_applying(),
+                                },
+
+                                gtk::Label {
+                                    #[watch]
+                                    set_label: if model.app_state.is_applying() { "Applying..." } else { "Apply" },
+                                },
+                            },
+
+                            connect_clicked => ThemeViewMsg::ApplyTheme,
+                        },
+                    },
+                },
             },
         }
     }
