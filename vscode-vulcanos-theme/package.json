@@ -1,0 +1,40 @@
+{
+  "name": "vulcanos-theme",
+  "displayName": "VulcanOS Theme",
+  "description": "Warm forge-inspired dark theme from VulcanOS - orange and gold accents on charcoal",
+  "version": "1.0.0",
+  "publisher": "vulcanos",
+  "engines": {
+    "vscode": "^1.60.0"
+  },
+  "categories": [
+    "Themes"
+  ],
+  "keywords": [
+    "dark",
+    "warm",
+    "orange",
+    "forge",
+    "vulcan",
+    "theme",
+    "color-theme"
+  ],
+  "contributes": {
+    "themes": [
+      {
+        "label": "VulcanOS Dark",
+        "uiTheme": "vs-dark",
+        "path": "./themes/vulcanos-dark-color-theme.json"
+      }
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/vulcanos/vscode-vulcanos-theme"
+  },
+  "icon": "icon.png",
+  "galleryBanner": {
+    "color": "#1c1917",
+    "theme": "dark"
+  }
+}
