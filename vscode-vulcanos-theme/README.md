@@ -24,10 +24,16 @@ A warm, forge-inspired dark theme evoking molten metal and craftsman aesthetics.
 ### Manual Installation
 
 1. Download or clone this repository
-2. Copy the `vscode-vulcanos-theme` folder to your VS Code extensions directory:
-   - **Linux**: `~/.vscode/extensions/`
-   - **macOS**: `~/.vscode/extensions/`
-   - **Windows**: `%USERPROFILE%\.vscode\extensions\`
+2. Copy the extension to your VS Code extensions directory:
+
+```bash
+# Linux/macOS
+cp -r vscode-vulcanos-theme ~/.vscode/extensions/vulcanos-theme-1.0.0
+
+# Windows (PowerShell)
+Copy-Item -Recurse vscode-vulcanos-theme "$env:USERPROFILE\.vscode\extensions\vulcanos-theme-1.0.0"
+```
+
 3. Restart VS Code
 4. Press `Ctrl+K Ctrl+T` to open the theme picker
 5. Select **VulcanOS Dark**
