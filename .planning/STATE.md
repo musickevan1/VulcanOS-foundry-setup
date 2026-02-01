@@ -10,19 +10,19 @@ See: .planning/PROJECT.md (updated 2026-01-30)
 ## Current Position
 
 Phase: 12 of 13 (UX Polish)
-Plan: 2 of TBD in current phase
+Plan: 3 of TBD in current phase
 Status: In progress
-Last activity: 2026-01-31 — Completed 12-02-PLAN.md
+Last activity: 2026-02-01 — Completed 12-03-PLAN.md
 
-Progress: [█████████████████████░░░] 84% (42/50 total plans across all milestones)
+Progress: [█████████████████████░░░] 86% (43/50 total plans across all milestones)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 42 (v1.0 + v2.0 + v2.1)
+- Total plans completed: 43 (v1.0 + v2.0 + v2.1)
 - v1.0 Foundation: 11 plans
 - v2.0 Appearance Manager: 28 plans
-- v2.1 Maintenance: 3 plans
+- v2.1 Maintenance: 4 plans
 
 **By Milestone:**
 
@@ -30,14 +30,14 @@ Progress: [█████████████████████░░
 |-----------|--------|-------|--------|
 | v1.0 Foundation | 2 | 11 | Shipped 2026-01-24 |
 | v2.0 Appearance Manager | 5 | 28 | Shipped 2026-01-30 |
-| v2.1 Maintenance | 3 | 3 complete | In progress |
+| v2.1 Maintenance | 3 | 4 complete | In progress |
 
 **Recent Trend:**
 - v2.0 completed in 6 days (5 phases, 28 plans)
 - v2.1 Phase 11: 1 plan, 2 min execution
-- v2.1 Phase 12: 2 plans, ~2 min each
+- v2.1 Phase 12: 3 plans complete (12-01, 12-02, 12-03)
 
-*Updated after 12-02 execution*
+*Updated after 12-03 execution*
 
 ## Accumulated Context
 
@@ -53,6 +53,7 @@ Recent decisions affecting current work:
 - 11-01: All theme loading MUST use parse_and_validate() not parse_theme_file()
 - 12-01: BindingMode auto-transition wired (ThemeBound -> CustomOverride on manual wallpaper change)
 - 12-02: Wallpaper path resolution uses dotfiles/wallpapers/{theme_id}/ structure
+- 12-03: All 10 preset themes have wallpapers with CC0/MIT licensing and attribution
 
 ### Pending Todos
 
@@ -64,7 +65,7 @@ None yet. (Ideas captured during v2.1 will appear in .planning/todos/pending/)
 - AppState state machine created but not integrated into UI components (Phase 13)
 - ~~parse_and_validate() security function exists but bypassed (Phase 11)~~ RESOLVED
 - ~~BindingMode CustomOverride transition not automated (Phase 12)~~ RESOLVED in 12-01
-- 7 of 10 themes missing wallpapers (Phase 12)
+- ~~7 of 10 themes missing wallpapers (Phase 12)~~ RESOLVED in 12-03
 
 **Scope creep risk:**
 - AppState integration could expand beyond maintenance scope
@@ -72,8 +73,8 @@ None yet. (Ideas captured during v2.1 will appear in .planning/todos/pending/)
 
 ## Session Continuity
 
-Last session: 2026-01-31
-Stopped at: Completed 12-02-PLAN.md
+Last session: 2026-02-01
+Stopped at: Completed 12-03-PLAN.md
 Resume file: None
 
-Next: Execute 12-03-PLAN.md (wallpaper generation for remaining 7 themes)
+Next: Check if more 12-XX plans exist, or proceed to Phase 13 (AppState)
