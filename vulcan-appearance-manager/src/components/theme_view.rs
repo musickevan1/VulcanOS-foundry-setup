@@ -38,6 +38,7 @@ pub enum ThemeViewOutput {
     ThemeApplied(String), // theme_id
     ApplyWallpaper(std::path::PathBuf),  // Request wallpaper application
     BindingModeChanged(crate::models::BindingMode),  // Notify binding state change
+    RestoreWallpapers(std::collections::HashMap<String, std::path::PathBuf>),  // Restore wallpapers from snapshot
 }
 
 pub struct ThemeViewModel {
@@ -62,102 +63,118 @@ impl SimpleComponent for ThemeViewModel {
     type Output = ThemeViewOutput;
 
     view! {
-        gtk::Paned {
-            set_orientation: gtk::Orientation::Horizontal,
-            set_shrink_start_child: false,
-            set_shrink_end_child: false,
-            set_position: 550,
+        gtk::Box {
+            set_orientation: gtk::Orientation::Vertical,
 
-            // Left: Theme browser
-            #[wrap(Some)]
-            set_start_child = &gtk::Frame {
-                set_margin_all: 12,
+            // Main content (existing Paned)
+            gtk::Paned {
+                set_vexpand: true,
+                set_orientation: gtk::Orientation::Horizontal,
+                set_shrink_start_child: false,
+                set_shrink_end_child: false,
+                set_position: 550,
 
-                gtk::Box {
+                // Left: Theme browser
+                #[wrap(Some)]
+                set_start_child = &gtk::Frame {
+                    set_margin_all: 12,
+
+                    gtk::Box {
+                        set_orientation: gtk::Orientation::Vertical,
+                        set_spacing: 8,
+
+                        gtk::Box {
+                            set_orientation: gtk::Orientation::Horizontal,
+                            set_spacing: 8,
+
+                            gtk::Label {
+                                set_markup: "<b>Available Themes</b>",
+                                set_halign: gtk::Align::Start,
+                                set_hexpand: true,
+                            },
+
+                            gtk::Button {
+                                set_icon_name: "list-add-symbolic",
+                                set_tooltip_text: Some("Create new theme"),
+                                connect_clicked => ThemeViewMsg::NewTheme,
+                            },
+
+                            gtk::Button {
+                                set_icon_name: "document-open-symbolic",
+                                set_tooltip_text: Some("Import theme file"),
+                                connect_clicked => ThemeViewMsg::Import,
+                            },
+                        },
+
+                        model.theme_browser.widget() {},
+
+                        // Discovery section in an expander
+                        gtk::Expander {
+                            set_label: Some("Third-Party Apps"),
+                            set_margin_top: 12,
+
+                            model.discovery.widget() {},
+                        },
+                    },
+                },
+
+                // Right: Preview + actions
+                #[wrap(Some)]
+                set_end_child = &gtk::Box {
                     set_orientation: gtk::Orientation::Vertical,
-                    set_spacing: 8,
+                    set_spacing: 12,
+                    set_margin_all: 12,
 
+                    model.preview_panel.widget() {},
+
+                    // Action buttons
                     gtk::Box {
                         set_orientation: gtk::Orientation::Horizontal,
                         set_spacing: 8,
+                        set_halign: gtk::Align::End,
 
-                        gtk::Label {
-                            set_markup: "<b>Available Themes</b>",
-                            set_halign: gtk::Align::Start,
-                            set_hexpand: true,
+                        gtk::Button {
+                            set_label: "Edit",
+                            set_tooltip_text: Some("Edit selected theme"),
+                            #[watch]
+                            set_sensitive: model.selected_theme.as_ref().map(|t| !t.is_builtin).unwrap_or(false),
+                            connect_clicked => ThemeViewMsg::EditTheme,
                         },
 
                         gtk::Button {
-                            set_icon_name: "list-add-symbolic",
-                            set_tooltip_text: Some("Create new theme"),
-                            connect_clicked => ThemeViewMsg::NewTheme,
+                            set_label: "Preview",
+                            set_tooltip_text: Some("Preview theme (temporary)"),
+                            #[watch]
+                            set_sensitive: model.selected_theme.is_some(),
+                            connect_clicked => ThemeViewMsg::PreviewTheme,
                         },
 
                         gtk::Button {
-                            set_icon_name: "document-open-symbolic",
-                            set_tooltip_text: Some("Import theme file"),
-                            connect_clicked => ThemeViewMsg::Import,
+                            set_label: "Cancel",
+                            set_tooltip_text: Some("Revert to original theme"),
+                            connect_clicked => ThemeViewMsg::CancelPreview,
                         },
-                    },
 
-                    model.theme_browser.widget() {},
-
-                    // Discovery section in an expander
-                    gtk::Expander {
-                        set_label: Some("Third-Party Apps"),
-                        set_margin_top: 12,
-
-                        model.discovery.widget() {},
+                        gtk::Button {
+                            set_label: "Apply",
+                            add_css_class: "suggested-action",
+                            set_tooltip_text: Some("Apply theme permanently"),
+                            #[watch]
+                            set_sensitive: model.selected_theme.is_some(),
+                            connect_clicked => ThemeViewMsg::ApplyTheme,
+                        },
                     },
                 },
             },
 
-            // Right: Preview + actions
-            #[wrap(Some)]
-            set_end_child = &gtk::Box {
-                set_orientation: gtk::Orientation::Vertical,
-                set_spacing: 12,
-                set_margin_all: 12,
+            // Action bar with slide-up animation (new)
+            gtk::Revealer {
+                set_transition_type: gtk::RevealerTransitionType::SlideUp,
+                set_transition_duration: 200,
+                #[watch]
+                set_reveal_child: model.app_state.is_previewing() || model.app_state.is_error(),
 
-                model.preview_panel.widget() {},
-
-                // Action buttons
-                gtk::Box {
-                    set_orientation: gtk::Orientation::Horizontal,
-                    set_spacing: 8,
-                    set_halign: gtk::Align::End,
-
-                    gtk::Button {
-                        set_label: "Edit",
-                        set_tooltip_text: Some("Edit selected theme"),
-                        #[watch]
-                        set_sensitive: model.selected_theme.as_ref().map(|t| !t.is_builtin).unwrap_or(false),
-                        connect_clicked => ThemeViewMsg::EditTheme,
-                    },
-
-                    gtk::Button {
-                        set_label: "Preview",
-                        set_tooltip_text: Some("Preview theme (temporary)"),
-                        #[watch]
-                        set_sensitive: model.selected_theme.is_some(),
-                        connect_clicked => ThemeViewMsg::PreviewTheme,
-                    },
-
-                    gtk::Button {
-                        set_label: "Cancel",
-                        set_tooltip_text: Some("Revert to original theme"),
-                        connect_clicked => ThemeViewMsg::CancelPreview,
-                    },
-
-                    gtk::Button {
-                        set_label: "Apply",
-                        add_css_class: "suggested-action",
-                        set_tooltip_text: Some("Apply theme permanently"),
-                        #[watch]
-                        set_sensitive: model.selected_theme.is_some(),
-                        connect_clicked => ThemeViewMsg::ApplyTheme,
-                    },
-                },
+                // Action bar content added in Task 2
             },
         }
     }
@@ -282,11 +299,44 @@ impl SimpleComponent for ThemeViewModel {
             }
 
             ThemeViewMsg::CancelPreview => {
-                if let Err(e) = theme_applier::revert_theme() {
-                    eprintln!("Revert failed: {}", e);
-                    sender.output(ThemeViewOutput::ShowToast(format!("Revert failed: {}", e))).ok();
-                } else {
-                    sender.output(ThemeViewOutput::ShowToast("Reverted to original theme".to_string())).ok();
+                if !self.app_state.is_previewing() {
+                    // Not in preview state, nothing to cancel
+                    return;
+                }
+
+                // Restore from snapshot
+                if let Some(ref snapshot) = self.preview_snapshot {
+                    // Restore theme
+                    if let Some(ref theme_id) = snapshot.theme_id {
+                        if let Err(e) = theme_applier::apply_theme(theme_id) {
+                            eprintln!("Failed to restore theme: {}", e);
+                            sender.output(ThemeViewOutput::ShowToast(
+                                format!("Failed to restore theme: {}", e)
+                            )).ok();
+                        }
+                    }
+
+                    // Restore wallpapers via parent coordinator
+                    if !snapshot.wallpapers.is_empty() {
+                        sender.output(ThemeViewOutput::RestoreWallpapers(
+                            snapshot.wallpapers.clone()
+                        )).ok();
+                    }
+                }
+
+                // Transition state: Previewing -> Idle
+                match self.app_state.clone().cancel_preview() {
+                    Ok(new_state) => {
+                        self.app_state = new_state;
+                        self.preview_snapshot = None;
+                        self.previewing_theme_id = None;
+                        sender.output(ThemeViewOutput::ShowToast(
+                            "Reverted to original theme".to_string()
+                        )).ok();
+                    }
+                    Err(e) => {
+                        eprintln!("Invalid cancel transition: {}", e);
+                    }
                 }
             }
 
