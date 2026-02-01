@@ -21,9 +21,9 @@ Maintenance milestone — wiring existing infrastructure, not building new featu
 
 ### Architecture
 
-- [ ] **ARCH-01**: AppState state machine integrated into App coordinator
-- [ ] **ARCH-02**: Cancel Preview restores previous wallpaper (currently broken)
-- [ ] **ARCH-03**: Preview/Apply/Cancel buttons respect state transitions (disabled during invalid states)
+- [x] **ARCH-01**: AppState state machine integrated into App coordinator
+- [x] **ARCH-02**: Cancel Preview restores previous wallpaper (via RestoreWallpapers message)
+- [x] **ARCH-03**: Preview/Apply/Cancel buttons respect state transitions (disabled during invalid states)
 
 ## Out of Scope
 
@@ -46,16 +46,15 @@ Explicitly excluded from v2.1:
 | UX-01 | Phase 12 | Complete |
 | UX-02 | Phase 12 | Complete |
 | UX-03 | Phase 12 | Complete |
-| ARCH-01 | Phase 13 | Pending |
-| ARCH-02 | Phase 13 | Pending |
-| ARCH-03 | Phase 13 | Pending |
+| ARCH-01 | Phase 13 | Complete |
+| ARCH-02 | Phase 13 | Complete |
+| ARCH-03 | Phase 13 | Complete |
 
 **Coverage:**
 - v2.1 requirements: 9 total
 - Mapped to phases: 9
-- Unmapped: 0
-- Coverage: 100%
+- Complete: 9/9 (100%)
 
 ---
 *Requirements defined: 2026-01-30*
-*Last updated: 2026-02-01 (Phase 12 complete)*
+*Last updated: 2026-02-01 (v2.1 milestone complete)*

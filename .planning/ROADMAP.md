@@ -4,7 +4,7 @@
 
 - ✅ **v1.0 Foundation** - Phases 1, 5 (shipped 2026-01-24)
 - ✅ **v2.0 Vulcan Appearance Manager** - Phases 6-10 (shipped 2026-01-30)
-- 🚧 **v2.1 Maintenance** - Phases 11-13 (in progress)
+- ✅ **v2.1 Maintenance** - Phases 11-13 (shipped 2026-02-01)
 
 ## Phases
 
@@ -101,13 +101,14 @@ Plans:
 
 </details>
 
-### 🚧 v2.1 Maintenance (In Progress)
+<details>
+<summary>✅ v2.1 Maintenance (Phases 11-13) - SHIPPED 2026-02-01</summary>
 
 **Milestone Goal:** Clean up technical debt from v2.0 to solidify the Appearance Manager codebase before adding new features.
 
 **Coverage:** 9 v2.1 requirements mapped across 3 phases
 
-#### Phase 11: Security Hardening
+### Phase 11: Security Hardening
 **Goal**: Theme import security via parse_and_validate() integration
 **Depends on**: Nothing (maintenance work on existing code)
 **Requirements**: SEC-01, SEC-02, SEC-03
@@ -121,7 +122,7 @@ Plans:
 Plans:
 - [x] 11-01: Wire parse_and_validate() into all theme loading paths
 
-#### Phase 12: UX Polish
+### Phase 12: UX Polish
 **Goal**: Complete theme/wallpaper experience with binding detection and wallpaper library
 **Depends on**: Nothing (independent UX improvements)
 **Requirements**: UX-01, UX-02, UX-03
@@ -137,7 +138,7 @@ Plans:
 - [x] 12-02: Fix wallpaper path resolution
 - [x] 12-03: Download missing wallpapers and update LICENSE attribution
 
-#### Phase 13: Architecture Cleanup
+### Phase 13: Architecture Cleanup
 **Goal**: AppState integration for proper preview/apply/cancel workflow
 **Depends on**: Nothing (internal state management)
 **Requirements**: ARCH-01, ARCH-02, ARCH-03
@@ -146,13 +147,16 @@ Plans:
   2. Cancel Preview button restores previous theme AND wallpapers
   3. Preview/Apply/Cancel buttons are disabled during invalid states (cannot preview while already previewing)
   4. User can preview multiple themes, cancel to restore original state, then apply desired theme
-**Plans**: 4 plans
+**Plans**: 5 plans
 
 Plans:
-- [ ] 13-01-PLAN.md — AppState integration into ThemeViewModel
-- [ ] 13-02-PLAN.md — Action bar UI with Revealer animation
-- [ ] 13-03-PLAN.md — Cancel restore logic and Apply state transitions
-- [ ] 13-04-PLAN.md — Implicit apply on close and human verification
+- [x] 13-01: AppState integration into ThemeViewModel
+- [x] 13-02: Action bar UI with Revealer animation
+- [x] 13-03: Cancel restore logic with RestoreWallpapers message
+- [x] 13-04: Implicit apply on close and human verification
+- [x] 13-05: Apply state transitions with rollback on failure
+
+</details>
 
 ## Progress
 
@@ -167,7 +171,7 @@ Plans:
 | 10. Preset Themes + Desktop Integration | v2.0 | 6/6 | Complete | 2026-01-30 |
 | 11. Security Hardening | v2.1 | 1/1 | Complete | 2026-01-30 |
 | 12. UX Polish | v2.1 | 3/3 | Complete | 2026-02-01 |
-| 13. Architecture Cleanup | v2.1 | 0/4 | Not started | - |
+| 13. Architecture Cleanup | v2.1 | 5/5 | Complete | 2026-02-01 |
 
 ---
-*Last updated: 2026-02-01 (Phase 13 planned)*
+*Last updated: 2026-02-01 (v2.1 Maintenance milestone complete)*
