@@ -2,27 +2,27 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-01-30)
+See: .planning/PROJECT.md (updated 2026-02-01)
 
 **Core value:** Cohesive, recoverable, keyboard-driven
-**Current focus:** Phase 13 - Architecture Cleanup
+**Current focus:** Between milestones (v2.1 complete, v2.2/v3.0 not started)
 
 ## Current Position
 
-Phase: 13 of 13 (Architecture Cleanup)
-Plan: 5 of 5 in current phase
-Status: Phase complete
-Last activity: 2026-02-01 — Completed 13-04-PLAN.md
+Phase: N/A (between milestones)
+Plan: N/A
+Status: Ready to plan next milestone
+Last activity: 2026-02-01 — v2.1 Maintenance shipped
 
-Progress: [████████████████████████] 100% (50/50 total plans across all milestones)
+Progress: [████████████████████████] 100% (50/50 total plans across milestones)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 44 (v1.0 + v2.0 + v2.1)
+- Total plans completed: 50 (v1.0 + v2.0 + v2.1)
 - v1.0 Foundation: 11 plans
-- v2.0 Appearance Manager: 28 plans
-- v2.1 Maintenance: 5 plans
+- v2.0 Appearance Manager: 28 plans + 2 inserted (10.5, 10.6 equivalent)
+- v2.1 Maintenance: 9 plans
 
 **By Milestone:**
 
@@ -30,58 +30,33 @@ Progress: [███████████████████████
 |-----------|--------|-------|--------|
 | v1.0 Foundation | 2 | 11 | Shipped 2026-01-24 |
 | v2.0 Appearance Manager | 5 | 28 | Shipped 2026-01-30 |
-| v2.1 Maintenance | 3 | 5 complete | In progress |
+| v2.1 Maintenance | 3 | 9 | Shipped 2026-02-01 |
 
 **Recent Trend:**
 - v2.0 completed in 6 days (5 phases, 28 plans)
-- v2.1 Phase 11: 1 plan, 2 min execution
-- v2.1 Phase 12: 3 plans complete (12-01, 12-02, 12-03)
-- v2.1 Phase 13: 5 plans complete (13-01, 13-02, 13-03, 13-04, 13-05), 24 min total execution
-- v2.1 completed in 1 day (3 phases, 9 plans)
+- v2.1 completed in 2 days (3 phases, 9 plans)
+- Total project: 10 phases, 48 plans, 3 milestones shipped
 
-*Updated after 13-04 execution*
+*Updated after v2.1 milestone completion*
 
 ## Accumulated Context
 
 ### Decisions
 
 Decisions are logged in PROJECT.md Key Decisions table.
-Recent decisions affecting current work:
-
-- v2.0: Merged theme-manager + wallpaper-manager into unified app (BindingMode architecture)
-- v2.0: GTK4/Relm4 framework established as standard pattern
-- v2.0: Pre-made wallpapers instead of on-demand AI generation
-- v2.1: Maintenance milestone focuses on wiring existing infrastructure (AppState, validation, wallpapers)
-- 11-01: All theme loading MUST use parse_and_validate() not parse_theme_file()
-- 12-01: BindingMode auto-transition wired (ThemeBound -> CustomOverride on manual wallpaper change)
-- 12-02: Wallpaper path resolution uses dotfiles/wallpapers/{theme_id}/ structure
-- 12-03: All 10 preset themes have wallpapers with CC0/MIT licensing and attribution
-- 13-01: ThemeViewModel preview applies immediately on theme selection (Idle -> Previewing on first click)
-- 13-01: Multi-preview workflow keeps ORIGINAL snapshot for cancel, not previous preview
-- 13-02: Action bar slides up with Cancel/Apply buttons during preview state
-- 13-03: Cancel restores theme AND wallpapers from original snapshot via RestoreWallpapers message
-- 13-04: Closing app while previewing implicitly applies the previewed theme via close-request handler
-- 13-05: Apply failure returns to Previewing state (not Idle) so user can retry or cancel
-- 13-05: rollback() method enables Applying -> Previewing transition with snapshot restoration
+All v2.1 decisions have been recorded with outcomes.
 
 ### Pending Todos
 
-None yet. (Ideas captured during v2.1 will appear in .planning/todos/pending/)
+None yet.
 
 ### Blockers/Concerns
 
-**Known tech debt from v2.0 (now being addressed in v2.1):**
-- ~~AppState state machine integration in progress (Phase 13)~~ RESOLVED
-  - 13-01: ThemeViewModel wired ✓
-  - 13-02: Action bar visibility ✓
-  - 13-03: Cancel/Apply handlers ✓
-- ~~parse_and_validate() security function exists but bypassed (Phase 11)~~ RESOLVED
-- ~~BindingMode CustomOverride transition not automated (Phase 12)~~ RESOLVED in 12-01
-- ~~7 of 10 themes missing wallpapers (Phase 12)~~ RESOLVED in 12-03
+**Technical debt:** None. v2.1 cleaned up all tech debt from v2.0.
 
-**Scope creep risk:**
-- AppState integration could expand beyond maintenance scope
-- Must defer UI enhancements (error dialogs, spinners) to v2.2+
+**Next steps:**
+- Run `/gsd:new-milestone` to start next milestone (questioning → research → requirements → roadmap)
+- Consider what v2.2 or v3.0 should focus on
 
 ### Quick Tasks Completed
 
@@ -92,8 +67,8 @@ None yet. (Ideas captured during v2.1 will appear in .planning/todos/pending/)
 
 ## Session Continuity
 
-Last session: 2026-02-01 22:25:13 UTC
-Stopped at: Completed 13-04-PLAN.md (Phase 13 complete)
+Last session: 2026-02-01
+Stopped at: v2.1 milestone archived and tagged
 Resume file: None
 
-Next: v2.1 milestone complete - all phases finished (11, 12, 13)
+Next: `/gsd:new-milestone` to start v2.2 or v3.0

@@ -1,5 +1,33 @@
 # Project Milestones: VulcanOS
 
+## v2.1 Maintenance (Shipped: 2026-02-01)
+
+**Delivered:** Technical debt cleanup — security hardening, UX polish, and architecture cleanup to solidify the Appearance Manager before new features.
+
+**Phases completed:** 11-13 (9 plans total)
+
+**Key accomplishments:**
+
+- All theme loading paths now use parse_and_validate() with 6 dangerous pattern checks and path traversal prevention
+- BindingMode auto-transition from ThemeBound to CustomOverride on manual wallpaper change
+- All 10 preset themes have bundled wallpapers with CC0 licensing and proper attribution
+- AppState state machine integrated for proper preview/apply/cancel lifecycle
+- Cancel Preview restores both theme AND wallpapers from original snapshot
+- Implicit apply on window close during preview
+
+**Stats:**
+
+- 8,159 lines of Rust (vulcan-appearance-manager)
+- 3 phases, 9 plans
+- 9 requirements satisfied
+- 2 days from start to ship
+
+**Git range:** `docs(11)` → `docs(13)`
+
+**What's next:** v2.2 or v3.0 — new features (TBD after requirements gathering)
+
+---
+
 ## v2.0 Vulcan Appearance Manager (Shipped: 2026-01-30)
 
 **Delivered:** Unified theme and wallpaper management with preset themes, binding system, and complete desktop theming infrastructure.
@@ -55,4 +83,4 @@
 
 ---
 
-*Last updated: 2026-01-30*
+*Last updated: 2026-02-01*
