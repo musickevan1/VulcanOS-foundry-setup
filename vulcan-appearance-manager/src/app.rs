@@ -44,6 +44,7 @@ pub enum AppMsg {
     ProfileDeleted(String),
     BindingModeChanged(BindingMode),
     ApplyThemeWallpaper(PathBuf),
+    RestoreWallpapers(HashMap<String, PathBuf>),
 }
 
 pub struct App {
@@ -160,6 +161,7 @@ impl SimpleComponent for App {
                     ThemeViewOutput::ThemeApplied(id) => AppMsg::ThemeApplied(id),
                     ThemeViewOutput::ApplyWallpaper(path) => AppMsg::ApplyThemeWallpaper(path),
                     ThemeViewOutput::BindingModeChanged(mode) => AppMsg::BindingModeChanged(mode),
+                    ThemeViewOutput::RestoreWallpapers(wallpapers) => AppMsg::RestoreWallpapers(wallpapers),
                 }
             });
 
@@ -348,6 +350,11 @@ impl SimpleComponent for App {
                 // Get current monitor list from wallpaper view
                 // For now, apply to all monitors
                 self.wallpaper_view.emit(WallpaperViewMsg::SetWallpaperForAll(wallpaper_path));
+            }
+
+            AppMsg::RestoreWallpapers(wallpapers) => {
+                // Restore wallpapers via wallpaper view's profile apply mechanism
+                self.wallpaper_view.emit(WallpaperViewMsg::ApplyProfile(wallpapers));
             }
         }
     }
