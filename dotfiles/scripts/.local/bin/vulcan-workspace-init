@@ -82,10 +82,10 @@ resolve_monitor_order() {
         source "$MAPPING_FILE"
     fi
 
-    # User's preferred workspace order:
+    # User's preferred workspace order (eDP-1 ALWAYS first for consistency):
     # Desktop (5): eDP-1 -> CENTER_BOTTOM -> FLOAT2_PRO -> CENTER_TOP -> LEFT_VERTICAL
     # Console (4): eDP-1 -> CENTER_BOTTOM -> FLOAT2_PRO -> CENTER_TOP
-    # Campus (2): FLOAT2_PRO -> eDP-1
+    # Campus (2): eDP-1 -> FLOAT2_PRO
     # Laptop (1): eDP-1
 
     case "$profile" in
@@ -98,8 +98,8 @@ resolve_monitor_order() {
             ordered_monitors=("eDP-1" "$CENTER_BOTTOM" "$FLOAT2_PRO" "$CENTER_TOP")
             ;;
         campus)
-            # 2 monitors: float2 + laptop (portable setup)
-            ordered_monitors=("$FLOAT2_PRO" "eDP-1")
+            # 2 monitors: laptop + portable external
+            ordered_monitors=("eDP-1" "$FLOAT2_PRO")
             ;;
         laptop)
             # 1 monitor: just laptop
