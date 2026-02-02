@@ -1,18 +1,17 @@
 {
     "layer": "top",
     "position": "top",
-    "height": 30,
-    "spacing": 4,
+    "height": 28,
+    "spacing": 0,
     "margin-top": 0,
     "margin-bottom": 0,
 
     "modules-left": [
         "custom/vulcan-menu",
+        "custom/separator",
         "hyprland/workspaces",
         "custom/separator",
-        "hyprland/window",
-        "custom/separator",
-        "custom/s2t"
+        "hyprland/window"
     ],
 
     "modules-center": [
@@ -21,6 +20,8 @@
 
     "modules-right": [
         "tray",
+        "custom/notification",
+        "custom/hyprwhspr",
         "bluetooth",
         "network",
         "pulseaudio",
@@ -35,65 +36,51 @@
         "on-click": "~/.local/bin/vulcan-menu"
     },
 
-    "hyprland/workspaces": {
-        "format": "{icon}",
-        "format-icons": {
-            "1": "󰎤",
-            "2": "󰎧",
-            "3": "󰎪",
-            "4": "󰎭",
-            "5": "󰎱",
-            "6": "󰎳",
-            "7": "󰎶",
-            "8": "󰎹",
-            "9": "󰎼",
-            "10": "󰽽",
-            "active": "󰮯",
-            "default": "󰊠"
-        },
-        "on-click": "activate",
-        "persistent-workspaces": {
-            "*": 5
-        },
-        "sort-by-number": true
-    },
-
     "custom/separator": {
         "format": "|",
         "interval": "once",
         "tooltip": false
     },
 
-    "custom/s2t": {
-        "exec": "~/.local/bin/vulcan-s2t-waybar --watch",
-        "return-type": "json",
-        "format": "{} {icon}",
+    "hyprland/workspaces": {
+        "format": "{icon}",
         "format-icons": {
-            "idle": "<span foreground='#928374'>󰍬</span>",
-            "recording": "<span foreground='#fb4934'>󰍁</span>",
-            "processing": "<span foreground='#fabd2f'>󰦖</span>",
-            "success": "<span foreground='#b8bb26'>󰄬</span>",
-            "error": "<span foreground='#cc241d'>󰀦</span>",
-            "unconfigured": "<span foreground='#fe8019'>󰍭</span>"
+            // Monitor 1: workspaces 1-5
+            "1": "󰎤", "2": "󰎧", "3": "󰎪", "4": "󰎭", "5": "󰎱",
+            // Monitor 2: workspaces 6-10
+            "6": "󰎤", "7": "󰎧", "8": "󰎪", "9": "󰎭", "10": "󰎱",
+            // Monitor 3: workspaces 11-15
+            "11": "󰎤", "12": "󰎧", "13": "󰎪", "14": "󰎭", "15": "󰎱",
+            // Monitor 4: workspaces 16-20
+            "16": "󰎤", "17": "󰎧", "18": "󰎪", "19": "󰎭", "20": "󰎱",
+            // Monitor 5: workspaces 21-25
+            "21": "󰎤", "22": "󰎧", "23": "󰎪", "24": "󰎭", "25": "󰎱",
+            "active": "󰮯",
+            "default": "󰊠"
         },
-        "tooltip": true
+        "on-click": "activate",
+        "all-outputs": false,
+        "show-special": false,
+        "sort-by-number": true,
+        "persistent-workspaces": {"eDP-1": [1, 2, 3, 4, 5], "DP-12": [6, 7, 8, 9, 10], "DP-6": [11, 12, 13, 14, 15], "DP-10": [16, 17, 18, 19, 20], "DP-9": [21, 22, 23, 24, 25]}
     },
 
     "hyprland/window": {
-        "format": "{}",
-        "max-length": 50,
+        "format": "{title}",
+        "max-length": 40,
         "separate-outputs": true,
         "rewrite": {
             "(.*) — Mozilla Firefox": "󰈹 $1",
             "(.*) - Visual Studio Code": "󰨞 $1",
+            "(.*) - Cursor": "󰨞 $1",
             "(.*)": "$1"
         }
     },
 
     "clock": {
-        "format": "{:%I:%M:%S %p}",
-        "format-alt": "{:%A, %B %d, %Y}",
-        "interval": 1,
+        "format": "{:%I:%M %p}",
+        "format-alt": "{:%A, %B %d}",
+        "interval": 60,
         "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>",
         "calendar": {
             "mode": "year",
@@ -101,11 +88,11 @@
             "weeks-pos": "right",
             "on-scroll": 1,
             "format": {
-                "months": "<span color='#ffead3'><b>{}</b></span>",
-                "days": "<span color='#ecc6d9'>{}</span>",
-                "weeks": "<span color='#99ffdd'><b>W{}</b></span>",
-                "weekdays": "<span color='#ffcc66'><b>{}</b></span>",
-                "today": "<span color='#ff6699'><b><u>{}</u></b></span>"
+                "months": "<span color='#ebdbb2'><b>{}</b></span>",
+                "days": "<span color='#a89984'>{}</span>",
+                "weeks": "<span color='#689d6a'><b>W{}</b></span>",
+                "weekdays": "<span color='#d79921'><b>{}</b></span>",
+                "today": "<span color='#fb4934'><b><u>{}</u></b></span>"
             }
         },
         "actions": {
@@ -116,83 +103,121 @@
     },
 
     "tray": {
-        "icon-size": 16,
-        "spacing": 10
+        "icon-size": 14,
+        "spacing": 8
+    },
+
+    "custom/notification": {
+        "tooltip": true,
+        "format": "{icon}",
+        "format-icons": {
+            "notification": "󱅫",
+            "none": "󰂜",
+            "dnd-notification": "󰂠",
+            "dnd-none": "󰪓",
+            "inhibited-notification": "󰂛",
+            "inhibited-none": "󰪑",
+            "dnd-inhibited-notification": "󰂛",
+            "dnd-inhibited-none": "󰪑"
+        },
+        "return-type": "json",
+        "exec-if": "which swaync-client",
+        "exec": "swaync-client -swb",
+        "on-click": "swaync-client -t -sw",
+        "on-click-right": "swaync-client -d -sw",
+        "on-click-middle": "swaync-client -C",
+        "escape": true
+    },
+
+    "custom/hyprwhspr": {
+        "format": "{}",
+        "exec": "/home/evan/hyprwhspr/config/hyprland/hyprwhspr-tray.sh status",
+        "interval": 1,
+        "return-type": "json",
+        "exec-on-event": true,
+        "tooltip": true
     },
 
     "bluetooth": {
         "format": "󰂯",
-        "format-disabled": "󰂲",
-        "format-connected": "󰂱 {num_connections}",
-        "format-connected-battery": "󰂱 {device_battery_percentage}%",
-        "tooltip-format": "{controller_alias}\t{controller_address}\n\n{num_connections} connected",
-        "tooltip-format-connected": "{controller_alias}\t{controller_address}\n\n{num_connections} connected\n\n{device_enumerate}",
-        "tooltip-format-enumerate-connected": "{device_alias}\t{device_address}",
-        "tooltip-format-enumerate-connected-battery": "{device_alias}\t{device_address}\t{device_battery_percentage}%",
+        "format-disabled": "",
+        "format-off": "",
+        "format-connected": "󰂱",
+        "format-connected-battery": "󰂱",
+        "tooltip-format": "{controller_alias}\n{num_connections} connected",
+        "tooltip-format-connected": "{controller_alias}\n{num_connections} connected\n\n{device_enumerate}",
+        "tooltip-format-enumerate-connected": "{device_alias}",
+        "tooltip-format-enumerate-connected-battery": "{device_alias} ({device_battery_percentage}%)",
         "on-click": "blueman-manager"
     },
 
     "network": {
-        "format-wifi": "󰤨 {essid}",
-        "format-ethernet": "󰈀 {ipaddr}/{cidr}",
-        "format-linked": "󰈀 {ifname} (No IP)",
-        "format-disconnected": "󰤭 Disconnected",
-        "format-alt": "󰤨 {signalStrength}%",
-        "tooltip-format": "{ifname} via {gwaddr}",
-        "tooltip-format-wifi": "{essid} ({signalStrength}%)\n{ipaddr}/{cidr}",
-        "tooltip-format-ethernet": "{ifname}\n{ipaddr}/{cidr}",
+        "format-wifi": "{icon}",
+        "format-icons": ["󰤯", "󰤟", "󰤢", "󰤥", "󰤨"],
+        "format-ethernet": "󰈀",
+        "format-linked": "󰈀",
+        "format-disconnected": "󰤭",
+        "tooltip-format-wifi": "{essid}\n{signalStrength}% · {ipaddr}",
+        "tooltip-format-ethernet": "{ifname}\n{ipaddr}",
         "tooltip-format-disconnected": "Disconnected",
-        "on-click-right": "nm-connection-editor"
+        "on-click": "nm-connection-editor"
     },
 
     "pulseaudio": {
-        "format": "{icon} {volume}%",
-        "format-bluetooth": "󰂯 {volume}%",
-        "format-bluetooth-muted": "󰂲 Muted",
-        "format-muted": "󰝟 Muted",
-        "format-source": "󰍬 {volume}%",
-        "format-source-muted": "󰍭",
+        "format": "{icon}",
+        "format-bluetooth": "󰂰",
+        "format-bluetooth-muted": "󰂲",
+        "format-muted": "󰝟",
         "format-icons": {
             "headphone": "󰋋",
             "hands-free": "󰋎",
             "headset": "󰋎",
-            "phone": "󰏲",
-            "portable": "󰏲",
-            "car": "󰄋",
             "default": ["󰕿", "󰖀", "󰕾"]
         },
+        "tooltip-format": "{desc}\n{volume}%",
         "on-click": "pavucontrol",
+        "on-click-right": "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle",
         "on-scroll-up": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+",
         "on-scroll-down": "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-",
-        "scroll-step": 5,
-        "smooth-scrolling-threshold":1
+        "smooth-scrolling-threshold": 1
     },
 
     "cpu": {
-        "format": "󰻠 {usage}%",
+        "format": "{icon}",
+        "format-icons": ["󰾆", "󰾅", "󰓅"],
+        "states": {
+            "moderate": 50,
+            "high": 80
+        },
         "interval": 2,
-        "tooltip-format": "CPU Usage: {usage}%\nLoad: {load}",
-        "on-click": "alacritty -e htop"
+        "tooltip-format": "CPU: {usage}%\nLoad: {load}",
+        "on-click": "kitty -e btop"
     },
 
     "memory": {
-        "format": "󰍛 {percentage}%",
-        "interval": 2,
-        "tooltip-format": "Memory: {used:0.1f}GiB / {total:0.1f}GiB\nSwap: {swapUsed:0.1f}GiB / {swapTotal:0.1f}GiB",
-        "on-click": "alacritty -e htop"
+        "format": "{icon}",
+        "format-icons": ["󰍛", "󰍛", "󰍛"],
+        "states": {
+            "moderate": 50,
+            "high": 80
+        },
+        "interval": 5,
+        "tooltip-format": "RAM: {used:0.1f}G / {total:0.1f}G ({percentage}%)\nSwap: {swapUsed:0.1f}G / {swapTotal:0.1f}G",
+        "on-click": "kitty -e btop"
     },
 
     "battery": {
         "states": {
-            "good": 95,
+            "full": 95,
+            "good": 80,
             "warning": 30,
             "critical": 15
         },
         "format": "{icon} {capacity}%",
         "format-charging": "󰂄 {capacity}%",
         "format-plugged": "󰚥 {capacity}%",
-        "format-alt": "{icon} {time}",
+        "format-full": "󰁹",
         "format-icons": ["󰂎", "󰁺", "󰁻", "󰁼", "󰁽", "󰁾", "󰁿", "󰂀", "󰂁", "󰂂", "󰁹"],
-        "tooltip-format": "{timeTo}\n{capacity}% - {power}W"
+        "tooltip-format": "{timeTo}\n{capacity}% · {power:.1f}W"
     }
 }

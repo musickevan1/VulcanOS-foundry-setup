@@ -1,0 +1,128 @@
+#!/bin/bash
+# vulcan-monitor-watch - Watch for monitor hotplug events via Hyprland IPC
+# Triggers re-identification when monitors are added/removed
+#
+# Usage: vulcan-monitor-watch
+#   Typically run as a systemd user service after Hyprland starts
+#
+# Events handled:
+#   monitoradded>>NAME   - New monitor connected
+#   monitorremoved>>NAME - Monitor disconnected
+#
+# Debouncing prevents rapid re-triggers when multiple monitors
+# connect simultaneously (common with MST hubs).
+
+set -euo pipefail
+
+# Hyprland IPC socket for events
+SOCKET="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}/hypr/${HYPRLAND_INSTANCE_SIGNATURE:?}/.socket2.sock"
+
+# Scripts directory (use full paths for systemd compatibility)
+SCRIPTS_DIR="$HOME/.local/bin"
+
+CACHE_DIR="$HOME/.cache/vulcan-monitors"
+DEBOUNCE_FILE="$CACHE_DIR/hotplug-debounce"
+DEBOUNCE_SECONDS=3  # Ignore events within this window
+
+mkdir -p "$CACHE_DIR"
+
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] vulcan-monitor-watch: $*"
+}
+
+# Check if we should debounce (event within cooldown window)
+should_debounce() {
+    if [[ -f "$DEBOUNCE_FILE" ]]; then
+        local last_time current_time diff
+        last_time=$(cat "$DEBOUNCE_FILE" 2>/dev/null || echo 0)
+        current_time=$(date +%s)
+        diff=$((current_time - last_time))
+
+        if [[ $diff -lt $DEBOUNCE_SECONDS ]]; then
+            return 0  # Should debounce
+        fi
+    fi
+    return 1  # Do not debounce
+}
+
+# Record event timestamp for debouncing
+record_event() {
+    date +%s > "$DEBOUNCE_FILE"
+}
+
+# Handle monitor add/remove events
+handle_monitor_event() {
+    local event="$1"
+
+    if should_debounce; then
+        log "Debouncing event: $event"
+        return
+    fi
+
+    record_event
+    log "Monitor event detected: $event"
+
+    # Wait for EDID negotiation to complete (max 10s for hotplug)
+    log "Waiting for monitors to stabilize..."
+    if "$SCRIPTS_DIR/vulcan-monitor-ready" 4 10 2>&1 | while read -r line; do log "  $line"; done; then
+        log "Running monitor identification..."
+        if "$SCRIPTS_DIR/vulcan-monitor-identify" --auto 2>&1 | while read -r line; do log "  $line"; done; then
+            log "Applying desktop profile..."
+            if "$SCRIPTS_DIR/vulcan-monitor-apply" desktop 2>&1 | while read -r line; do log "  $line"; done; then
+                notify-send -t 5000 "Monitors Updated" "Configuration re-applied after hotplug"
+                log "Hotplug reconfiguration complete"
+            else
+                log "Failed to apply desktop profile"
+                notify-send -u critical "Monitor Error" "Failed to apply monitor profile"
+            fi
+        else
+            log "Monitor identification failed, using fallback"
+            notify-send -u normal "Monitors" "Auto-detection incomplete. Press Super+Alt+M to retry."
+        fi
+    else
+        log "Not enough monitors ready, skipping reconfiguration"
+    fi
+}
+
+# Verify socket exists
+check_socket() {
+    if [[ ! -S "$SOCKET" ]]; then
+        log "ERROR: Hyprland IPC socket not found: $SOCKET"
+        log "Is Hyprland running? HYPRLAND_INSTANCE_SIGNATURE=$HYPRLAND_INSTANCE_SIGNATURE"
+        exit 1
+    fi
+}
+
+# Main event loop
+main() {
+    log "Starting monitor watch daemon"
+    log "Listening on: $SOCKET"
+    log "Debounce window: ${DEBOUNCE_SECONDS}s"
+
+    check_socket
+
+    # Read events from Hyprland IPC socket
+    # Events are newline-delimited: "eventname>>data"
+    socat -u UNIX-CONNECT:"$SOCKET" - 2>/dev/null | while read -r line; do
+        case "$line" in
+            monitoradded*)
+                handle_monitor_event "$line"
+                ;;
+            monitorremoved*)
+                handle_monitor_event "$line"
+                ;;
+        esac
+    done
+
+    log "Event loop ended (socket closed?)"
+}
+
+# Handle graceful shutdown
+cleanup() {
+    log "Shutting down monitor watch daemon"
+    exit 0
+}
+
+trap cleanup SIGTERM SIGINT
+
+main "$@"
