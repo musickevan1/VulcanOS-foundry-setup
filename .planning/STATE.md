@@ -10,20 +10,20 @@ See: .planning/PROJECT.md (updated 2026-02-02)
 ## Current Position
 
 Phase: 14 of 22 (Multi-Profile Build Infrastructure)
-Plan: 1 of ~8 complete
+Plan: 3 of ~8 complete
 Status: In progress
-Last activity: 2026-02-02 — Completed 14-01-PLAN.md (directory structure and build library)
+Last activity: 2026-02-02 — Completed 14-03-PLAN.md (T2 profile configuration files)
 
-Progress: [████████████████████░░░░] 51/~68 plans (v1.0-v2.1 complete, v3.0 in progress)
+Progress: [████████████████████░░░░] 53/~68 plans (v1.0-v2.1 complete, v3.0 in progress)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 51 (v1.0 + v2.0 + v2.1 + v3.0)
+- Total plans completed: 53 (v1.0 + v2.0 + v2.1 + v3.0)
 - v1.0 Foundation: 11 plans
 - v2.0 Appearance Manager: 28 plans
 - v2.1 Maintenance: 9 plans
-- v3.0 Multi-Profile: 1 plan (14-01 complete)
+- v3.0 Multi-Profile: 3 plans (14-01, 14-02, 14-03 complete)
 
 **By Milestone:**
 
@@ -43,13 +43,15 @@ Progress: [████████████████████░░░
 
 ### Decisions
 
-Recent decisions from Phase 14-01:
+Recent decisions from Phase 14:
 
 | Phase | Decision | Rationale | Outcome |
 |-------|----------|-----------|---------|
 | 14-01 | Multi-profile directory structure | archiso/base/ for shared, archiso/profiles/{t2,foundry}/ for specific | Clean separation per CONTEXT.md |
 | 14-01 | rsync overlay for airootfs | Profile files override base on conflict | Handles permissions and precedence correctly |
 | 14-01 | Package list merging | cat + grep + sort -u for deduplication | Simple, reliable merge without duplicates |
+| 14-03 | arch-mact2 repo FIRST in T2 pacman.conf | Repository order determines package priority | linux-t2 kernel takes precedence over linux |
+| 14-03 | Copy boot configs as-is | Current configs already T2-specific | No modification needed, preserves tested config |
 
 All decisions are also logged in PROJECT.md Key Decisions table.
 
@@ -78,7 +80,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-02
-Stopped at: Completed 14-01-PLAN.md (directory structure and build library)
+Stopped at: Completed 14-03-PLAN.md (T2 profile configuration files)
 Resume file: None
 
-Next: Continue with remaining Phase 14 plans
+Next: Continue with remaining Phase 14 plans (14-04+)
