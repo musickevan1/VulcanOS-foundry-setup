@@ -5,6 +5,7 @@
 - ✅ **v1.0 Foundation** - Phases 1, 5 (shipped 2026-01-24)
 - ✅ **v2.0 Vulcan Appearance Manager** - Phases 6-10 (shipped 2026-01-30)
 - ✅ **v2.1 Maintenance** - Phases 11-13 (shipped 2026-02-01)
+- 🚧 **v3.0 Multi-Profile + AI Workstation** - Phases 14-22 (in progress)
 
 ## Phases
 
@@ -158,6 +159,160 @@ Plans:
 
 </details>
 
+### 🚧 v3.0 Multi-Profile + AI Workstation (In Progress)
+
+**Milestone Goal:** Restructure VulcanOS into a multi-profile architecture supporting Vulcan Foundry (AMD AI workstation with NVIDIA RTX 5070 Ti) and Vulcan T2 (T2 MacBook Pro), with full NVIDIA/CUDA AI stack and gaming support.
+
+**Coverage:** 69 v3.0 requirements mapped across 9 phases
+
+#### Phase 14: Multi-Profile Build Infrastructure
+**Goal**: Build system supports multiple archiso profiles (foundry, t2) with shared base
+**Depends on**: Nothing (foundation for all v3.0 work)
+**Requirements**: PROF-01, PROF-02, PROF-03, PROF-04, PROF-05, PROF-06, PROF-07
+**Success Criteria** (what must be TRUE):
+  1. User can run `./build.sh --profile=foundry` and produce `vulcanos-foundry-YYYY.MM.DD-x86_64.iso`
+  2. User can run `./build.sh --profile=t2` and produce `vulcanos-t2-YYYY.MM.DD-x86_64.iso`
+  3. Shared packages in `profiles/base/packages.base` appear in both ISOs
+  4. Profile-specific packages in `profiles/{profile}/packages.profile` only appear in their respective ISOs
+  5. T2-specific repos (arch-mact2) only in T2 ISO, not Foundry
+**Plans**: TBD
+
+Plans:
+- [ ] 14-01: TBD
+- [ ] 14-02: TBD
+- [ ] 14-03: TBD
+
+#### Phase 15: NVIDIA Driver Foundation
+**Goal**: Foundry profile boots with working NVIDIA RTX 5070 Ti drivers and proper suspend/resume
+**Depends on**: Phase 14 (needs foundry profile to exist)
+**Requirements**: DRV-01, DRV-02, DRV-03, DRV-04, DRV-05, DRV-06, SUSP-01, SUSP-02, SUSP-03, SUSP-04
+**Success Criteria** (what must be TRUE):
+  1. `nvidia-smi` shows RTX 5070 Ti detected with driver version 590.48.01+
+  2. `nvidia-smi -q | grep "Link Gen"` shows Gen4 (not Gen1 fallback)
+  3. System suspends and resumes without Hyprland crash or black screen
+  4. Kernel update triggers automatic initramfs rebuild via pacman hook
+  5. 32-bit NVIDIA libs present (`ls /usr/lib32/libnvidia*` succeeds)
+**Plans**: TBD
+
+Plans:
+- [ ] 15-01: TBD
+- [ ] 15-02: TBD
+- [ ] 15-03: TBD
+
+#### Phase 16: CUDA/AI Stack
+**Goal**: Full CUDA toolkit and AI/ML frameworks functional with RTX 5070 Ti (sm_120)
+**Depends on**: Phase 15 (drivers must work first)
+**Requirements**: CUDA-01, CUDA-02, CUDA-03, CUDA-04, CUDA-05, CUDA-06, LLM-01, LLM-02, LLM-03, LLM-04, IMG-01, IMG-02, IMG-03
+**Success Criteria** (what must be TRUE):
+  1. `nvcc --version` shows CUDA 13.x installed
+  2. `ollama run llama3.2` executes on GPU (not CPU fallback)
+  3. PyTorch nightly detects CUDA and runs tensor operations on GPU
+  4. `docker run --gpus all nvidia/cuda:12.8.0-base-ubuntu22.04 nvidia-smi` shows GPU inside container
+  5. ComfyUI installation path documented and tested with sm_120
+**Plans**: TBD
+
+Plans:
+- [ ] 16-01: TBD
+- [ ] 16-02: TBD
+- [ ] 16-03: TBD
+
+#### Phase 17: Gaming Stack
+**Goal**: Steam, Proton, and gaming utilities ready for Foundry profile
+**Depends on**: Phase 15 (needs 32-bit NVIDIA libs from driver phase)
+**Requirements**: GAME-01, GAME-02, GAME-03, GAME-04, GAME-05, GAME-06, GAME-07
+**Success Criteria** (what must be TRUE):
+  1. Steam launches and can install games
+  2. `gamemoderun %command%` launch option works in Steam
+  3. MangoHud overlay appears when running games with `mangohud %command%`
+  4. Gamescope wraps games without crashing (`gamescope -- %command%`)
+  5. Proton-GE appears as a Proton version option in Steam
+**Plans**: TBD
+
+Plans:
+- [ ] 17-01: TBD
+- [ ] 17-02: TBD
+
+#### Phase 18: Desktop Improvements
+**Goal**: Kitty as default terminal, yazi as file manager, Alacritty removed
+**Depends on**: Nothing (independent desktop polish)
+**Requirements**: DESK-01, DESK-02, DESK-03, DESK-04, DESK-05, DESK-06
+**Success Criteria** (what must be TRUE):
+  1. `Super+Return` opens Kitty (not Alacritty)
+  2. `yazi` launches and navigates filesystem
+  3. `y` shell function (yazi with cd-on-exit) works in bash/zsh
+  4. Alacritty is not installed (`which alacritty` fails)
+  5. Thunar available as GUI file manager fallback
+**Plans**: TBD
+
+Plans:
+- [ ] 18-01: TBD
+- [ ] 18-02: TBD
+
+#### Phase 19: Hyprland Plugins + Waybar Enhancements
+**Goal**: Hyprland plugins installed and GPU monitoring in Waybar
+**Depends on**: Phase 15 (GPU monitoring needs drivers)
+**Requirements**: PLUG-01, PLUG-02, PLUG-03, PLUG-04, PLUG-05, BAR-01, BAR-02, BAR-03
+**Success Criteria** (what must be TRUE):
+  1. `hyprpm list` shows hyprexpo, hyprspace, hyprtrails installed
+  2. `Super+Tab` triggers workspace overview (hyprexpo)
+  3. Waybar shows GPU VRAM usage (e.g., "8.2/16GB")
+  4. Waybar shows GPU temperature (e.g., "45C")
+  5. Plugins auto-load on Hyprland start
+**Plans**: TBD
+
+Plans:
+- [ ] 19-01: TBD
+- [ ] 19-02: TBD
+
+#### Phase 20: T2 Profile Maintenance
+**Goal**: T2 profile continues working with linux-t2 kernel and T2-specific configs
+**Depends on**: Phase 14 (needs profile structure)
+**Requirements**: T2-01, T2-02, T2-03, T2-04, T2-05
+**Success Criteria** (what must be TRUE):
+  1. T2 ISO boots on MacBook Pro with working keyboard/trackpad
+  2. WiFi connects via `iwctl` (brcmfmac driver functional)
+  3. T2 kernel params (`intel_iommu=on iommu=pt pcie_ports=compat`) in grub.cfg
+  4. `uname -r` shows linux-t2 kernel, not mainline
+  5. Touch Bar functional via tiny-dfr
+**Plans**: TBD
+
+Plans:
+- [ ] 20-01: TBD
+- [ ] 20-02: TBD
+
+#### Phase 21: Foundry-T2 Sync & Remote Access
+**Goal**: T2 can wake Foundry, use its GPU remotely, and sync projects via Syncthing
+**Depends on**: Phase 16 (Ollama must work for remote API)
+**Requirements**: SYNC-01, SYNC-02, SYNC-03, SYNC-04, REM-01, REM-02, REM-03, REM-04, REM-05, REM-06, REM-07, REM-08
+**Success Criteria** (what must be TRUE):
+  1. Syncthing running on both profiles, syncing `~/Projects`
+  2. T2 can SSH to Foundry when awake (`ssh foundry`)
+  3. T2 can wake Foundry via `vulcan-foundry-wake` script (WoL)
+  4. T2 can use Foundry's Ollama (`OLLAMA_HOST=foundry:11434 ollama run llama3.2`)
+  5. Foundry auto-suspends after configurable idle timeout
+**Plans**: TBD
+
+Plans:
+- [ ] 21-01: TBD
+- [ ] 21-02: TBD
+- [ ] 21-03: TBD
+
+#### Phase 22: Profile-Aware Dotfiles
+**Goal**: Dotfiles adapt to profile (hostname detection, conditional configs)
+**Depends on**: Phase 14 (profiles must exist), Phase 15 (NVIDIA env vars for Foundry)
+**Requirements**: DOT-01, DOT-02, DOT-03, DOT-04, DOT-05
+**Success Criteria** (what must be TRUE):
+  1. Hyprland config sources profile-specific monitor layout based on `$HOSTNAME`
+  2. Foundry has triple+ monitor config, T2 has laptop display config
+  3. NVIDIA environment variables only set on Foundry (not T2)
+  4. Keybindings, theming, and app configs identical across profiles
+  5. Dotfiles managed via git in VulcanOS repo (not Syncthing)
+**Plans**: TBD
+
+Plans:
+- [ ] 22-01: TBD
+- [ ] 22-02: TBD
+
 ## Progress
 
 | Phase | Milestone | Plans Complete | Status | Completed |
@@ -172,6 +327,15 @@ Plans:
 | 11. Security Hardening | v2.1 | 1/1 | Complete | 2026-01-30 |
 | 12. UX Polish | v2.1 | 3/3 | Complete | 2026-02-01 |
 | 13. Architecture Cleanup | v2.1 | 5/5 | Complete | 2026-02-01 |
+| 14. Multi-Profile Build Infrastructure | v3.0 | 0/TBD | Not started | - |
+| 15. NVIDIA Driver Foundation | v3.0 | 0/TBD | Not started | - |
+| 16. CUDA/AI Stack | v3.0 | 0/TBD | Not started | - |
+| 17. Gaming Stack | v3.0 | 0/TBD | Not started | - |
+| 18. Desktop Improvements | v3.0 | 0/TBD | Not started | - |
+| 19. Hyprland Plugins + Waybar Enhancements | v3.0 | 0/TBD | Not started | - |
+| 20. T2 Profile Maintenance | v3.0 | 0/TBD | Not started | - |
+| 21. Foundry-T2 Sync & Remote Access | v3.0 | 0/TBD | Not started | - |
+| 22. Profile-Aware Dotfiles | v3.0 | 0/TBD | Not started | - |
 
 ---
-*Last updated: 2026-02-01 (v2.1 Maintenance milestone complete)*
+*Last updated: 2026-02-02 (v3.0 roadmap created)*

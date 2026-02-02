@@ -161,85 +161,85 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| PROF-01 | TBD | Pending |
-| PROF-02 | TBD | Pending |
-| PROF-03 | TBD | Pending |
-| PROF-04 | TBD | Pending |
-| PROF-05 | TBD | Pending |
-| PROF-06 | TBD | Pending |
-| PROF-07 | TBD | Pending |
-| DRV-01 | TBD | Pending |
-| DRV-02 | TBD | Pending |
-| DRV-03 | TBD | Pending |
-| DRV-04 | TBD | Pending |
-| DRV-05 | TBD | Pending |
-| DRV-06 | TBD | Pending |
-| CUDA-01 | TBD | Pending |
-| CUDA-02 | TBD | Pending |
-| CUDA-03 | TBD | Pending |
-| CUDA-04 | TBD | Pending |
-| CUDA-05 | TBD | Pending |
-| CUDA-06 | TBD | Pending |
-| LLM-01 | TBD | Pending |
-| LLM-02 | TBD | Pending |
-| LLM-03 | TBD | Pending |
-| LLM-04 | TBD | Pending |
-| IMG-01 | TBD | Pending |
-| IMG-02 | TBD | Pending |
-| IMG-03 | TBD | Pending |
-| GAME-01 | TBD | Pending |
-| GAME-02 | TBD | Pending |
-| GAME-03 | TBD | Pending |
-| GAME-04 | TBD | Pending |
-| GAME-05 | TBD | Pending |
-| GAME-06 | TBD | Pending |
-| GAME-07 | TBD | Pending |
-| DESK-01 | TBD | Pending |
-| DESK-02 | TBD | Pending |
-| DESK-03 | TBD | Pending |
-| DESK-04 | TBD | Pending |
-| DESK-05 | TBD | Pending |
-| DESK-06 | TBD | Pending |
-| PLUG-01 | TBD | Pending |
-| PLUG-02 | TBD | Pending |
-| PLUG-03 | TBD | Pending |
-| PLUG-04 | TBD | Pending |
-| PLUG-05 | TBD | Pending |
-| SUSP-01 | TBD | Pending |
-| SUSP-02 | TBD | Pending |
-| SUSP-03 | TBD | Pending |
-| SUSP-04 | TBD | Pending |
-| BAR-01 | TBD | Pending |
-| BAR-02 | TBD | Pending |
-| BAR-03 | TBD | Pending |
-| T2-01 | TBD | Pending |
-| T2-02 | TBD | Pending |
-| T2-03 | TBD | Pending |
-| T2-04 | TBD | Pending |
-| T2-05 | TBD | Pending |
-| SYNC-01 | TBD | Pending |
-| SYNC-02 | TBD | Pending |
-| SYNC-03 | TBD | Pending |
-| SYNC-04 | TBD | Pending |
-| REM-01 | TBD | Pending |
-| REM-02 | TBD | Pending |
-| REM-03 | TBD | Pending |
-| REM-04 | TBD | Pending |
-| REM-05 | TBD | Pending |
-| REM-06 | TBD | Pending |
-| REM-07 | TBD | Pending |
-| REM-08 | TBD | Pending |
-| DOT-01 | TBD | Pending |
-| DOT-02 | TBD | Pending |
-| DOT-03 | TBD | Pending |
-| DOT-04 | TBD | Pending |
-| DOT-05 | TBD | Pending |
+| PROF-01 | Phase 14 | Pending |
+| PROF-02 | Phase 14 | Pending |
+| PROF-03 | Phase 14 | Pending |
+| PROF-04 | Phase 14 | Pending |
+| PROF-05 | Phase 14 | Pending |
+| PROF-06 | Phase 14 | Pending |
+| PROF-07 | Phase 14 | Pending |
+| DRV-01 | Phase 15 | Pending |
+| DRV-02 | Phase 15 | Pending |
+| DRV-03 | Phase 15 | Pending |
+| DRV-04 | Phase 15 | Pending |
+| DRV-05 | Phase 15 | Pending |
+| DRV-06 | Phase 15 | Pending |
+| CUDA-01 | Phase 16 | Pending |
+| CUDA-02 | Phase 16 | Pending |
+| CUDA-03 | Phase 16 | Pending |
+| CUDA-04 | Phase 16 | Pending |
+| CUDA-05 | Phase 16 | Pending |
+| CUDA-06 | Phase 16 | Pending |
+| LLM-01 | Phase 16 | Pending |
+| LLM-02 | Phase 16 | Pending |
+| LLM-03 | Phase 16 | Pending |
+| LLM-04 | Phase 16 | Pending |
+| IMG-01 | Phase 16 | Pending |
+| IMG-02 | Phase 16 | Pending |
+| IMG-03 | Phase 16 | Pending |
+| GAME-01 | Phase 17 | Pending |
+| GAME-02 | Phase 17 | Pending |
+| GAME-03 | Phase 17 | Pending |
+| GAME-04 | Phase 17 | Pending |
+| GAME-05 | Phase 17 | Pending |
+| GAME-06 | Phase 17 | Pending |
+| GAME-07 | Phase 17 | Pending |
+| DESK-01 | Phase 18 | Pending |
+| DESK-02 | Phase 18 | Pending |
+| DESK-03 | Phase 18 | Pending |
+| DESK-04 | Phase 18 | Pending |
+| DESK-05 | Phase 18 | Pending |
+| DESK-06 | Phase 18 | Pending |
+| PLUG-01 | Phase 19 | Pending |
+| PLUG-02 | Phase 19 | Pending |
+| PLUG-03 | Phase 19 | Pending |
+| PLUG-04 | Phase 19 | Pending |
+| PLUG-05 | Phase 19 | Pending |
+| SUSP-01 | Phase 15 | Pending |
+| SUSP-02 | Phase 15 | Pending |
+| SUSP-03 | Phase 15 | Pending |
+| SUSP-04 | Phase 15 | Pending |
+| BAR-01 | Phase 19 | Pending |
+| BAR-02 | Phase 19 | Pending |
+| BAR-03 | Phase 19 | Pending |
+| T2-01 | Phase 20 | Pending |
+| T2-02 | Phase 20 | Pending |
+| T2-03 | Phase 20 | Pending |
+| T2-04 | Phase 20 | Pending |
+| T2-05 | Phase 20 | Pending |
+| SYNC-01 | Phase 21 | Pending |
+| SYNC-02 | Phase 21 | Pending |
+| SYNC-03 | Phase 21 | Pending |
+| SYNC-04 | Phase 21 | Pending |
+| REM-01 | Phase 21 | Pending |
+| REM-02 | Phase 21 | Pending |
+| REM-03 | Phase 21 | Pending |
+| REM-04 | Phase 21 | Pending |
+| REM-05 | Phase 21 | Pending |
+| REM-06 | Phase 21 | Pending |
+| REM-07 | Phase 21 | Pending |
+| REM-08 | Phase 21 | Pending |
+| DOT-01 | Phase 22 | Pending |
+| DOT-02 | Phase 22 | Pending |
+| DOT-03 | Phase 22 | Pending |
+| DOT-04 | Phase 22 | Pending |
+| DOT-05 | Phase 22 | Pending |
 
 **Coverage:**
 - v3.0 requirements: 69 total
-- Mapped to phases: 0 (roadmap pending)
-- Unmapped: 69
+- Mapped to phases: 69
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-02-02*
-*Last updated: 2026-02-02 after adding sync/remote requirements*
+*Last updated: 2026-02-02 — Traceability filled from roadmap*
