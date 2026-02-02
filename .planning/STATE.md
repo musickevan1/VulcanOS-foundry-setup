@@ -10,20 +10,20 @@ See: .planning/PROJECT.md (updated 2026-02-02)
 ## Current Position
 
 Phase: 14 of 22 (Multi-Profile Build Infrastructure)
-Plan: 4 of ~8 complete
+Plan: 6 of ~8 complete
 Status: In progress
-Last activity: 2026-02-02 — Completed 14-04-PLAN.md (Foundry profile configuration files)
+Last activity: 2026-02-02 — Completed 14-06-PLAN.md (T2 build entry point script)
 
-Progress: [████████████████████░░░░] 54/~68 plans (v1.0-v2.1 complete, v3.0 in progress)
+Progress: [████████████████████░░░░] 56/~68 plans (v1.0-v2.1 complete, v3.0 in progress)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 54 (v1.0 + v2.0 + v2.1 + v3.0)
+- Total plans completed: 56 (v1.0 + v2.0 + v2.1 + v3.0)
 - v1.0 Foundation: 11 plans
 - v2.0 Appearance Manager: 28 plans
 - v2.1 Maintenance: 9 plans
-- v3.0 Multi-Profile: 4 plans (14-01, 14-02, 14-03, 14-04 complete)
+- v3.0 Multi-Profile: 6 plans (14-01, 14-02, 14-03, 14-04, 14-05, 14-06 complete)
 
 **By Milestone:**
 
@@ -55,6 +55,8 @@ Recent decisions from Phase 14:
 | 14-04 | Foundry standard repos only | NO arch-mact2 in Foundry pacman.conf | Foundry is generic AI workstation, not T2-specific |
 | 14-04 | NVIDIA kernel params for Foundry | nvidia-drm.modeset=1 | Required for proper NVIDIA driver initialization |
 | 14-04 | Nouveau fallback boot option | Blacklist NVIDIA modules option | Compatibility if proprietary driver fails |
+| 14-06 | Separate work dirs per profile | /tmp/vulcanos-work-t2 vs /tmp/vulcanos-work-foundry | Prevents profile build contamination |
+| 14-06 | Trap cleanup EXIT | Automatic cleanup on success or error | Ensures no leftover temporary directories |
 
 All decisions are also logged in PROJECT.md Key Decisions table.
 
@@ -83,7 +85,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-02
-Stopped at: Completed 14-04-PLAN.md (Foundry profile configuration files)
+Stopped at: Completed 14-06-PLAN.md (T2 build entry point script)
 Resume file: None
 
-Next: Continue with remaining Phase 14 plans (14-05+)
+Next: Continue with remaining Phase 14 plans (14-07+)
