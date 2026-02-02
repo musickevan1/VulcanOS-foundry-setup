@@ -1,0 +1,267 @@
+#!/bin/bash
+# VulcanOS T2 Kernel Boot Chain Verification
+# Verifies kernel, initramfs, T2 modules, and GRUB configuration
+
+set -euo pipefail
+
+# Color codes for terminal output
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Log file
+LOG_FILE="/var/log/vulcan-kernel-verify.log"
+
+# Required T2 modules
+REQUIRED_MODULES=(
+    "apple_bce"
+    "applespi"
+    "intel_lpss_pci"
+    "spi_pxa2xx_platform"
+)
+
+# Initialize variables
+ERRORS=0
+WARNINGS=0
+
+# Logging function
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $*" | tee -a "$LOG_FILE"
+}
+
+# Check mark functions
+ok() {
+    echo -e "${GREEN}[OK]${NC} $*"
+    log "[OK] $*"
+}
+
+warn() {
+    echo -e "${YELLOW}[WARN]${NC} $*"
+    log "[WARN] $*"
+    ((WARNINGS++))
+}
+
+error() {
+    echo -e "${RED}[ERROR]${NC} $*"
+    log "[ERROR] $*"
+    ((ERRORS++))
+}
+
+info() {
+    echo -e "${BLUE}[INFO]${NC} $*"
+    log "[INFO] $*"
+}
+
+# Send desktop notification (handles root context from pacman hooks)
+notify() {
+    local title="$1"
+    local message="$2"
+    local urgency="${3:-normal}"
+
+    if ! command -v notify-send &> /dev/null; then
+        return 0
+    fi
+
+    # If running as root, find active user session
+    if [[ $EUID -eq 0 ]]; then
+        local active_user
+        active_user=$(loginctl list-sessions --no-legend 2>/dev/null | awk '{print $3}' | head -1)
+
+        if [[ -n "$active_user" ]]; then
+            local user_id
+            user_id=$(id -u "$active_user" 2>/dev/null || echo "")
+
+            if [[ -n "$user_id" ]] && [[ -d "/run/user/$user_id" ]]; then
+                runuser -u "$active_user" -- env \
+                    DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$user_id/bus" \
+                    XDG_RUNTIME_DIR="/run/user/$user_id" \
+                    notify-send -u "$urgency" -a "VulcanOS" \
+                    -i /usr/share/icons/hicolor/128x128/apps/vulcan-kernel.png \
+                    "$title" "$message" 2>/dev/null || true
+            fi
+        fi
+    else
+        # Running as regular user - direct notify
+        notify-send -u "$urgency" -a "VulcanOS" \
+            -i /usr/share/icons/hicolor/128x128/apps/vulcan-kernel.png \
+            "$title" "$message" 2>/dev/null || true
+    fi
+}
+
+# Human-readable file size
+human_size() {
+    local size="$1"
+    numfmt --to=iec-i --suffix=B "$size" 2>/dev/null || echo "${size} bytes"
+}
+
+echo "=== VulcanOS Kernel Verification ==="
+log "=== Starting kernel verification ==="
+
+# 1. Kernel Image Check
+info "Checking kernel image..."
+if [[ -f /boot/vmlinuz-linux-t2 ]]; then
+    KERNEL_SIZE=$(stat -c %s /boot/vmlinuz-linux-t2)
+    KERNEL_SIZE_HUMAN=$(human_size "$KERNEL_SIZE")
+    ok "Kernel image: /boot/vmlinuz-linux-t2 ($KERNEL_SIZE_HUMAN)"
+
+    # Get kernel version
+    if KERNEL_VERSION=$(pacman -Q linux-t2 2>/dev/null | awk '{print $2}'); then
+        info "Kernel version: $KERNEL_VERSION"
+    else
+        warn "Could not determine kernel version from pacman"
+    fi
+else
+    error "Kernel image not found: /boot/vmlinuz-linux-t2"
+fi
+
+# 2. Initramfs Check
+info "Checking initramfs..."
+if [[ -f /boot/initramfs-linux-t2.img ]]; then
+    INITRAMFS_SIZE=$(stat -c %s /boot/initramfs-linux-t2.img)
+    INITRAMFS_SIZE_HUMAN=$(human_size "$INITRAMFS_SIZE")
+    ok "Initramfs: /boot/initramfs-linux-t2.img ($INITRAMFS_SIZE_HUMAN)"
+else
+    error "Initramfs not found: /boot/initramfs-linux-t2.img"
+fi
+
+# Check fallback initramfs
+if [[ -f /boot/initramfs-linux-t2-fallback.img ]]; then
+    FALLBACK_SIZE=$(stat -c %s /boot/initramfs-linux-t2-fallback.img)
+    FALLBACK_SIZE_HUMAN=$(human_size "$FALLBACK_SIZE")
+    ok "Fallback initramfs: /boot/initramfs-linux-t2-fallback.img ($FALLBACK_SIZE_HUMAN)"
+else
+    warn "Fallback initramfs not found: /boot/initramfs-linux-t2-fallback.img"
+fi
+
+# 3. T2 Module Verification (CRITICAL)
+info "Verifying T2 modules in initramfs..."
+if [[ -f /boot/initramfs-linux-t2.img ]]; then
+    if command -v lsinitcpio &> /dev/null; then
+        # Get module list from initramfs
+        INITRAMFS_MODULES=$(lsinitcpio /boot/initramfs-linux-t2.img 2>/dev/null | grep -E '\.ko' || true)
+
+        MODULES_OK=true
+        FOUND_MODULES=()
+        MISSING_MODULES=()
+
+        for module in "${REQUIRED_MODULES[@]}"; do
+            if echo "$INITRAMFS_MODULES" | grep -q "${module}\.ko"; then
+                FOUND_MODULES+=("$module")
+            else
+                MISSING_MODULES+=("$module")
+                MODULES_OK=false
+            fi
+        done
+
+        if [[ "$MODULES_OK" == true ]]; then
+            ok "T2 modules present in initramfs:"
+            for module in "${FOUND_MODULES[@]}"; do
+                echo "     - $module"
+                log "  Found module: $module"
+            done
+        else
+            error "Missing critical T2 modules in initramfs:"
+            for module in "${MISSING_MODULES[@]}"; do
+                echo "     - $module (MISSING)"
+                log "  Missing module: $module"
+            done
+            if [[ ${#FOUND_MODULES[@]} -gt 0 ]]; then
+                info "Found modules:"
+                for module in "${FOUND_MODULES[@]}"; do
+                    echo "     - $module"
+                done
+            fi
+        fi
+    else
+        warn "lsinitcpio command not found, cannot verify T2 modules"
+    fi
+else
+    error "Cannot verify T2 modules: initramfs not found"
+fi
+
+# 4. GRUB Configuration Check
+info "Checking GRUB configuration..."
+if [[ -f /boot/grub/grub.cfg ]]; then
+    if command -v grub-script-check &> /dev/null; then
+        if grub-script-check /boot/grub/grub.cfg 2>/dev/null; then
+            ok "GRUB configuration valid: /boot/grub/grub.cfg"
+        else
+            error "GRUB configuration has syntax errors"
+        fi
+    else
+        # Fallback: basic syntax check
+        if grep -q "menuentry" /boot/grub/grub.cfg; then
+            ok "GRUB configuration exists with menu entries"
+        else
+            warn "GRUB configuration exists but no menu entries found"
+        fi
+    fi
+else
+    error "GRUB configuration not found: /boot/grub/grub.cfg"
+fi
+
+# 5. Fallback Kernel Check
+info "Checking fallback kernel..."
+FALLBACK_EXISTS=false
+if [[ -f /boot/vmlinuz-linux-t2.backup ]]; then
+    FALLBACK_EXISTS=true
+    FALLBACK_KERNEL_SIZE=$(stat -c %s /boot/vmlinuz-linux-t2.backup)
+    FALLBACK_KERNEL_SIZE_HUMAN=$(human_size "$FALLBACK_KERNEL_SIZE")
+    ok "Fallback kernel: /boot/vmlinuz-linux-t2.backup ($FALLBACK_KERNEL_SIZE_HUMAN)"
+
+    if [[ -f /boot/vulcan-fallback-version.txt ]]; then
+        FALLBACK_VERSION=$(cat /boot/vulcan-fallback-version.txt)
+        info "Fallback version: $FALLBACK_VERSION"
+    fi
+else
+    warn "No fallback kernel found (run vulcan-kernel-fallback to create)"
+fi
+
+if [[ -f /boot/initramfs-linux-t2.backup.img ]]; then
+    FALLBACK_INITRAMFS_SIZE=$(stat -c %s /boot/initramfs-linux-t2.backup.img)
+    FALLBACK_INITRAMFS_SIZE_HUMAN=$(human_size "$FALLBACK_INITRAMFS_SIZE")
+    ok "Fallback initramfs: /boot/initramfs-linux-t2.backup.img ($FALLBACK_INITRAMFS_SIZE_HUMAN)"
+else
+    if [[ "$FALLBACK_EXISTS" == true ]]; then
+        warn "Fallback kernel exists but fallback initramfs missing"
+    fi
+fi
+
+# Check for second fallback
+if [[ -f /boot/vmlinuz-linux-t2.backup2 ]]; then
+    info "Second fallback kernel available: /boot/vmlinuz-linux-t2.backup2"
+fi
+
+# 6. Summary
+echo ""
+echo "=== Verification Summary ==="
+log "=== Verification Summary ==="
+
+if [[ $ERRORS -eq 0 && $WARNINGS -eq 0 ]]; then
+    echo -e "${GREEN}✓ All checks passed${NC}"
+    log "SUCCESS: All checks passed"
+    if [[ -n "${KERNEL_VERSION:-}" ]]; then
+        echo "Kernel version: $KERNEL_VERSION"
+    fi
+    echo "Boot chain ready. Reboot to load new kernel."
+
+    notify "Kernel Verification Success" "All boot chain checks passed. Kernel version: ${KERNEL_VERSION:-unknown}" "normal"
+    exit 0
+elif [[ $ERRORS -eq 0 ]]; then
+    echo -e "${YELLOW}⚠ Passed with $WARNINGS warning(s)${NC}"
+    log "SUCCESS with warnings: $WARNINGS warnings"
+    echo "Boot chain functional but has warnings. Review above."
+
+    notify "Kernel Verification Warning" "$WARNINGS warning(s) found. Check logs for details." "normal"
+    exit 0
+else
+    echo -e "${RED}✗ Failed with $ERRORS error(s) and $WARNINGS warning(s)${NC}"
+    log "FAILED: $ERRORS errors, $WARNINGS warnings"
+    echo "Boot chain has critical errors. DO NOT REBOOT until fixed."
+    echo "Review errors above and check log: $LOG_FILE"
+
+    notify "Kernel Verification FAILED" "$ERRORS critical error(s) found. DO NOT REBOOT. Check: $LOG_FILE" "critical"
+    exit 1
+fi

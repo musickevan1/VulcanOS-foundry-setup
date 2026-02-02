@@ -1,0 +1,613 @@
+#!/bin/bash
+# vulcan-monitor-identify - Identify identical monitors using EDID fingerprints
+# Uses EDID serial numbers and checksums to persistently identify monitors across reboots
+#
+# Usage:
+#   vulcan-monitor-identify [--auto]    # Auto-detect using EDID fingerprints
+#   vulcan-monitor-identify --manual    # Force manual identification
+#   vulcan-monitor-identify --show      # Show current assignments
+#   vulcan-monitor-identify --learn     # Learn current positions and save fingerprints
+
+set -euo pipefail
+
+CACHE_DIR="$HOME/.cache/vulcan-monitors"
+MAPPING_FILE="$CACHE_DIR/sceptre-mapping"
+FINGERPRINT_FILE="$CACHE_DIR/edid-fingerprints"
+BOOT_ID_FILE="$CACHE_DIR/boot-id"
+
+mkdir -p "$CACHE_DIR"
+
+CURRENT_BOOT_ID=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null || echo "unknown")
+
+# EDID magic header: 00 ff ff ff ff ff ff 00 (8 bytes = 16 hex chars)
+EDID_HEADER_HEX="00ffffffffffff00"
+
+# Verify EDID has valid header (not just empty or garbage)
+verify_edid_ready() {
+    local connector="$1"  # e.g., DP-9
+    local card
+    card=$(detect_drm_card)
+    local edid_file="/sys/class/drm/${card}-${connector}/edid"
+
+    if [[ ! -f "$edid_file" ]] || [[ ! -s "$edid_file" ]]; then
+        return 1
+    fi
+
+    # Read first 8 bytes and check for EDID magic header
+    local header
+    header=$(head -c 8 "$edid_file" 2>/dev/null | xxd -p 2>/dev/null | tr -d '\n')
+
+    [[ "$header" == "$EDID_HEADER_HEX" ]]
+}
+
+# Detect DRM card with active DP connectors that have EDID data
+# Caches result for current boot session to avoid repeated scans
+# Priority: card2 (AMD eGPU via Thunderbolt on T2 Mac) > card1 > card0 > card3
+detect_drm_card() {
+    local cache_file="$CACHE_DIR/drm-card"
+
+    # Check cache first (valid only for current boot)
+    if [[ -f "$cache_file" && -f "$BOOT_ID_FILE" ]]; then
+        local saved_boot cached_card
+        saved_boot=$(cat "$BOOT_ID_FILE" 2>/dev/null)
+        if [[ "$saved_boot" == "$CURRENT_BOOT_ID" ]]; then
+            cached_card=$(cat "$cache_file" 2>/dev/null)
+            if [[ -n "$cached_card" && -d "/sys/class/drm/${cached_card}" ]]; then
+                echo "$cached_card"
+                return 0
+            fi
+        fi
+    fi
+
+    # Scan for card with connected DP displays
+    # Prioritize card2 for T2 Macs (AMD Radeon Pro eGPU via Thunderbolt)
+    local detected_card=""
+    for card in card2 card1 card0 card3; do
+        [[ -d "/sys/class/drm/${card}" ]] || continue
+
+        for conn_dir in /sys/class/drm/${card}-DP-*/; do
+            [[ -d "$conn_dir" ]] || continue
+            local edid_file="${conn_dir}edid"
+
+            # Check for valid EDID header (sysfs files report size 0)
+            if [[ -f "$edid_file" ]]; then
+                local header
+                header=$(head -c 8 "$edid_file" 2>/dev/null | xxd -p 2>/dev/null | tr -d '\n')
+                if [[ "$header" == "$EDID_HEADER_HEX" ]]; then
+                    detected_card="$card"
+                    break 2
+                fi
+            fi
+        done
+    done
+
+    # Fallback to card2 if nothing found (common for T2 Macs with eGPU)
+    detected_card="${detected_card:-card2}"
+
+    echo "$detected_card" > "$cache_file"
+    echo "$detected_card"
+}
+
+# Get EDID fingerprint for a connector (uses full EDID hash for uniqueness)
+# Returns "none" if EDID is not readable or invalid
+get_edid_fingerprint() {
+    local connector="$1"  # e.g., DP-9
+    local card
+    card=$(detect_drm_card)
+    local drm_path="/sys/class/drm/${card}-${connector}/edid"
+
+    # sysfs files report size 0 but may have content - check header directly
+    if [[ -f "$drm_path" ]]; then
+        # Verify EDID header is valid before fingerprinting
+        local header
+        header=$(head -c 8 "$drm_path" 2>/dev/null | xxd -p 2>/dev/null | tr -d '\n')
+        if [[ "$header" == "$EDID_HEADER_HEX" ]]; then
+            # Use full EDID hash as fingerprint
+            md5sum "$drm_path" 2>/dev/null | cut -c1-16
+            return
+        fi
+    fi
+    echo "none"
+}
+
+# Get connector name from Hyprland monitor name
+# Hyprland uses DP-X, DRM uses cardN-DP-X (N detected dynamically)
+get_all_connected_sceptres() {
+    hyprctl monitors -j | jq -r '.[] | select(.description | contains("Sceptre")) | .name'
+}
+
+# Get Float2 Pro monitor
+get_float2_monitor() {
+    hyprctl monitors -j | jq -r '.[] | select(.description | contains("Float2")) | .name'
+}
+
+# Get monitor info from Hyprland
+get_monitor_info() {
+    local mon="$1"
+    hyprctl monitors -j | jq -r ".[] | select(.name == \"$mon\") | \"X=\(.x) Y=\(.y) transform=\(.transform)\""
+}
+
+# Check if valid mapping exists for this boot
+check_existing_mapping() {
+    if [[ -f "$BOOT_ID_FILE" && -f "$MAPPING_FILE" ]]; then
+        local saved_boot_id
+        saved_boot_id=$(cat "$BOOT_ID_FILE")
+        if [[ "$saved_boot_id" == "$CURRENT_BOOT_ID" ]]; then
+            return 0
+        fi
+    fi
+    return 1
+}
+
+# Show current DP assignments with fingerprints
+show_assignments() {
+    echo "Current monitor assignments:"
+    echo ""
+
+    local monitors
+    readarray -t monitors < <(get_all_connected_sceptres)
+
+    for mon in "${monitors[@]}"; do
+        local info fp
+        info=$(get_monitor_info "$mon")
+        fp=$(get_edid_fingerprint "$mon")
+        echo "  $mon: $info [EDID: $fp]"
+    done
+
+    local float2
+    float2=$(get_float2_monitor)
+    if [[ -n "$float2" ]]; then
+        local fp_float2
+        fp_float2=$(get_edid_fingerprint "$float2")
+        echo "  $float2 (Float2 Pro): $(get_monitor_info "$float2") [EDID: $fp_float2]"
+    fi
+
+    if [[ -f "$FINGERPRINT_FILE" ]]; then
+        echo ""
+        echo "Saved fingerprints:"
+        cat "$FINGERPRINT_FILE"
+    fi
+}
+
+# Learn current monitor positions and save EDID fingerprints
+# Run this once when monitors are in correct positions
+learn_positions() {
+    echo "Learning current monitor positions..."
+    echo ""
+
+    # Get all Sceptre monitors sorted by X position
+    local -a monitors
+    readarray -t monitors < <(hyprctl monitors -j | jq -r '
+        [.[] | select(.description | contains("Sceptre"))]
+        | sort_by(.x)
+        | .[].name')
+
+    local count=${#monitors[@]}
+    if [[ $count -lt 3 ]]; then
+        echo "Error: Need 3 Sceptre monitors, found $count"
+        return 1
+    fi
+
+    # Identify by position (user confirms monitors are in correct physical positions)
+    local left_mon="${monitors[0]}"
+    local mid1="${monitors[1]}"
+    local mid2="${monitors[2]}"
+
+    # Get Y positions to determine top vs bottom
+    local mid1_y mid2_y
+    mid1_y=$(hyprctl monitors -j | jq -r ".[] | select(.name == \"$mid1\") | .y")
+    mid2_y=$(hyprctl monitors -j | jq -r ".[] | select(.name == \"$mid2\") | .y")
+
+    local center_top center_bottom
+    if [[ "$mid1_y" -le "$mid2_y" ]]; then
+        center_top="$mid1"
+        center_bottom="$mid2"
+    else
+        center_top="$mid2"
+        center_bottom="$mid1"
+    fi
+
+    # Get fingerprints
+    local fp_left fp_top fp_bottom
+    fp_left=$(get_edid_fingerprint "$left_mon")
+    fp_top=$(get_edid_fingerprint "$center_top")
+    fp_bottom=$(get_edid_fingerprint "$center_bottom")
+
+    local float2 fp_float2
+    float2=$(get_float2_monitor)
+    fp_float2=$(get_edid_fingerprint "$float2")
+
+    echo "Detected layout (by current X/Y positions):"
+    echo "  Left Vertical:  $left_mon [EDID: $fp_left]"
+    echo "  Center Top:     $center_top [EDID: $fp_top]"
+    echo "  Center Bottom:  $center_bottom [EDID: $fp_bottom]"
+    echo "  Float2 Pro:     $float2 [EDID: $fp_float2]"
+    echo ""
+
+    # Save fingerprint mapping (persistent across reboots)
+    cat > "$FINGERPRINT_FILE" << EOF
+# EDID Fingerprint -> Physical Position mapping
+# Created: $(date)
+# These fingerprints identify physical monitors regardless of DP port number
+LEFT_VERTICAL_FP=$fp_left
+CENTER_TOP_FP=$fp_top
+CENTER_BOTTOM_FP=$fp_bottom
+FLOAT2_PRO_FP=$fp_float2
+EOF
+
+    # Also save current mapping for this boot
+    cat > "$MAPPING_FILE" << EOF
+# Sceptre monitor mapping - learned $(date)
+# Boot ID: $CURRENT_BOOT_ID
+LEFT_VERTICAL=$left_mon
+CENTER_TOP=$center_top
+CENTER_BOTTOM=$center_bottom
+FLOAT2_PRO=$float2
+EOF
+
+    echo "$CURRENT_BOOT_ID" > "$BOOT_ID_FILE"
+
+    echo "✓ Fingerprints saved to $FINGERPRINT_FILE"
+    echo "  These will be used to identify monitors on future boots."
+}
+
+# Auto-detect using saved EDID fingerprints + position for identical monitors
+auto_detect() {
+    # First check if we have saved fingerprints
+    if [[ ! -f "$FINGERPRINT_FILE" ]]; then
+        echo "No saved fingerprints. Falling back to position-based detection."
+        echo "Run 'vulcan-monitor-identify --learn' after arranging monitors correctly."
+        return 1
+    fi
+
+    # Load saved fingerprints
+    # shellcheck source=/dev/null
+    source "$FINGERPRINT_FILE"
+
+    # Get all connected Sceptres
+    local -a sceptres
+    readarray -t sceptres < <(get_all_connected_sceptres)
+
+    local left_mon="" center_top="" center_bottom=""
+    local -a duplicate_fp_monitors=()
+
+    # Check if LEFT_VERTICAL and CENTER_BOTTOM have the same fingerprint (common case)
+    local has_duplicates=false
+    if [[ "$LEFT_VERTICAL_FP" == "$CENTER_BOTTOM_FP" ]]; then
+        has_duplicates=true
+        echo "Note: Two monitors share the same EDID fingerprint."
+        echo "      Using X position to distinguish left vs center-bottom."
+    fi
+
+    # Match current monitors to saved fingerprints
+    for mon in "${sceptres[@]}"; do
+        local fp
+        fp=$(get_edid_fingerprint "$mon")
+
+        # CENTER_TOP should have unique fingerprint
+        if [[ "$fp" == "$CENTER_TOP_FP" ]]; then
+            center_top="$mon"
+        elif [[ "$has_duplicates" == true && "$fp" == "$LEFT_VERTICAL_FP" ]]; then
+            # Both left and bottom share this fingerprint - collect them
+            duplicate_fp_monitors+=("$mon")
+        elif [[ "$fp" == "$LEFT_VERTICAL_FP" ]]; then
+            left_mon="$mon"
+        elif [[ "$fp" == "$CENTER_BOTTOM_FP" ]]; then
+            center_bottom="$mon"
+        fi
+    done
+
+    # Handle duplicate fingerprint case: use X position to distinguish
+    if [[ "$has_duplicates" == true && ${#duplicate_fp_monitors[@]} -ge 2 ]]; then
+        # Sort by X position - leftmost is LEFT_VERTICAL
+        local mon1="${duplicate_fp_monitors[0]}"
+        local mon2="${duplicate_fp_monitors[1]}"
+        local x1 x2
+        x1=$(hyprctl monitors -j | jq -r ".[] | select(.name == \"$mon1\") | .x")
+        x2=$(hyprctl monitors -j | jq -r ".[] | select(.name == \"$mon2\") | .x")
+
+        if [[ "$x1" -lt "$x2" ]]; then
+            left_mon="$mon1"
+            center_bottom="$mon2"
+        else
+            left_mon="$mon2"
+            center_bottom="$mon1"
+        fi
+    elif [[ "$has_duplicates" == true && ${#duplicate_fp_monitors[@]} -eq 1 ]]; then
+        # Only one monitor with duplicate fingerprint connected
+        # Try to determine which one based on transform (rotation)
+        local mon="${duplicate_fp_monitors[0]}"
+        local transform
+        transform=$(hyprctl monitors -j | jq -r ".[] | select(.name == \"$mon\") | .transform")
+        if [[ "$transform" == "1" || "$transform" == "3" ]]; then
+            left_mon="$mon"  # Rotated = vertical = left
+        else
+            center_bottom="$mon"  # Not rotated = center bottom
+        fi
+    fi
+
+    # Get Float2 Pro (has unique EDID, just find it)
+    local float2
+    float2=$(get_float2_monitor)
+
+    # Check if we found all monitors
+    local missing=0
+    [[ -z "$left_mon" ]] && echo "Warning: Could not identify LEFT_VERTICAL" && missing=$((missing+1))
+    [[ -z "$center_top" ]] && echo "Warning: Could not identify CENTER_TOP" && missing=$((missing+1))
+    [[ -z "$center_bottom" ]] && echo "Warning: Could not identify CENTER_BOTTOM" && missing=$((missing+1))
+
+    if [[ $missing -gt 0 ]]; then
+        echo ""
+        echo "Some monitors could not be matched."
+        echo "Run 'vulcan-monitor-identify --learn' to re-learn positions."
+        return 1
+    fi
+
+    echo "Auto-detected via EDID fingerprints:"
+    echo "  Left Vertical:  $left_mon (fingerprint + leftmost X)"
+    echo "  Center Top:     $center_top (unique fingerprint)"
+    echo "  Center Bottom:  $center_bottom (fingerprint + center X)"
+    echo "  Float2 Pro:     $float2 (unique fingerprint)"
+
+    # Save mapping for this boot
+    cat > "$MAPPING_FILE" << EOF
+# Sceptre monitor mapping - fingerprint-detected $(date)
+# Boot ID: $CURRENT_BOOT_ID
+LEFT_VERTICAL=$left_mon
+CENTER_TOP=$center_top
+CENTER_BOTTOM=$center_bottom
+FLOAT2_PRO=$float2
+EOF
+
+    echo "$CURRENT_BOOT_ID" > "$BOOT_ID_FILE"
+    return 0
+}
+
+# Fallback: use X/Y positions for monitors that couldn't be fingerprint-matched
+fallback_position_detect() {
+    local known_left="$1"
+    local known_top="$2"
+    local known_bottom="$3"
+
+    # Get all Sceptres sorted by X
+    local -a monitors
+    readarray -t monitors < <(hyprctl monitors -j | jq -r '
+        [.[] | select(.description | contains("Sceptre"))]
+        | sort_by(.x)
+        | .[].name')
+
+    local left_mon="${known_left:-${monitors[0]}}"
+
+    # For center monitors, use Y position
+    local -a center_mons=()
+    for mon in "${monitors[@]}"; do
+        [[ "$mon" != "$left_mon" ]] && center_mons+=("$mon")
+    done
+
+    if [[ ${#center_mons[@]} -ge 2 ]]; then
+        local y0 y1
+        y0=$(hyprctl monitors -j | jq -r ".[] | select(.name == \"${center_mons[0]}\") | .y")
+        y1=$(hyprctl monitors -j | jq -r ".[] | select(.name == \"${center_mons[1]}\") | .y")
+
+        local center_top="${known_top:-}"
+        local center_bottom="${known_bottom:-}"
+
+        if [[ -z "$center_top" || -z "$center_bottom" ]]; then
+            if [[ "$y0" -le "$y1" ]]; then
+                center_top="${center_top:-${center_mons[0]}}"
+                center_bottom="${center_bottom:-${center_mons[1]}}"
+            else
+                center_top="${center_top:-${center_mons[1]}}"
+                center_bottom="${center_bottom:-${center_mons[0]}}"
+            fi
+        fi
+
+        local float2
+        float2=$(get_float2_monitor)
+
+        echo "Position-based fallback:"
+        echo "  Left Vertical:  $left_mon"
+        echo "  Center Top:     $center_top"
+        echo "  Center Bottom:  $center_bottom"
+        echo "  Float2 Pro:     $float2"
+
+        cat > "$MAPPING_FILE" << EOF
+# Sceptre monitor mapping - position fallback $(date)
+# Boot ID: $CURRENT_BOOT_ID
+LEFT_VERTICAL=$left_mon
+CENTER_TOP=$center_top
+CENTER_BOTTOM=$center_bottom
+FLOAT2_PRO=$float2
+EOF
+
+        echo "$CURRENT_BOOT_ID" > "$BOOT_ID_FILE"
+        return 0
+    fi
+
+    return 1
+}
+
+# Manual identification using wofi
+manual_identify() {
+    local -a monitors
+    readarray -t monitors < <(get_all_connected_sceptres)
+    local count=${#monitors[@]}
+
+    if [[ $count -eq 0 ]]; then
+        echo "No Sceptre monitors detected."
+        notify-send "Monitor ID" "No Sceptre monitors found"
+        exit 0
+    fi
+
+    # Show DP labels on each monitor first
+    echo "Showing DP labels on each monitor..."
+    for mon in "${monitors[@]}"; do
+        local ws
+        ws=$(hyprctl monitors -j | jq -r ".[] | select(.name == \"$mon\") | .activeWorkspace.id")
+        hyprctl dispatch workspace "$ws" 2>/dev/null || true
+        sleep 0.1
+        zenity --info --text="<span font='48' color='yellow'>$mon</span>" \
+            --title="$mon" --width=300 --height=200 --timeout=30 &
+        sleep 0.3
+    done
+
+    notify-send -t 5000 "Monitor Identification" "Look for DP-X labels on each monitor, then select positions."
+
+    # Identify each position via wofi
+    local positions=("LEFT_VERTICAL" "CENTER_TOP" "CENTER_BOTTOM")
+    local labels=("Left Vertical (rotated 90°)" "Center Top" "Center Bottom (curved)")
+    local -A mapping
+    local -a remaining=("${monitors[@]}")
+
+    for i in "${!positions[@]}"; do
+        local pos="${positions[$i]}"
+        local label="${labels[$i]}"
+
+        # Build menu from remaining monitors
+        local menu=""
+        for mon in "${remaining[@]}"; do
+            local x y
+            x=$(hyprctl monitors -j | jq -r ".[] | select(.name == \"$mon\") | .x")
+            y=$(hyprctl monitors -j | jq -r ".[] | select(.name == \"$mon\") | .y")
+            menu+="$mon (X=$x, Y=$y)\n"
+        done
+
+        if [[ -z "$menu" ]]; then
+            continue
+        fi
+
+        local selection
+        selection=$(echo -e "$menu" | wofi --show dmenu \
+            --prompt "Which monitor is $label?" \
+            --width 400 --height 200 2>/dev/null) || true
+
+        if [[ -n "$selection" ]]; then
+            local selected
+            selected=$(echo "$selection" | awk '{print $1}')
+            mapping[$pos]="$selected"
+
+            # Remove from remaining
+            local -a new_remaining=()
+            for mon in "${remaining[@]}"; do
+                [[ "$mon" != "$selected" ]] && new_remaining+=("$mon")
+            done
+            remaining=("${new_remaining[@]}")
+        fi
+    done
+
+    # Kill zenity dialogs
+    pkill zenity 2>/dev/null || true
+
+    # Get fingerprints and save them
+    local fp_left fp_top fp_bottom
+    fp_left=$(get_edid_fingerprint "${mapping[LEFT_VERTICAL]}")
+    fp_top=$(get_edid_fingerprint "${mapping[CENTER_TOP]}")
+    fp_bottom=$(get_edid_fingerprint "${mapping[CENTER_BOTTOM]}")
+
+    local float2 fp_float2
+    float2=$(get_float2_monitor)
+    fp_float2=$(get_edid_fingerprint "$float2")
+
+    # Save fingerprint mapping (persistent across reboots)
+    cat > "$FINGERPRINT_FILE" << EOF
+# EDID Fingerprint -> Physical Position mapping
+# Created: $(date) (manual identification)
+LEFT_VERTICAL_FP=$fp_left
+CENTER_TOP_FP=$fp_top
+CENTER_BOTTOM_FP=$fp_bottom
+FLOAT2_PRO_FP=$fp_float2
+EOF
+
+    # Save current mapping
+    cat > "$MAPPING_FILE" << EOF
+# Sceptre monitor mapping - manual $(date)
+# Boot ID: $CURRENT_BOOT_ID
+LEFT_VERTICAL=${mapping[LEFT_VERTICAL]:-}
+CENTER_TOP=${mapping[CENTER_TOP]:-}
+CENTER_BOTTOM=${mapping[CENTER_BOTTOM]:-}
+FLOAT2_PRO=$float2
+EOF
+
+    echo "$CURRENT_BOOT_ID" > "$BOOT_ID_FILE"
+
+    echo ""
+    echo "✓ Monitor mapping and fingerprints saved!"
+    echo "  Left vertical:    ${mapping[LEFT_VERTICAL]:-not set} [EDID: $fp_left]"
+    echo "  Center top:       ${mapping[CENTER_TOP]:-not set} [EDID: $fp_top]"
+    echo "  Center bottom:    ${mapping[CENTER_BOTTOM]:-not set} [EDID: $fp_bottom]"
+    echo "  Float2 Pro:       $float2 [EDID: $fp_float2]"
+
+    notify-send "Monitors Identified" "Mapping and fingerprints saved"
+}
+
+# Main
+case "${1:-}" in
+    --auto)
+        if check_existing_mapping; then
+            echo "✓ Valid mapping exists for this boot"
+            exit 0
+        fi
+
+        echo "No valid mapping for this boot. Attempting EDID fingerprint detection..."
+        if auto_detect; then
+            echo "✓ Auto-detection successful"
+            notify-send "Monitors Auto-Detected" "Layout identified via EDID fingerprints"
+        else
+            echo "EDID detection failed, falling back to manual..."
+            manual_identify
+        fi
+        ;;
+
+    --manual)
+        manual_identify
+        ;;
+
+    --learn)
+        learn_positions
+        ;;
+
+    --show)
+        show_assignments
+        if [[ -f "$MAPPING_FILE" ]]; then
+            echo ""
+            echo "Saved mapping (this boot):"
+            cat "$MAPPING_FILE"
+        fi
+        ;;
+
+    --help|-h)
+        echo "vulcan-monitor-identify - Identify identical Sceptre monitors"
+        echo ""
+        echo "Usage:"
+        echo "  vulcan-monitor-identify          Auto-detect or show current mapping"
+        echo "  vulcan-monitor-identify --auto   Auto-detect using EDID fingerprints"
+        echo "  vulcan-monitor-identify --learn  Learn current positions (run once after setup)"
+        echo "  vulcan-monitor-identify --manual Force manual identification via wofi"
+        echo "  vulcan-monitor-identify --show   Show current assignments and fingerprints"
+        echo ""
+        echo "Workflow:"
+        echo "  1. Arrange monitors in correct physical positions"
+        echo "  2. Run 'vulcan-monitor-identify --learn' to save EDID fingerprints"
+        echo "  3. On future boots, --auto will match monitors by fingerprint"
+        echo ""
+        echo "EDID fingerprints are persistent and survive reboots/reconnections."
+        ;;
+
+    *)
+        # Default: try auto, fall back to manual
+        if check_existing_mapping; then
+            echo "✓ Valid mapping exists for this boot"
+            show_assignments
+            exit 0
+        fi
+
+        echo "Attempting EDID fingerprint detection..."
+        if auto_detect; then
+            echo "✓ Auto-detection successful"
+        else
+            echo ""
+            echo "No fingerprints saved. Run with --learn after arranging monitors correctly."
+            echo "Or use --manual for interactive identification."
+        fi
+        ;;
+esac

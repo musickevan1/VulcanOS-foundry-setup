@@ -1,0 +1,311 @@
+/* SwayNC Style - Vulcan Forge Theme */
+
+* {
+    font-family: "JetBrainsMono Nerd Font", monospace;
+    font-size: 13px;
+}
+
+.notification-row {
+    outline: none;
+}
+
+.notification-row:focus,
+.notification-row:hover {
+    background: #292524;
+}
+
+.notification {
+    border-radius: 10px;
+    margin: 6px 12px;
+    padding: 0;
+    background: #1c1917;
+    border: 1px solid #44403c;
+}
+
+.notification-content {
+    background: transparent;
+    padding: 6px;
+}
+
+.close-button {
+    background: #ef4444;
+    color: #1c1917;
+    text-shadow: none;
+    padding: 0;
+    border-radius: 100%;
+    margin-top: 10px;
+    margin-right: 10px;
+    box-shadow: none;
+    border: none;
+    min-width: 24px;
+    min-height: 24px;
+}
+
+.close-button:hover {
+    background: #f87171;
+}
+
+.notification-default-action,
+.notification-action {
+    padding: 4px;
+    margin: 0;
+    background: transparent;
+    border: none;
+    color: #fafaf9;
+}
+
+.notification-default-action:hover,
+.notification-action:hover {
+    background: #292524;
+    border-radius: 6px;
+}
+
+.notification-default-action {
+    border-radius: 10px;
+}
+
+.notification-action:first-child {
+    border-radius: 0 0 0 10px;
+}
+
+.notification-action:last-child {
+    border-radius: 0 0 10px 0;
+}
+
+.inline-reply {
+    margin-top: 8px;
+}
+
+.inline-reply-entry {
+    background: #292524;
+    color: #fafaf9;
+    caret-color: #fafaf9;
+    border: 1px solid #44403c;
+    border-radius: 6px;
+    padding: 6px;
+}
+
+.inline-reply-entry:focus {
+    border-color: #f97316;
+}
+
+.inline-reply-button {
+    margin-left: 4px;
+    background: #f97316;
+    color: #1c1917;
+    border-radius: 6px;
+    border: none;
+    padding: 6px 12px;
+}
+
+.inline-reply-button:disabled {
+    background: #44403c;
+}
+
+.inline-reply-button:hover {
+    background: #fbbf24;
+}
+
+.image {
+    border-radius: 6px;
+    margin-right: 6px;
+}
+
+.summary {
+    font-size: 14px;
+    font-weight: bold;
+    background: transparent;
+    color: #fafaf9;
+}
+
+.time {
+    font-size: 12px;
+    font-weight: bold;
+    background: transparent;
+    color: #78716c;
+    margin-right: 24px;
+}
+
+.body {
+    font-size: 13px;
+    font-weight: normal;
+    background: transparent;
+    color: #a8a29e;
+}
+
+.control-center {
+    background: #1c1917;
+    border: 1px solid #44403c;
+    border-radius: 10px;
+}
+
+.control-center-list {
+    background: transparent;
+}
+
+.control-center-list-placeholder {
+    opacity: 0.5;
+}
+
+.floating-notifications {
+    background: transparent;
+}
+
+.blank-window {
+    background: alpha(#1c1917, 0.3);
+}
+
+.widget-title {
+    margin: 8px;
+    font-size: 14px;
+    font-weight: bold;
+    color: #fafaf9;
+}
+
+.widget-title > button {
+    font-size: 12px;
+    color: #fafaf9;
+    text-shadow: none;
+    background: #292524;
+    border: 1px solid #44403c;
+    border-radius: 6px;
+    padding: 4px 8px;
+}
+
+.widget-title > button:hover {
+    background: #44403c;
+    border-color: #f97316;
+}
+
+.widget-dnd {
+    margin: 8px;
+    font-size: 14px;
+    color: #fafaf9;
+}
+
+.widget-dnd > switch {
+    font-size: 14px;
+    border-radius: 6px;
+    background: #292524;
+    border: 1px solid #44403c;
+}
+
+.widget-dnd > switch:checked {
+    background: #f97316;
+    border-color: #f97316;
+}
+
+.widget-dnd > switch slider {
+    background: #fafaf9;
+    border-radius: 6px;
+}
+
+.widget-label {
+    margin: 8px;
+}
+
+.widget-label > label {
+    font-size: 14px;
+    color: #fafaf9;
+}
+
+.widget-mpris {
+    background: #292524;
+    padding: 8px;
+    margin: 8px;
+    border-radius: 10px;
+}
+
+.widget-mpris-player {
+    padding: 8px;
+    margin: 4px;
+}
+
+.widget-mpris-title {
+    font-weight: bold;
+    font-size: 14px;
+    color: #fafaf9;
+}
+
+.widget-mpris-subtitle {
+    font-size: 12px;
+    color: #a8a29e;
+}
+
+.widget-buttons-grid {
+    font-size: 14px;
+    padding: 4px;
+    margin: 8px;
+    border-radius: 10px;
+    background: #292524;
+}
+
+.widget-buttons-grid > flowbox > flowboxchild > button {
+    margin: 4px;
+    background: #44403c;
+    border-radius: 6px;
+    color: #fafaf9;
+    border: none;
+    padding: 8px;
+}
+
+.widget-buttons-grid > flowbox > flowboxchild > button:hover {
+    background: #f97316;
+    color: #1c1917;
+}
+
+.widget-menubar > box > .menu-button-bar > button {
+    border: none;
+    background: transparent;
+}
+
+.topbar-buttons > button {
+    border: none;
+    background: transparent;
+}
+
+.widget-volume {
+    background: #292524;
+    padding: 8px;
+    margin: 8px;
+    border-radius: 10px;
+}
+
+.widget-volume > box > button {
+    background: transparent;
+    border: none;
+}
+
+.per-app-volume {
+    background: #44403c;
+    padding: 4px 8px 8px 8px;
+    margin: 4px 8px;
+    border-radius: 10px;
+}
+
+.widget-backlight {
+    background: #292524;
+    padding: 8px;
+    margin: 8px;
+    border-radius: 10px;
+}
+
+.widget-inhibitors {
+    margin: 8px;
+    font-size: 14px;
+    color: #fafaf9;
+}
+
+.widget-inhibitors > button {
+    font-size: 12px;
+    color: #fafaf9;
+    text-shadow: none;
+    background: #292524;
+    border: 1px solid #44403c;
+    border-radius: 6px;
+    padding: 4px 8px;
+}
+
+.widget-inhibitors > button:hover {
+    background: #44403c;
+}

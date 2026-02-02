@@ -1,0 +1,17 @@
+[Trigger]
+Type = Package
+Operation = Install
+Operation = Upgrade
+Operation = Remove
+Target = linux
+Target = linux-lts
+Target = linux-zen
+Target = linux-hardened
+Target = linux-t2
+
+[Action]
+Description = Verifying kernel operation safety (T2 MacBook Pro)...
+When = PreTransaction
+Exec = /usr/local/bin/vulcan-kernel-protect
+AbortOnFail
+NeedsTargets

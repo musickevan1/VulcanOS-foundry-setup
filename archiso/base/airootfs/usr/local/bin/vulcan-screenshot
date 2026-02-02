@@ -1,0 +1,49 @@
+#!/bin/bash
+# vulcan-screenshot - Screenshot utility for VulcanOS
+# Usage: vulcan-screenshot [region|screen|window]
+#
+# Captures screenshots to ~/Pictures/Screenshots with timestamp,
+# copies to clipboard, and shows notification with preview.
+
+set -euo pipefail
+
+MODE="${1:-region}"
+SCREENSHOT_DIR="$HOME/Pictures/Screenshots"
+mkdir -p "$SCREENSHOT_DIR"
+
+TIMESTAMP=$(date +%Y-%m-%d_%H-%M-%S)
+FILENAME="$SCREENSHOT_DIR/screenshot-$TIMESTAMP.png"
+
+case "$MODE" in
+    region)
+        # Interactive region selection
+        GEOMETRY=$(slurp 2>/dev/null) || exit 0  # Exit gracefully if cancelled
+        grim -g "$GEOMETRY" "$FILENAME"
+        ;;
+    screen)
+        # Full screen (all outputs)
+        grim "$FILENAME"
+        ;;
+    window)
+        # Active window only
+        GEOMETRY=$(hyprctl activewindow -j | jq -r '"\(.at[0]),\(.at[1]) \(.size[0])x\(.size[1])"')
+        if [[ "$GEOMETRY" == "null,null nullxnull" ]] || [[ -z "$GEOMETRY" ]]; then
+            notify-send -u critical "Screenshot Failed" "No active window found"
+            exit 1
+        fi
+        grim -g "$GEOMETRY" "$FILENAME"
+        ;;
+    *)
+        echo "Usage: vulcan-screenshot [region|screen|window]"
+        exit 1
+        ;;
+esac
+
+# If screenshot was captured successfully
+if [[ -f "$FILENAME" ]]; then
+    # Copy to clipboard
+    wl-copy < "$FILENAME"
+
+    # Show notification with thumbnail
+    notify-send -i "$FILENAME" "Screenshot Saved" "Copied to clipboard\n$FILENAME"
+fi

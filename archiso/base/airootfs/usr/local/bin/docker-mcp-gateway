@@ -1,0 +1,130 @@
+#!/bin/bash
+# Docker MCP Gateway Wrapper for OpenCode
+# Ensures Docker is running before starting the gateway
+# Runs MCP gateway in stdio mode for direct OpenCode connection
+
+LOG_FILE="/tmp/docker-mcp-gateway.log"
+
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"
+}
+
+# Check if Docker daemon is running
+is_docker_running() {
+    docker info > /dev/null 2>&1
+}
+
+# Wait for Docker to be ready
+wait_for_docker() {
+    local max_attempts=60
+    local attempt=0
+    
+    while [ $attempt -lt $max_attempts ]; do
+        if is_docker_running; then
+            return 0
+        fi
+        attempt=$((attempt + 1))
+        sleep 1
+    done
+    
+    return 1
+}
+
+# Start Docker Desktop if not running
+ensure_docker() {
+    if is_docker_running; then
+        log "Docker is already running"
+        return 0
+    fi
+    
+    log "Docker not running, attempting to start Docker Desktop..."
+    
+    # Try systemd user service (Arch Linux)
+    systemctl --user start docker-desktop 2>/dev/null || true
+    
+    log "Waiting for Docker to be ready..."
+    if wait_for_docker; then
+        log "Docker is now ready"
+        return 0
+    else
+        log "ERROR: Docker failed to start within 60 seconds"
+        return 1
+    fi
+}
+
+# Main startup logic for 'run' command
+start_gateway() {
+    # Ensure Docker is running first
+    if ! ensure_docker; then
+        log "Failed to start Docker"
+        echo "Failed to start Docker Desktop" >&2
+        exit 1
+    fi
+    
+    # Check if MCP toolkit is available
+    if ! docker mcp version > /dev/null 2>&1; then
+        log "ERROR: MCP Toolkit not available"
+        echo "MCP Toolkit not available. Enable in Docker Desktop settings." >&2
+        exit 1
+    fi
+    
+    log "Starting MCP Gateway (stdio mode with static servers)..."
+    
+    # Run the gateway in stdio mode with static/long-lived mode
+    # This pre-starts servers instead of starting them on-demand, reducing connection time
+    # OpenCode will communicate directly via stdin/stdout
+    # Use Docker MCP secrets file instead of Docker Desktop secrets API
+    exec docker mcp gateway run --secrets "$HOME/.docker/mcp/secrets.env" --static --long-lived
+}
+
+# Handle different invocation modes
+case "${1:-run}" in
+    "run"|"start")
+        start_gateway
+        ;;
+    "status")
+        if pgrep -f "docker mcp gateway" > /dev/null 2>&1; then
+            echo "running"
+            exit 0
+        else
+            echo "stopped"
+            exit 1
+        fi
+        ;;
+    "check")
+        # Silent check - just exit code
+        if pgrep -f "docker mcp gateway" > /dev/null 2>&1; then
+            exit 0
+        else
+            exit 1
+        fi
+        ;;
+    "ensure-docker")
+        # Just ensure Docker is running, don't start gateway
+        if ensure_docker; then
+            echo "Docker is ready"
+            exit 0
+        else
+            echo "Docker failed to start"
+            exit 1
+        fi
+        ;;
+    "logs")
+        if [ -f "$LOG_FILE" ]; then
+            cat "$LOG_FILE"
+        else
+            echo "No logs found at $LOG_FILE"
+        fi
+        ;;
+    *)
+        echo "Usage: docker-mcp-gateway [run|status|check|ensure-docker|logs]"
+        echo ""
+        echo "Commands:"
+        echo "  run           Start the MCP gateway (default)"
+        echo "  status        Check if gateway is running"
+        echo "  check         Silent status check (exit code only)"
+        echo "  ensure-docker Start Docker if needed, don't start gateway"
+        echo "  logs          Show wrapper logs"
+        exit 1
+        ;;
+esac

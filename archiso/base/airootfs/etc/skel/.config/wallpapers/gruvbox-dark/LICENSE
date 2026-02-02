@@ -1,0 +1,27 @@
+# Gruvbox Dark Wallpapers
+
+## Current Wallpapers
+
+### gruvbox-dark.png
+
+- **Source:** VulcanOS Original / AI Generated
+- **Style:** Retro computing stripes with VulcanOS logo
+- **License:** VulcanOS Project License
+- **Resolution:** 1920x1080 (FHD)
+- **Created:** 2026-01-31
+- **Author:** VulcanOS Project (generated with Nano Banana Pro)
+
+## Description
+
+Custom wallpaper featuring the VulcanOS logo (inverted Arch Linux symbol forming a "V")
+centered on retro-style horizontal stripes using Gruvbox palette colors:
+- Green (#b8bb26)
+- Teal (#8ec07c)
+- Orange (#fe8019)
+- Red (#fb4934)
+
+Background uses Gruvbox dark background (#282828).
+
+## Usage
+
+This wallpaper is the default for the Gruvbox Dark theme in VulcanOS.

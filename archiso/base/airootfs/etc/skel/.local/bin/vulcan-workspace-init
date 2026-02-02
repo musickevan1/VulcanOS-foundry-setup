@@ -1,0 +1,405 @@
+#!/bin/bash
+# vulcan-workspace-init - Dynamic workspace/monitor binding for multi-monitor setups
+# Generates workspace rules and Waybar config based on hyprmon-desc profile order
+# Run on login, profile switch, or monitor hotplug events
+#
+# Workspace scheme: 5 workspaces per monitor, ordered by profile definition
+#   Monitor 1 (first in profile): workspaces 1-5
+#   Monitor 2: workspaces 6-10
+#   Monitor 3: workspaces 11-15
+#   Monitor 4: workspaces 16-20
+#   Monitor 5: workspaces 21-25
+
+set -euo pipefail
+
+HYPR_CONF_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/hypr"
+WAYBAR_CONF_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/waybar"
+PROFILE_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/hyprmon-desc/profiles"
+WORKSPACE_CONF="$HYPR_CONF_DIR/workspaces.conf"
+WAYBAR_WORKSPACES_CONF="$WAYBAR_CONF_DIR/workspaces.json"
+
+# EDID cache from vulcan-monitor-identify
+MONITOR_CACHE_DIR="$HOME/.cache/vulcan-monitors"
+MAPPING_FILE="$MONITOR_CACHE_DIR/sceptre-mapping"
+
+# Number of workspaces per monitor
+WS_PER_MONITOR=5
+
+log() {
+    echo "[vulcan-workspace-init] $*" >&2
+}
+
+# Get monitors from a profile file (preserves order defined in profile)
+get_profile_monitors() {
+    local profile_file="$1"
+    if [[ -f "$profile_file" ]]; then
+        # Extract monitor names from "monitor = NAME, ..." lines, preserving order
+        grep -E "^monitor\s*=" "$profile_file" | \
+            grep -v "^monitor\s*=\s*," | \
+            sed -E 's/^monitor\s*=\s*([^,]+),.*/\1/' | \
+            tr -d ' '
+    fi
+}
+
+# Get currently connected monitors (fallback if no profile)
+get_connected_monitors() {
+    hyprctl monitors -j | jq -r '.[].name'
+}
+
+# Determine which profile is active based on connected monitors
+detect_active_profile() {
+    local connected
+    connected=$(hyprctl monitors -j | jq -r '.[].name' | sort | tr '\n' ' ')
+    local monitor_count
+    monitor_count=$(echo "$connected" | wc -w)
+
+    # Match profile by monitor count and presence of key monitors
+    case $monitor_count in
+        5) echo "desktop" ;;
+        4) echo "console" ;;
+        2)
+            if echo "$connected" | grep -q "eDP-1"; then
+                echo "campus"
+            else
+                echo "desktop"
+            fi
+            ;;
+        1) echo "laptop" ;;
+        *) echo "desktop" ;;  # Default to desktop
+    esac
+}
+
+# Resolve monitor order using EDID cache
+# Returns ordered list of monitor names based on profile and EDID detection
+resolve_monitor_order() {
+    local profile="${1:-}"
+    local -a ordered_monitors=()
+
+    # Load EDID cache if available
+    local LEFT_VERTICAL="" CENTER_TOP="" CENTER_BOTTOM="" FLOAT2_PRO=""
+    if [[ -f "$MAPPING_FILE" ]]; then
+        # shellcheck disable=SC1090
+        source "$MAPPING_FILE"
+    fi
+
+    # User's preferred workspace order (eDP-1 ALWAYS first for consistency):
+    # Desktop (5): eDP-1 -> CENTER_BOTTOM -> FLOAT2_PRO -> CENTER_TOP -> LEFT_VERTICAL
+    # Console (4): eDP-1 -> CENTER_BOTTOM -> FLOAT2_PRO -> CENTER_TOP
+    # Campus (2): eDP-1 -> FLOAT2_PRO
+    # Laptop (1): eDP-1
+
+    case "$profile" in
+        desktop)
+            # 5 monitors: laptop + 4 externals
+            ordered_monitors=("eDP-1" "$CENTER_BOTTOM" "$FLOAT2_PRO" "$CENTER_TOP" "$LEFT_VERTICAL")
+            ;;
+        console)
+            # 4 monitors: laptop + main curved + float2 + top (no left vertical)
+            ordered_monitors=("eDP-1" "$CENTER_BOTTOM" "$FLOAT2_PRO" "$CENTER_TOP")
+            ;;
+        campus)
+            # 2 monitors: laptop + portable external
+            ordered_monitors=("eDP-1" "$FLOAT2_PRO")
+            ;;
+        laptop)
+            # 1 monitor: just laptop
+            ordered_monitors=("eDP-1")
+            ;;
+        *)
+            # Unknown profile: fallback to eDP-1 + any externals from cache
+            ordered_monitors=("eDP-1" "$CENTER_BOTTOM" "$FLOAT2_PRO" "$CENTER_TOP" "$LEFT_VERTICAL")
+            ;;
+    esac
+
+    # Filter to only connected monitors
+    local connected
+    connected=$(get_connected_monitors)
+
+    for mon in "${ordered_monitors[@]}"; do
+        if [[ -n "$mon" ]] && echo "$connected" | grep -q "^${mon}$"; then
+            echo "$mon"
+        fi
+    done
+}
+
+# Get monitors in the order they should be assigned workspaces
+get_ordered_monitors() {
+    local profile="${1:-}"
+
+    # If no profile specified, detect it
+    if [[ -z "$profile" ]]; then
+        profile=$(detect_active_profile)
+        log "Auto-detected profile: $profile"
+    fi
+
+    # Try EDID-based resolution first
+    local monitors_from_cache
+    monitors_from_cache=$(resolve_monitor_order "$profile")
+
+    if [[ -n "$monitors_from_cache" ]]; then
+        log "Using EDID cache for workspace order (profile: $profile)"
+        echo "$monitors_from_cache"
+        return 0
+    fi
+
+    # Fallback: use profile file order or connected monitor order
+    local profile_file="$PROFILE_DIR/${profile}.conf"
+    if [[ -f "$profile_file" ]]; then
+        log "Fallback: Using monitor order from profile file: $profile"
+        local connected
+        connected=$(get_connected_monitors)
+
+        while read -r mon; do
+            if echo "$connected" | grep -q "^${mon}$"; then
+                echo "$mon"
+            fi
+        done < <(get_profile_monitors "$profile_file")
+    else
+        log "Fallback: Using connected monitor order"
+        get_connected_monitors
+    fi
+}
+
+# Generate Hyprland workspace rules
+generate_hyprland_config() {
+    local monitors=("$@")
+    local count=${#monitors[@]}
+
+    cat << 'HEADER'
+# =============================================================================
+# VulcanOS Dynamic Workspace Configuration
+# AUTO-GENERATED by vulcan-workspace-init - DO NOT EDIT MANUALLY
+# Regenerate with: vulcan-workspace-init
+# =============================================================================
+
+HEADER
+
+    for i in "${!monitors[@]}"; do
+        local mon="${monitors[$i]}"
+        local ws_start=$((i * WS_PER_MONITOR + 1))
+        local ws_end=$((ws_start + WS_PER_MONITOR - 1))
+
+        echo "# Monitor $i: $mon (workspaces $ws_start-$ws_end)"
+
+        # Bind workspaces to this monitor
+        for ws in $(seq "$ws_start" "$ws_end"); do
+            echo "workspace = $ws, monitor:$mon, default:$([[ $ws -eq $ws_start ]] && echo "true" || echo "false")"
+        done
+        echo ""
+    done
+
+    # Add workspace rules for persistent workspaces
+    echo "# Workspace behavior rules"
+    echo "workspace = special:magic, gapsout:10, gapsin:5"
+}
+
+# Generate Waybar persistent-workspaces JSON fragment
+generate_waybar_workspaces() {
+    local monitors=("$@")
+
+    echo "{"
+    echo '    "persistent-workspaces": {'
+
+    local first=true
+    for i in "${!monitors[@]}"; do
+        local mon="${monitors[$i]}"
+        local ws_start=$((i * WS_PER_MONITOR + 1))
+        local ws_end=$((ws_start + WS_PER_MONITOR - 1))
+
+        # Build workspace array
+        local ws_array=""
+        for ws in $(seq "$ws_start" "$ws_end"); do
+            [[ -n "$ws_array" ]] && ws_array+=", "
+            ws_array+="$ws"
+        done
+
+        [[ "$first" != "true" ]] && echo ","
+        first=false
+        printf '        "%s": [%s]' "$mon" "$ws_array"
+    done
+
+    echo ""
+    echo "    }"
+    echo "}"
+}
+
+# Generate format-icons for workspace numbers
+generate_workspace_icons() {
+    local monitors=("$@")
+    local count=${#monitors[@]}
+
+    echo "{"
+
+    # Generate icons: each monitor's workspaces 1-5 get same icons
+    for i in "${!monitors[@]}"; do
+        local ws_start=$((i * WS_PER_MONITOR + 1))
+        local ws_end=$((ws_start + WS_PER_MONITOR - 1))
+        local relative=1
+
+        for ws in $(seq "$ws_start" "$ws_end"); do
+            local icon
+            case $relative in
+                1) icon="󰎤" ;;
+                2) icon="󰎧" ;;
+                3) icon="󰎪" ;;
+                4) icon="󰎭" ;;
+                5) icon="󰎱" ;;
+            esac
+            echo "    \"$ws\": \"$icon\","
+            ((relative++))
+        done
+    done
+
+    echo '    "active": "󰮯",'
+    echo '    "default": "󰊠"'
+    echo "}"
+}
+
+# Update Waybar config with current monitor names for persistent-workspaces
+update_waybar_persistent_workspaces() {
+    local monitors=("$@")
+    local config_file="$WAYBAR_CONF_DIR/config.jsonc"
+
+    if [[ ! -f "$config_file" ]]; then
+        log "Waybar config not found, skipping update"
+        return 1
+    fi
+
+    # Build the new persistent-workspaces JSON
+    local new_pw="{"
+    local first=true
+    for i in "${!monitors[@]}"; do
+        local mon="${monitors[$i]}"
+        local ws_start=$((i * WS_PER_MONITOR + 1))
+        local ws_end=$((ws_start + WS_PER_MONITOR - 1))
+
+        local ws_array=""
+        for ws in $(seq "$ws_start" "$ws_end"); do
+            [[ -n "$ws_array" ]] && ws_array+=", "
+            ws_array+="$ws"
+        done
+
+        [[ "$first" != "true" ]] && new_pw+=", "
+        first=false
+        new_pw+="\"$mon\": [$ws_array]"
+    done
+    new_pw+="}"
+
+    log "Updating Waybar persistent-workspaces..."
+
+    # Use Python to update the JSONC config (preserves comments)
+    python3 << PYEOF
+import re
+import json
+
+config_path = "$config_file"
+new_persistent = $new_pw
+
+with open(config_path, 'r') as f:
+    content = f.read()
+
+# Pattern to match the persistent-workspaces block (handles multiline)
+pattern = r'"persistent-workspaces"\s*:\s*\{[^}]*\}'
+replacement = '"persistent-workspaces": ' + json.dumps(new_persistent, separators=(', ', ': '))
+
+new_content = re.sub(pattern, replacement, content, flags=re.DOTALL)
+
+with open(config_path, 'w') as f:
+    f.write(new_content)
+PYEOF
+
+    if [[ $? -eq 0 ]]; then
+        log "Updated Waybar persistent-workspaces"
+    else
+        log "Warning: Failed to update Waybar config"
+    fi
+}
+
+# Initialize workspaces on correct monitors
+initialize_workspaces() {
+    local monitors=("$@")
+
+    log "Initializing workspaces on monitors..."
+
+    for i in "${!monitors[@]}"; do
+        local mon="${monitors[$i]}"
+        local ws_start=$((i * WS_PER_MONITOR + 1))
+
+        # Focus monitor and switch to its first workspace
+        hyprctl dispatch focusmonitor "$mon" > /dev/null 2>&1
+        hyprctl dispatch workspace "$ws_start" > /dev/null 2>&1
+        sleep 0.1
+    done
+
+    # Return focus to first monitor (main)
+    if [[ ${#monitors[@]} -gt 0 ]]; then
+        hyprctl dispatch focusmonitor "${monitors[0]}" > /dev/null 2>&1
+    fi
+}
+
+main() {
+    local profile="${1:-}"
+
+    log "Detecting monitors..."
+
+    # Get ordered monitor list based on profile
+    mapfile -t monitors < <(get_ordered_monitors "$profile")
+    local count=${#monitors[@]}
+
+    if [[ $count -eq 0 ]]; then
+        log "ERROR: No monitors detected"
+        exit 1
+    fi
+
+    log "Found $count monitors: ${monitors[*]}"
+
+    # Ensure directories exist
+    mkdir -p "$HYPR_CONF_DIR" "$WAYBAR_CONF_DIR"
+
+    # Generate Hyprland workspace config
+    log "Generating $WORKSPACE_CONF..."
+    generate_hyprland_config "${monitors[@]}" > "$WORKSPACE_CONF"
+
+    # Generate Waybar workspaces JSON (for reference)
+    log "Generating $WAYBAR_WORKSPACES_CONF..."
+    generate_waybar_workspaces "${monitors[@]}" > "$WAYBAR_WORKSPACES_CONF"
+
+    # Generate icons JSON for reference
+    local icons_file="$WAYBAR_CONF_DIR/workspace-icons.json"
+    log "Generating $icons_file..."
+    generate_workspace_icons "${monitors[@]}" > "$icons_file"
+
+    # Update Waybar config with current monitor names
+    update_waybar_persistent_workspaces "${monitors[@]}"
+
+    # Reload Hyprland config
+    if pgrep -x Hyprland > /dev/null; then
+        log "Reloading Hyprland configuration..."
+        hyprctl reload > /dev/null 2>&1 || true
+        sleep 0.3
+
+        # Initialize workspaces on correct monitors
+        initialize_workspaces "${monitors[@]}"
+    fi
+
+    # Restart Waybar to pick up monitor changes
+    if pgrep -x waybar > /dev/null; then
+        log "Restarting Waybar..."
+        killall waybar 2>/dev/null || true
+        sleep 0.3
+        waybar &>/dev/null &
+    fi
+
+    log "Done! Workspace configuration updated for $count monitors."
+
+    # Print summary
+    echo ""
+    echo "Monitor → Workspace mapping:"
+    for i in "${!monitors[@]}"; do
+        local ws_start=$((i * WS_PER_MONITOR + 1))
+        local ws_end=$((ws_start + WS_PER_MONITOR - 1))
+        printf "  %d. %-12s → workspaces %d-%d\n" "$((i+1))" "${monitors[$i]}" "$ws_start" "$ws_end"
+    done
+}
+
+main "$@"

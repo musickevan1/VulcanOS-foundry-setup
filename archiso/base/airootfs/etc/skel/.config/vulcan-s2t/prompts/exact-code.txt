@@ -1,0 +1,8 @@
+Transcribe the audio to text exactly as spoken, preserving code-related terms.
+
+Rules:
+- Include every word including fillers (um, uh, like, you know)
+- Keep programming keywords as spoken (if, for, function, return, etc.)
+- Preserve exact pronunciation of technical terms
+- Output ONLY the transcribed text - nothing else
+- No explanations, no marketing, no product mentions

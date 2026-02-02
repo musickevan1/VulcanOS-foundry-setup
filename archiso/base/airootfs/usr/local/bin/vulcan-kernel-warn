@@ -1,0 +1,95 @@
+#!/bin/bash
+#
+# vulcan-kernel-warn - T2 MacBook Pro Kernel Update Warning Script
+#
+# Purpose: Notify user about upcoming kernel update with important information:
+#   - Current kernel version being replaced
+#   - Reminder that system will need reboot
+#   - Information about fallback preservation
+#
+# Called by: /etc/pacman.d/hooks/20-vulcan-kernel-warn.hook (PreTransaction, Upgrade only)
+# Exit codes: Always 0 (informational only, never blocks)
+#
+
+set -euo pipefail
+
+# Logging
+LOG_FILE="/var/log/vulcan-kernel-warn.log"
+exec 1> >(tee -a "$LOG_FILE")
+exec 2>&1
+
+log() {
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] $*"
+}
+
+# Desktop notification helper (sends to active graphical session)
+notify_user() {
+    local urgency="$1"
+    local title="$2"
+    local message="$3"
+
+    # Find active graphical session user
+    local active_user
+    active_user=$(loginctl list-sessions --no-legend 2>/dev/null | awk '{print $3}' | head -1)
+
+    if [[ -n "$active_user" ]]; then
+        local user_id
+        user_id=$(id -u "$active_user" 2>/dev/null || echo "")
+
+        if [[ -n "$user_id" ]] && [[ -d "/run/user/$user_id" ]]; then
+            # Use runuser with explicit environment - more reliable than sudo -u
+            # sudo -u doesn't preserve DBUS environment properly
+            runuser -u "$active_user" -- env \
+                DBUS_SESSION_BUS_ADDRESS="unix:path=/run/user/$user_id/bus" \
+                XDG_RUNTIME_DIR="/run/user/$user_id" \
+                notify-send \
+                --urgency="$urgency" \
+                --icon=/usr/share/icons/hicolor/128x128/apps/vulcan-kernel.png \
+                --app-name="VulcanOS" \
+                --expire-time=0 \
+                "$title" \
+                "$message" 2>/dev/null || true
+        fi
+    fi
+}
+
+log "=== Kernel Update Warning Started ==="
+
+# Get current kernel version
+CURRENT_VERSION=""
+if command -v pacman &>/dev/null; then
+    CURRENT_VERSION=$(pacman -Q linux-t2 2>/dev/null | awk '{print $2}' || echo "unknown")
+fi
+
+log "Current linux-t2 version: $CURRENT_VERSION"
+
+# Prepare notification message (keep short - details shown in terminal)
+NOTIFICATION_MESSAGE="Kernel update in progress. Reboot required after completion. Fallback entry preserved."
+
+# Send desktop notification
+notify_user "normal" "Kernel Update" "linux-t2 $CURRENT_VERSION → Reboot required after completion."
+
+# Print to terminal (for users running pacman in terminal)
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  T2 KERNEL UPDATE"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+echo "Current version: $CURRENT_VERSION"
+echo ""
+echo "A kernel update is being installed."
+echo ""
+echo "IMPORTANT:"
+echo "  • System will need to be rebooted after update"
+echo "  • Fallback boot entry will be preserved"
+echo "  • You can boot into previous kernel if needed"
+echo ""
+echo "The update will continue automatically."
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+log "=== Kernel Update Warning Complete ==="
+
+# Always exit 0 - this is informational only, never block
+exit 0

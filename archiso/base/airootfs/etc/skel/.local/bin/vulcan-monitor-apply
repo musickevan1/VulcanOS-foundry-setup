@@ -1,0 +1,264 @@
+#!/bin/bash
+# vulcan-monitor-apply - Apply monitor profile using saved mapping
+# Uses the mapping from vulcan-monitor-identify to handle DP port changes
+#
+# Usage: vulcan-monitor-apply [profile]
+#   profile: desktop (default), console, laptop, campus, presentation
+
+set -euo pipefail
+
+CACHE_DIR="$HOME/.cache/vulcan-monitors"
+MAPPING_FILE="$CACHE_DIR/sceptre-mapping"
+BOOT_ID_FILE="$CACHE_DIR/boot-id"
+MONITORS_CONF="$HOME/.config/hypr/monitors.conf"
+
+PROFILE="${1:-desktop}"
+
+# Check if profile requires Sceptre mapping
+profile_needs_mapping() {
+    case "$PROFILE" in
+        desktop|console) return 0 ;;  # Need Sceptre identification
+        *) return 1 ;;                 # laptop/campus/presentation use desc: or eDP-1 only
+    esac
+}
+
+# Check for valid mapping (only enforced for profiles that need it)
+check_mapping() {
+    # Profiles that only use eDP-1 and/or Float2 Pro (via desc:) don't need mapping
+    if ! profile_needs_mapping; then
+        return 0
+    fi
+
+    if [[ ! -f "$MAPPING_FILE" ]]; then
+        echo "Error: No monitor mapping found."
+        echo "Run 'vulcan-monitor-identify' first."
+        exit 1
+    fi
+
+    local current_boot_id
+    current_boot_id=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null || echo "unknown")
+
+    if [[ -f "$BOOT_ID_FILE" ]]; then
+        local saved_boot_id
+        saved_boot_id=$(cat "$BOOT_ID_FILE")
+        if [[ "$saved_boot_id" != "$current_boot_id" ]]; then
+            echo "Warning: Mapping is from a previous boot session."
+            echo "Run 'vulcan-monitor-identify' to update."
+            exit 1
+        fi
+    fi
+}
+
+# Load mapping (if it exists)
+load_mapping() {
+    if [[ -f "$MAPPING_FILE" ]]; then
+        # shellcheck source=/dev/null
+        source "$MAPPING_FILE"
+    fi
+    # Set defaults for profiles that use desc: syntax
+    FLOAT2_PRO="${FLOAT2_PRO:-desc:Invalid Vendor Codename - RTK Float2 Pro 0x01010130}"
+}
+
+# Generate desktop profile (5 monitors)
+generate_desktop() {
+    cat << EOF
+# VulcanOS Monitor Profile: DESKTOP (Auto-generated)
+# Generated: $(date)
+# Boot ID: $(cat /proc/sys/kernel/random/boot_id 2>/dev/null || echo "unknown")
+#
+# Layout:
+# ┌─────────┐  ┌─────────┐  ┌─────────┐
+# │ LEFT    │  │ CENTER  │  │ FLOAT2  │
+# │ VERT    │  │   TOP   │  │  PRO    │
+# │ (rot90) │  ├─────────┤  ├─────────┤
+# │         │  │ CENTER  │  │ eDP-1   │
+# │         │  │ BOTTOM  │  │ MACBOOK │
+# └─────────┘  └─────────┘  └─────────┘
+
+# Left vertical monitor - rotated 90° clockwise
+# 1920x1080 rotated = 1080 wide x 1920 tall
+monitor = ${LEFT_VERTICAL}, 1920x1080@60, 0x120, 1, transform, 1
+
+# Center top horizontal
+monitor = ${CENTER_TOP}, 1920x1080@60, 1080x0, 1
+
+# Center bottom (curved Sceptre)
+monitor = ${CENTER_BOTTOM}, 1920x1080@60, 1080x1080, 1
+
+# Float2 Pro - right top, 120Hz
+# 2560x1600 @ scale 1.333 = 1920x1200 logical (matches MacBook width)
+monitor = ${FLOAT2_PRO:-desc:Invalid Vendor Codename - RTK Float2 Pro 0x01010130}, 2560x1600@120, 3000x0, 1.333333
+
+# MacBook Laptop - right bottom, native HiDPI
+# 3072x1920 @ scale 1.6 = 1920x1200 logical
+# Starts at Y=1200 (after Float2 Pro's 1200 logical height)
+monitor = eDP-1, 3072x1920@60, 3000x1200, 1.6
+
+# Fallback for any additional monitors
+monitor = , preferred, auto, 1
+EOF
+}
+
+# Generate console profile (4 monitors - center top kept alive but DPMS off)
+# DP-10 stays enabled to avoid MST modeset loop with DP-12 on same hub.
+# After reload, DPMS turns DP-10 off. Physical monitor is on console input.
+generate_console() {
+    # Store center top name for post-reload DPMS off
+    CONSOLE_DPMS_OFF="${CENTER_TOP}"
+
+    cat << EOF
+# VulcanOS Monitor Profile: CONSOLE (Auto-generated)
+# Generated: $(date)
+# Desktop layout - center top stays enabled (MST) but DPMS off after reload
+
+# Left vertical monitor - rotated 90° clockwise
+monitor = ${LEFT_VERTICAL}, 1920x1080@60, 0x120, 1, transform, 1
+
+# Center top horizontal - kept enabled to avoid MST modeset loop
+# DPMS off applied after reload (physical display is on console input)
+monitor = ${CENTER_TOP}, 1920x1080@60, 1080x0, 1
+
+# Center bottom (curved Sceptre)
+monitor = ${CENTER_BOTTOM}, 1920x1080@60, 1080x1080, 1
+
+# Float2 Pro - right top, 120Hz (scaled to match MacBook width)
+monitor = ${FLOAT2_PRO:-desc:Invalid Vendor Codename - RTK Float2 Pro 0x01010130}, 2560x1600@120, 3000x0, 1.333333
+
+# MacBook Laptop - right bottom, native HiDPI
+monitor = eDP-1, 3072x1920@60, 3000x1200, 1.6
+
+# Disable any truly unknown monitors
+monitor = , disable
+EOF
+}
+
+# Generate laptop profile (just the MacBook)
+generate_laptop() {
+    cat << EOF
+# VulcanOS Monitor Profile: LAPTOP (Auto-generated)
+# Just the MacBook display
+
+# Disable all external monitors
+monitor = ${LEFT_VERTICAL:-DP-1}, disable
+monitor = ${CENTER_TOP:-DP-2}, disable
+monitor = ${CENTER_BOTTOM:-DP-3}, disable
+monitor = ${FLOAT2_PRO:-DP-4}, disable
+
+# MacBook Laptop only
+monitor = eDP-1, 3072x1920@60, 0x0, 1.6
+
+# Fallback
+monitor = , disable
+EOF
+}
+
+# Generate campus profile (MacBook + Float2 Pro stacked vertically)
+generate_campus() {
+    cat << EOF
+# VulcanOS Monitor Profile: CAMPUS (Auto-generated)
+# MacBook + Float2 Pro for portable setup
+# Layout: Float2 Pro on top, MacBook below
+#
+# ┌─────────────┐
+# │  Float2 Pro │  2560x1600 @ scale 1.333 = 1920x1200 logical
+# ├─────────────┤
+# │   MacBook   │  3072x1920 @ scale 1.6 = 1920x1200 logical
+# └─────────────┘
+
+# Disable Sceptre monitors
+monitor = ${LEFT_VERTICAL:-DP-1}, disable
+monitor = ${CENTER_TOP:-DP-2}, disable
+monitor = ${CENTER_BOTTOM:-DP-3}, disable
+
+# Float2 Pro - top, scaled to match MacBook width
+monitor = ${FLOAT2_PRO:-desc:Invalid Vendor Codename - RTK Float2 Pro 0x01010130}, 2560x1600@120, 0x0, 1.333333
+
+# MacBook Laptop - below Float2 Pro (Y = 1200 after Float2's logical height)
+monitor = eDP-1, 3072x1920@60, 0x1200, 1.6
+
+# Fallback
+monitor = , disable
+EOF
+}
+
+# Generate presentation profile (Float2 Pro mirrors MacBook)
+generate_presentation() {
+    cat << EOF
+# VulcanOS Monitor Profile: PRESENTATION (Auto-generated)
+# Float2 Pro mirrors MacBook for presentations
+# Generated: $(date)
+
+# Disable Sceptre monitors
+monitor = ${LEFT_VERTICAL:-DP-1}, disable
+monitor = ${CENTER_TOP:-DP-2}, disable
+monitor = ${CENTER_BOTTOM:-DP-3}, disable
+
+# MacBook Laptop - primary at presentation-friendly resolution
+# Using 1920x1200 for compatibility with most projectors
+monitor = eDP-1, 1920x1200@60, 0x0, 1
+
+# Float2 Pro - mirrors the laptop display
+monitor = ${FLOAT2_PRO:-desc:Invalid Vendor Codename - RTK Float2 Pro 0x01010130}, 1920x1200@60, 0x0, 1, mirror, eDP-1
+
+# Fallback
+monitor = , disable
+EOF
+}
+
+# Main
+main() {
+    check_mapping
+    load_mapping
+
+    echo "Applying profile: $PROFILE"
+    echo "Using monitor mapping:"
+    echo "  Left vertical:  ${LEFT_VERTICAL:-not set}"
+    echo "  Center top:     ${CENTER_TOP:-not set}"
+    echo "  Center bottom:  ${CENTER_BOTTOM:-not set}"
+    echo "  Float2 Pro:     ${FLOAT2_PRO:-not set}"
+    echo ""
+
+    # Backup current config
+    if [[ -f "$MONITORS_CONF" ]]; then
+        cp "$MONITORS_CONF" "${MONITORS_CONF}.bak"
+    fi
+
+    # Generate and apply profile
+    case "$PROFILE" in
+        desktop)
+            generate_desktop > "$MONITORS_CONF"
+            ;;
+        console)
+            generate_console > "$MONITORS_CONF"
+            ;;
+        laptop)
+            generate_laptop > "$MONITORS_CONF"
+            ;;
+        campus)
+            generate_campus > "$MONITORS_CONF"
+            ;;
+        presentation)
+            generate_presentation > "$MONITORS_CONF"
+            ;;
+        *)
+            echo "Unknown profile: $PROFILE"
+            echo "Available: desktop, console, laptop, campus, presentation"
+            exit 1
+            ;;
+    esac
+
+    # Reload Hyprland
+    hyprctl reload
+
+    # Post-reload: DPMS off for monitors that should be dark (e.g. console mode)
+    if [[ -n "${CONSOLE_DPMS_OFF:-}" ]]; then
+        sleep 0.5
+        hyprctl dispatch dpms off "$CONSOLE_DPMS_OFF"
+        echo "  DPMS off: $CONSOLE_DPMS_OFF"
+    fi
+
+    notify-send "Monitor Profile Applied" "Profile: $PROFILE"
+    echo "✓ Applied $PROFILE profile"
+}
+
+main "$@"

@@ -1,0 +1,12 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Appearance Manager
+GenericName=Theme and Wallpaper Manager
+Comment=Manage VulcanOS themes and wallpapers
+Exec=vulcan-appearance-manager
+Icon=preferences-desktop-theme
+Terminal=false
+Categories=Settings;DesktopSettings;GTK;
+Keywords=theme;wallpaper;appearance;color;desktop;
+StartupNotify=true

@@ -1,0 +1,68 @@
+# ============================================================================
+# VulcanOS Speech-to-Text Configuration
+# ============================================================================
+
+# ============================================================================
+# MODEL CONFIGURATION
+# ============================================================================
+
+# Primary model for transcription (used when mode-specific model not set)
+# Recommended: google/gemini-2.5-flash (best balance of speed/accuracy)
+# Alternatives:
+#   - google/gemini-3-flash-preview (ultra-low cost, fast)
+#   - google/gemini-3-pro-preview (highest accuracy, slower)
+#   - mistralai/voxtral-small-24b-2507 (specialized for speech)
+#   - openai/gpt-4o-audio-preview (good audio nuance)
+S2T_MODEL="google/gemini-2.5-flash"
+
+# Fallback model (used when primary model fails)
+S2T_FALLBACK_MODEL="google/gemini-3-flash-preview"
+
+# Enable automatic fallback to backup model on failure
+S2T_ENABLE_FALLBACK="true"
+
+# Mode-specific models (overrides S2T_MODEL for each mode)
+# exact       - Verbatim transcription (best with Voxtral)
+# clean       - Polished, corrected text (best with Gemini 2.5 Flash)
+# agent       - AI prompt formatting (best with Gemini 2.5 Flash)
+# opencode    - OpenCode prompts (best with Gemini 3 Pro)
+# vulcan-task - vulcan-todo task creation (best with Gemini 2.5 Flash)
+S2T_MODEL_EXACT="mistralai/voxtral-small-24b-2507"
+S2T_MODEL_CLEAN="google/gemini-3-flash-preview"
+S2T_MODEL_AGENT="google/gemini-2.5-flash"
+S2T_MODEL_OPENCODE="google/gemini-3-pro-preview"
+S2T_MODEL_VULCAN_TASK="google/gemini-2.5-flash"
+
+# ============================================================================
+# AUDIO CONFIGURATION
+# ============================================================================
+
+# Audio input device
+# Use "default" for system default, or run `pactl list sources short` for options
+S2T_AUDIO_DEVICE="default"
+
+# Audio sample rate (Hz)
+# 16000 is standard for speech recognition
+S2T_SAMPLE_RATE="16000"
+
+# ============================================================================
+# RECORDING SETTINGS
+# ============================================================================
+
+# Minimum recording duration (seconds)
+# Recordings shorter than this are considered accidental
+S2T_MIN_DURATION="0.5"
+
+# Minimum file size (bytes)
+# Prevents sending empty/silent recordings to API
+S2T_MIN_FILE_SIZE="1000"
+
+# ============================================================================
+# OUTPUT CONFIGURATION
+# ============================================================================
+
+# Enable desktop notifications
+S2T_NOTIFICATIONS="true"
+
+# Show transcription preview in notifications
+S2T_NOTIFICATION_PREVIEW="true"

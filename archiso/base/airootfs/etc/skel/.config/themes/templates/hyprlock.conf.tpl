@@ -1,0 +1,70 @@
+# Hyprlock Configuration
+# Lock screen for Hyprland
+# Theme: ${THEME_NAME}
+
+general {
+    disable_loading_bar = false
+    hide_cursor = true
+    grace = 0
+    no_fade_in = false
+}
+
+background {
+    monitor =
+    path = ~/Pictures/Wallpapers/wallpaper.png
+    color = rgba(${BG_PRIMARY//#/}, 1.0)
+
+    blur_passes = 3
+    blur_size = 8
+    noise = 0.0117
+    contrast = 0.8916
+    brightness = 0.8172
+    vibrancy = 0.1696
+    vibrancy_darkness = 0.0
+}
+
+input-field {
+    monitor =
+    size = 250, 50
+    outline_thickness = 3
+    dots_size = 0.33
+    dots_spacing = 0.15
+    dots_center = true
+    outer_color = rgb(${ACCENT//#/})
+    inner_color = rgb(${BG_SECONDARY//#/})
+    font_color = rgb(${FG_PRIMARY//#/})
+    fade_on_empty = true
+    placeholder_text = <i>Password...</i>
+    hide_input = false
+    rounding = 10
+    check_color = rgb(${GREEN//#/})
+    fail_color = rgb(${RED//#/})
+    fail_text = <i>$FAIL <b>($ATTEMPTS)</b></i>
+    fail_transition = 300
+
+    position = 0, -20
+    halign = center
+    valign = center
+}
+
+label {
+    monitor =
+    text = $TIME
+    color = rgba(${FG_PRIMARY//#/}, 1.0)
+    font_size = 90
+    font_family = JetBrainsMono Nerd Font Bold
+    position = 0, 80
+    halign = center
+    valign = center
+}
+
+label {
+    monitor =
+    text = Hi, $USER
+    color = rgba(${FG_PRIMARY//#/}, 1.0)
+    font_size = 20
+    font_family = JetBrainsMono Nerd Font
+    position = 0, -70
+    halign = center
+    valign = center
+}

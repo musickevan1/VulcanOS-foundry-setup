@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# VulcanOS Screensaver Launcher
+# Randomly selects and launches a VulcanOS-themed screensaver
+#
+# Screensavers are themed with forge colors:
+#   - Yellow/Amber for molten metal effect
+#   - Red for forge fire
+#   - Dark charcoal background (#1c1917)
+#
+# This script is triggered by hypridle before the lock screen activates.
+# Any keyboard/mouse activity will dismiss the screensaver via hypridle's on-resume.
+
+PIPES_SH="/usr/local/bin/pipes.sh"
+
+# Build list of available screensavers
+SCREENSAVERS=()
+
+# Add cmatrix options if installed
+if command -v cmatrix &>/dev/null; then
+    SCREENSAVERS+=(
+        "cmatrix -b -C yellow"        # Bold yellow matrix (amber-like)
+        "cmatrix -s -C yellow"        # Screensaver mode yellow
+        "cmatrix -b -C red"           # Bold red (forge fire)
+    )
+fi
+
+# Add pipes.sh options if available
+if [[ -x "$PIPES_SH" ]]; then
+    SCREENSAVERS+=(
+        "$PIPES_SH -p 3 -c 1 -c 3"    # 3 pipes in red and yellow
+        "$PIPES_SH -R -p 2 -c 1"      # 2 random red pipes
+        "$PIPES_SH -p 4 -c 3 -t 1"    # 4 yellow pipes, rounded style
+    )
+fi
+
+# Fallback if nothing available
+if [[ ${#SCREENSAVERS[@]} -eq 0 ]]; then
+    echo "No screensavers available" >&2
+    exit 1
+fi
+
+# Select random screensaver
+CHOICE=${SCREENSAVERS[$RANDOM % ${#SCREENSAVERS[@]}]}
+
+# Launch screensaver in fullscreen terminal with VulcanOS dark background
+# The window class "screensaver" triggers Hyprland rules for fullscreen
+
+# Detect available terminal
+# Note: We wrap commands in 'bash -c "sleep 1; exec ..."' to allow terminal
+# to fully initialize to fullscreen dimensions before the screensaver starts
+
+if command -v kitty &>/dev/null; then
+    # VulcanOS forge color palette:
+    # color1 (red) = #ea580c (dark orange/fire)
+    # color3 (yellow) = #fbbf24 (amber/gold)
+    # color9 (bright red) = #f97316 (orange)
+    # color11 (bright yellow) = #fcd34d (bright amber)
+    exec kitty --class=screensaver \
+        --start-as=fullscreen \
+        -o background='#1c1917' \
+        -o foreground='#fafaf9' \
+        -o cursor='#f97316' \
+        -o color1='#ea580c' \
+        -o color3='#fbbf24' \
+        -o color9='#f97316' \
+        -o color11='#fcd34d' \
+        -o hide_window_decorations=yes \
+        -o tab_bar_style=hidden \
+        -e bash -c "sleep 1; exec $CHOICE"
+elif command -v alacritty &>/dev/null; then
+    exec alacritty --class screensaver,screensaver \
+        -o 'window.decorations="None"' \
+        -o 'colors.primary.background="#1c1917"' \
+        -o 'colors.primary.foreground="#fafaf9"' \
+        -e bash -c "sleep 1; exec $CHOICE"
+else
+    echo "No supported terminal found" >&2
+    exit 1
+fi

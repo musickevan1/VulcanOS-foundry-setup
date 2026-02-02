@@ -1,0 +1,24 @@
+[Unit]
+Description=VulcanOS Monitor Hotplug Watcher
+Documentation=https://wiki.hyprland.org/IPC/
+After=graphical-session.target
+PartOf=graphical-session.target
+
+# Only start when Hyprland is running (this env var is set by Hyprland)
+ConditionEnvironment=HYPRLAND_INSTANCE_SIGNATURE
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/vulcan-monitor-watch
+Restart=on-failure
+RestartSec=5
+
+# Limit restarts to prevent runaway loops
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+# Pass through required environment
+PassEnvironment=HYPRLAND_INSTANCE_SIGNATURE XDG_RUNTIME_DIR DISPLAY WAYLAND_DISPLAY
+
+[Install]
+WantedBy=graphical-session.target

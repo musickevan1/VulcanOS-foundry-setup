@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Glow
+Comment=Render markdown in the terminal
+Exec=kitty --hold glow -p %f
+Terminal=false
+Type=Application
+Icon=text-markdown
+Categories=Utility;TextEditor;Viewer;
+MimeType=text/markdown;text/x-markdown;

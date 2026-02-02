@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  VulcanOS Wallpaper - Gradient Mesh
+  Smooth flowing gradients with modern/sleek aesthetic
+
+  Resolution: 4K (3840x2160)
+  Style: Mesh gradients, organic curves, ethereal glow
+-->
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 3840 2160"
+  width="3840"
+  height="2160"
+>
+  <defs>
+    <!-- Logo gradient -->
+    <linearGradient id="forgeGlow" x1="50%" y1="100%" x2="50%" y2="0%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="50%" stop-color="#f97316"/>
+      <stop offset="100%" stop-color="#ea580c"/>
+    </linearGradient>
+
+    <!-- Mesh gradient blobs -->
+    <radialGradient id="blob1" cx="30%" cy="20%" r="50%">
+      <stop offset="0%" stop-color="#f97316" stop-opacity="0.25"/>
+      <stop offset="100%" stop-color="#1c1917" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="blob2" cx="70%" cy="80%" r="60%">
+      <stop offset="0%" stop-color="#ea580c" stop-opacity="0.2"/>
+      <stop offset="100%" stop-color="#1c1917" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="blob3" cx="80%" cy="30%" r="40%">
+      <stop offset="0%" stop-color="#fbbf24" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#1c1917" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="blob4" cx="20%" cy="70%" r="45%">
+      <stop offset="0%" stop-color="#fb923c" stop-opacity="0.18"/>
+      <stop offset="100%" stop-color="#1c1917" stop-opacity="0"/>
+    </radialGradient>
+
+    <radialGradient id="blob5" cx="50%" cy="50%" r="35%">
+      <stop offset="0%" stop-color="#f97316" stop-opacity="0.12"/>
+      <stop offset="100%" stop-color="#1c1917" stop-opacity="0"/>
+    </radialGradient>
+
+    <!-- Subtle noise texture -->
+    <filter id="noise">
+      <feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" result="noise"/>
+      <feColorMatrix type="saturate" values="0"/>
+      <feComponentTransfer>
+        <feFuncA type="linear" slope="0.05"/>
+      </feComponentTransfer>
+      <feBlend in="SourceGraphic" mode="overlay"/>
+    </filter>
+
+    <!-- Glow filter for logo -->
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="20" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Base background -->
+  <rect width="3840" height="2160" fill="#1c1917"/>
+
+  <!-- Gradient mesh layers -->
+  <ellipse cx="1000" cy="400" rx="1400" ry="900" fill="url(#blob1)"/>
+  <ellipse cx="2800" cy="1700" rx="1600" ry="1000" fill="url(#blob2)"/>
+  <ellipse cx="3000" cy="600" rx="1000" ry="700" fill="url(#blob3)"/>
+  <ellipse cx="600" cy="1500" rx="1200" ry="800" fill="url(#blob4)"/>
+  <ellipse cx="1920" cy="1080" rx="900" ry="600" fill="url(#blob5)"/>
+
+  <!-- Flowing curves - organic shapes -->
+  <path
+    d="M0,1200 Q400,900 800,1100 T1600,900 T2400,1000 T3200,850 T3840,1000"
+    fill="none"
+    stroke="url(#forgeGlow)"
+    stroke-width="2"
+    opacity="0.15"
+  />
+  <path
+    d="M0,1400 Q500,1200 1000,1350 T2000,1150 T3000,1300 T3840,1100"
+    fill="none"
+    stroke="#f97316"
+    stroke-width="1.5"
+    opacity="0.1"
+  />
+  <path
+    d="M0,800 Q600,600 1200,750 T2400,550 T3840,700"
+    fill="none"
+    stroke="#fbbf24"
+    stroke-width="1"
+    opacity="0.08"
+  />
+
+  <!-- Subtle noise overlay -->
+  <rect width="3840" height="2160" fill="#292524" opacity="0.3" filter="url(#noise)"/>
+
+  <!-- Central logo with glow - centered -->
+  <g filter="url(#glow)" transform="translate(1657.5, 1330) scale(2.5, -2.5)">
+    <path
+      d="m 105.8125,16.625 c -7.39687,18.135158 -11.858304,29.997682 -20.09375,47.59375 5.04936,5.35232 11.247211,11.585364 21.3125,18.625 C 96.210077,78.390904 88.828713,73.920352 83.3125,69.28125 72.7727,91.274163 56.259864,122.60209 22.75,182.8125 49.087628,167.60733 69.504089,158.23318 88.53125,154.65625 87.714216,151.1422 87.2497,147.34107 87.28125,143.375 l 0.03125,-0.84375 c 0.417917,-16.87382 9.195665,-29.84979 19.59375,-28.96875 10.39809,0.88104 18.48041,15.28242 18.0625,32.15625 -0.0786,3.17512 -0.43674,6.22955 -1.0625,9.0625 18.82058,3.68164 39.01873,13.03179 65,28.03125 -5.123,-9.4318 -9.69572,-17.93388 -14.0625,-26.03125 -6.87839,-5.33121 -14.05289,-12.2698 -28.6875,-19.78125 10.05899,2.61375 17.2611,5.62932 22.875,9 C 124.63297,63.338161 121.03766,52.354109 105.8125,16.625 z"
+      fill="url(#forgeGlow)"
+      fill-rule="evenodd"
+    />
+  </g>
+</svg>

@@ -1,0 +1,10 @@
+[Trigger]
+Type = Package
+Operation = Upgrade
+Target = linux-t2
+
+[Action]
+Description = Kernel update detected - notifying user...
+When = PreTransaction
+Exec = /usr/local/bin/vulcan-kernel-warn
+NeedsTargets

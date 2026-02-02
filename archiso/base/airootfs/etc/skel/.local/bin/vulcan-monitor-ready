@@ -1,0 +1,179 @@
+#!/bin/bash
+# vulcan-monitor-ready - Wait for monitors with EDID verification
+# Polls DRM subsystem until expected monitors have valid EDID data
+#
+# Usage: vulcan-monitor-ready [expected_count] [max_wait_seconds]
+#   expected_count: Number of external monitors to wait for (default: 4)
+#   max_wait_seconds: Maximum wait time before timeout (default: 15)
+#
+# Exit codes:
+#   0 - Expected monitors found with valid EDID
+#   1 - Timeout reached, not all monitors ready
+#
+# This script verifies EDID readiness, not just "connected" status.
+# EDID negotiation over USB-C/DP can take 2-5 seconds after dock power-up.
+
+set -euo pipefail
+
+EXPECTED_COUNT="${1:-4}"      # Expected external monitors (not counting eDP-1)
+MAX_WAIT="${2:-15}"           # Maximum wait in seconds
+POLL_INTERVAL="0.5"           # Check every 500ms
+
+CACHE_DIR="$HOME/.cache/vulcan-monitors"
+mkdir -p "$CACHE_DIR"
+
+# EDID magic header: 00 ff ff ff ff ff ff 00 (8 bytes = 16 hex chars)
+# This identifies valid EDID data (not just empty file or garbage)
+EDID_HEADER_HEX="00ffffffffffff00"
+
+# Detect DRM card with active DP connectors
+# Priority: card2 (AMD eGPU via Thunderbolt) > card1 > card0
+detect_drm_card() {
+    local cache_file="$CACHE_DIR/drm-card"
+    local boot_id_file="$CACHE_DIR/boot-id"
+    local current_boot_id
+    current_boot_id=$(cat /proc/sys/kernel/random/boot_id 2>/dev/null || echo "unknown")
+
+    # Check cache (valid only for current boot)
+    if [[ -f "$cache_file" && -f "$boot_id_file" ]]; then
+        local saved_boot cached_card
+        saved_boot=$(cat "$boot_id_file" 2>/dev/null)
+        if [[ "$saved_boot" == "$current_boot_id" ]]; then
+            cached_card=$(cat "$cache_file" 2>/dev/null)
+            if [[ -n "$cached_card" && -d "/sys/class/drm/${cached_card}" ]]; then
+                echo "$cached_card"
+                return 0
+            fi
+        fi
+    fi
+
+    # Scan for card with DP connectors that have EDID data
+    # Prioritize card2 for T2 Macs with AMD eGPU via Thunderbolt
+    local detected_card=""
+    for card in card2 card1 card0 card3; do
+        [[ -d "/sys/class/drm/${card}" ]] || continue
+
+        for conn_dir in /sys/class/drm/${card}-DP-*/; do
+            [[ -d "$conn_dir" ]] || continue
+            local edid_file="${conn_dir}edid"
+
+            # sysfs files report size 0, so check content directly
+            if [[ -f "$edid_file" ]]; then
+                local header
+                header=$(head -c 8 "$edid_file" 2>/dev/null | xxd -p 2>/dev/null | tr -d '\n')
+                if [[ "$header" == "$EDID_HEADER_HEX" ]]; then
+                    detected_card="$card"
+                    break 2
+                fi
+            fi
+        done
+    done
+
+    # Fallback to card2 (common for T2 Macs with eGPU)
+    detected_card="${detected_card:-card2}"
+
+    # Cache for this boot session
+    echo "$detected_card" > "$cache_file"
+    echo "$current_boot_id" > "$boot_id_file"
+
+    echo "$detected_card"
+}
+
+# Verify EDID has valid header (not just empty or garbage)
+# Note: sysfs files report size 0 but may have content, so don't use -s
+verify_edid_header() {
+    local edid_file="$1"
+
+    if [[ ! -f "$edid_file" ]]; then
+        return 1
+    fi
+
+    # Read first 8 bytes and check for EDID magic header
+    local header
+    header=$(head -c 8 "$edid_file" 2>/dev/null | xxd -p 2>/dev/null | tr -d '\n')
+
+    # Check for valid EDID header (8 bytes = 16 hex chars)
+    [[ "$header" == "$EDID_HEADER_HEX" ]]
+}
+
+# Count monitors with valid EDID (not just connected status)
+count_ready_monitors() {
+    local card
+    card=$(detect_drm_card)
+    local count=0
+
+    for conn_dir in /sys/class/drm/${card}-DP-*/; do
+        [[ -d "$conn_dir" ]] || continue
+        local edid_file="${conn_dir}edid"
+
+        if verify_edid_header "$edid_file"; then
+            count=$((count + 1))
+        fi
+    done
+
+    echo "$count"
+}
+
+# List monitors that are ready (for debugging)
+list_ready_monitors() {
+    local card
+    card=$(detect_drm_card)
+
+    for conn_dir in /sys/class/drm/${card}-DP-*/; do
+        [[ -d "$conn_dir" ]] || continue
+        local conn_name
+        conn_name=$(basename "$conn_dir")
+        local edid_file="${conn_dir}edid"
+        local status_file="${conn_dir}status"
+        local status="unknown"
+        [[ -f "$status_file" ]] && status=$(cat "$status_file")
+
+        if verify_edid_header "$edid_file"; then
+            echo "  $conn_name: EDID ready (status: $status)"
+        elif [[ "$status" == "connected" ]]; then
+            echo "  $conn_name: connected but EDID not ready"
+        fi
+    done
+}
+
+# Main polling loop
+main() {
+    local elapsed=0
+    local ready_count=0
+    local last_count=0
+
+    echo "vulcan-monitor-ready: Waiting for $EXPECTED_COUNT monitors (max ${MAX_WAIT}s)..."
+
+    while (( $(awk "BEGIN {print ($elapsed < $MAX_WAIT)}") )); do
+        ready_count=$(count_ready_monitors)
+
+        # Log progress when count changes
+        if [[ "$ready_count" != "$last_count" ]]; then
+            echo "  Found $ready_count monitors with valid EDID at ${elapsed}s"
+            last_count="$ready_count"
+        fi
+
+        if [[ $ready_count -ge $EXPECTED_COUNT ]]; then
+            # Stability check: wait 500ms and verify count is stable
+            sleep 0.5
+            local recount
+            recount=$(count_ready_monitors)
+
+            if [[ $recount -ge $EXPECTED_COUNT ]]; then
+                echo "vulcan-monitor-ready: Success! $recount monitors ready in ${elapsed}s"
+                list_ready_monitors
+                return 0
+            fi
+        fi
+
+        sleep "$POLL_INTERVAL"
+        elapsed=$(awk "BEGIN {print $elapsed + $POLL_INTERVAL}")
+    done
+
+    echo "vulcan-monitor-ready: Timeout after ${MAX_WAIT}s (found $ready_count of $EXPECTED_COUNT)"
+    echo "Current state:"
+    list_ready_monitors
+    return 1
+}
+
+main "$@"

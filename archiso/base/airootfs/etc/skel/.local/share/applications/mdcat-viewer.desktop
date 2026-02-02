@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Markdown Viewer
+Comment=View markdown files in terminal with mdcat
+Exec=kitty --hold sh -c 'mdcat "%f" | less -R'
+Icon=text-markdown
+Terminal=false
+Type=Application
+MimeType=text/markdown;text/x-markdown;
+Categories=Utility;TextEditor;
