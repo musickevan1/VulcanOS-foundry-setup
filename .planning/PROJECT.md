@@ -2,11 +2,31 @@
 
 ## What This Is
 
-A development-focused, opinionated Arch Linux distribution for T2 MacBook Pro hardware with Hyprland compositor. VulcanOS provides system protection, organized tooling, and a cohesive visual experience for a single-user development workstation.
+A development-focused, opinionated Arch Linux distribution with Hyprland compositor. VulcanOS provides system protection, organized tooling, and a cohesive visual experience for single-user development workstations. v3.0 introduces multi-profile support targeting two hardware platforms: **Vulcan Foundry** (AMD AI workstation) and **Vulcan T2** (T2 MacBook Pro).
 
 ## Core Value
 
 **Cohesive, recoverable, keyboard-driven.** The system should feel unified (one visual identity), be always recoverable (snapshots + kernel protection), and stay out of the way (minimal, fast, keyboard-first).
+
+## Current Milestone: v3.0 Multi-Profile + AI Workstation
+
+**Goal:** Restructure VulcanOS into a multi-profile architecture supporting both the new Vulcan Foundry AI workstation and the existing T2 MacBook Pro, with intentionally curated package sets and full NVIDIA/CUDA AI stack.
+
+**Target features:**
+- Multi-profile archiso structure (foundry/t2 profiles)
+- Full NVIDIA CUDA + AI/ML stack (PyTorch, JAX, Ollama, llama.cpp, ComfyUI)
+- Intentionally rebuilt package list (fresh curation, not legacy trimming)
+- Hyprland plugins (hyprexpo, hyprspace, hyprtrails)
+- yazi terminal file manager as primary
+- Gaming support for Foundry (Steam, Proton, gamemode)
+- Drop Alacritty (Kitty only)
+
+**Vulcan Foundry Hardware:**
+- AMD Ryzen 9 9950X (16-core, 32-thread)
+- NVIDIA RTX 5070 Ti 16GB (Blackwell architecture)
+- 64GB DDR5-6000 RAM
+- 2TB Samsung 990 PRO NVMe
+- ASUS TUF X870E-PLUS WiFi 7
 
 ## Current State
 
@@ -65,25 +85,40 @@ Capabilities shipped and working:
 
 ### Active
 
-(None — waiting for next milestone requirements)
+**v3.0 Multi-Profile + AI Workstation:**
+
+- [ ] Multi-profile archiso structure (shared base, foundry/t2 profiles)
+- [ ] Vulcan Foundry profile with NVIDIA/CUDA/AI stack
+- [ ] Vulcan T2 profile (continuation of current T2 support)
+- [ ] Fresh package curation (intentional inclusion, not legacy)
+- [ ] Full AI/ML toolchain (PyTorch, JAX, Ollama, llama.cpp, ComfyUI)
+- [ ] Hyprland plugins (hyprexpo, hyprspace, hyprtrails)
+- [ ] yazi as primary file manager
+- [ ] Gaming stack for Foundry (Steam, Proton, gamemode)
+- [ ] Terminal consolidation (Kitty only, drop Alacritty)
+- [ ] Triple+ monitor configuration support
 
 ### Out of Scope
 
 - Automatic third-party theme installation — discovery links only
 - AI wallpaper generation on-demand — pre-made wallpapers bundled
 - Cloud sync for themes/wallpapers — local dotfiles + git sync
-- Non-T2 hardware support — personal workstation only
 - Core backup system (Phases 2-4) — deferred from v1.0
+- ARM/non-x86_64 support — x86_64 only for now
 
 ## Context
 
-**Hardware:** 2019 MacBook Pro 16" with T2 chip. Requires linux-t2 kernel from arch-mact2 repo.
+**Hardware targets:**
+- **Vulcan Foundry:** AMD Ryzen 9 9950X, RTX 5070 Ti 16GB, 64GB DDR5, 2TB NVMe, triple+ monitors
+- **Vulcan T2:** 2019 MacBook Pro 16" with T2 chip, requires linux-t2 kernel from arch-mact2 repo
 
 **Shipped apps:**
 - `vulcan-appearance-manager/` — GTK4/Relm4, 8,159 lines, unified theme + wallpaper management
 - `vulcan-theme` CLI — Bash script for theme application via envsubst templates
 
 **Technical debt:** None remaining from v2.0/v2.1. Codebase is clean for new features.
+
+**v3.0 architecture change:** Moving from single archiso profile to multi-profile structure with shared base packages and profile-specific overlays.
 
 ## Constraints
 
@@ -109,4 +144,4 @@ Capabilities shipped and working:
 | Apply failure -> Previewing | User can retry or cancel | Good — resilient workflow |
 
 ---
-*Last updated: 2026-02-01 after v2.1 milestone*
+*Last updated: 2026-02-02 after v3.0 milestone start*

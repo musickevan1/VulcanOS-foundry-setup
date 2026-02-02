@@ -2,17 +2,17 @@
 
 ## Project Reference
 
-See: .planning/PROJECT.md (updated 2026-02-01)
+See: .planning/PROJECT.md (updated 2026-02-02)
 
 **Core value:** Cohesive, recoverable, keyboard-driven
-**Current focus:** Between milestones (v2.1 complete, v2.2/v3.0 not started)
+**Current focus:** v3.0 Multi-Profile + AI Workstation
 
 ## Current Position
 
-Phase: N/A (between milestones)
-Plan: N/A
-Status: Ready to plan next milestone
-Last activity: 2026-02-01 — v2.1 Maintenance shipped
+Phase: Not started (researching domain)
+Plan: —
+Status: Researching v3.0 ecosystem
+Last activity: 2026-02-02 — Milestone v3.0 started
 
 Progress: [████████████████████████] 100% (50/50 total plans across milestones)
 
@@ -67,8 +67,8 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-01
-Stopped at: v2.1 milestone archived and tagged
+Last session: 2026-02-02
+Stopped at: v3.0 milestone started, researching
 Resume file: None
 
-Next: `/gsd:new-milestone` to start v2.2 or v3.0
+Next: Complete research → define requirements → create roadmap
