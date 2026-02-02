@@ -1,315 +1,211 @@
-# v2.1 Maintenance Research Summary
+# v3.0 Multi-Profile + AI Workstation Research Summary
 
-**Project:** VulcanOS v2.1 Maintenance - Tech Debt Cleanup
-**Domain:** GTK4/Relm4 UI State Management, Security Hardening, UX Polish
-**Researched:** 2026-01-30
+**Project:** VulcanOS v3.0
+**Domain:** NVIDIA AI Workstation, Multi-Profile Distribution, Gaming
+**Researched:** 2026-02-02
 **Confidence:** HIGH
 
 ## Executive Summary
 
-VulcanOS v2.0 shipped with four known tech debt items that were intentionally deferred from earlier phases. This maintenance milestone focuses on connecting already-implemented functionality rather than building new features. All four items involve wiring existing code that was built but never integrated.
+VulcanOS v3.0 represents a significant architectural expansion from a single T2 MacBook Pro distribution to a multi-profile system supporting both the original T2 hardware and a new "Vulcan Foundry" AI workstation profile targeting AMD Ryzen 9 9950X with NVIDIA RTX 5070 Ti. The research reveals that archiso has **no native multi-profile support**, requiring a custom base+overlay assembly system where shared components live in `profiles/base/` and hardware-specific packages/configs are merged at build time. This is a clean, maintainable approach that minimizes duplication while keeping profile differences explicit.
 
-The research reveals that these are low-risk, high-value improvements with clear implementation paths. Three items (AppState, validation, BindingMode) are single-file changes requiring 5-25 lines of code each. The fourth (wallpapers) is a content acquisition task requiring 7 wallpaper downloads from documented GPL-compatible sources. Total estimated effort is 8-12 hours across all four items.
+The RTX 5070 Ti (Blackwell architecture, sm_120 compute capability) presents unique challenges: **proprietary NVIDIA drivers are officially unsupported** on Blackwell GPUs, mandating `nvidia-open-dkms`. Additionally, stable PyTorch and TensorFlow releases do not support sm_120, requiring nightly builds with CUDA 12.8+. A documented PCIe Gen1 fallback bug affects some motherboards. These constraints dictate strict phase ordering: driver foundation must be verified before any CUDA/AI work begins.
 
-The primary risk is not technical complexity but scope creep. These are maintenance fixes, not feature enhancements. The AppState integration in particular could expand into a multi-week project if not scoped correctly. Recommendation: implement minimal viable fixes for v2.1, defer UI enhancements (error dialogs, loading spinners) to v2.2+.
+The recommended approach builds the multi-profile infrastructure first (all other features depend on it), then establishes the NVIDIA driver foundation with extensive validation, followed by CUDA/AI stack integration, desktop polish, and finally gaming support. Existing VulcanOS strengths (keyboard-driven workflow, unified theming, MCP servers) become differentiators when combined with AI workstation capabilities. The full scope is estimated at 8-12 days of implementation effort.
 
 ## Key Findings
 
-### AppState Integration (APPSTATE.md)
+### Multi-Profile Architecture
 
-**Status:** Fully implemented state machine (320 lines, 17 tests) completely bypassed by UI components
+archiso processes one profile directory per `mkarchiso` invocation with no include/import mechanism for packages or configs. The recommended **base+overlay pattern** structures the codebase as:
 
-**Current problem:**
-- Preview/Apply/Cancel operations call services directly without state tracking
-- No snapshot mechanism to restore previous state on Cancel
-- `revert_theme()` re-applies current theme but doesn't restore wallpapers
-- No state-based button disabling (can preview while already previewing)
+```
+profiles/
+├── base/           # ~180 shared packages, common configs
+├── foundry/        # NVIDIA packages, mainline kernel
+├── t2/             # T2 packages, apple-bce configs
+└── _build/         # Build-time assembly (gitignored)
+```
 
-**Architecture insight:**
-The AppState module was built in Phase 6 with clear state transitions (Idle → Previewing → Applying → Idle), but Relm4's component-based architecture doesn't have a natural "global state" location. The App struct already tracks appearance state (theme_id, wallpapers, binding_mode) but not preview/apply lifecycle state.
+**Key components:**
+- `assemble-profile.sh` — New script that merges base + profile-specific components
+- `packages.base` + `packages.profile` — Concatenated at build time
+- `pacman.profile.conf` — Profile repos prepended for priority
+- `grub.profile.cfg` — Profile-specific kernel parameters substituted
 
-**Implementation path:**
-1. Add `app_state: AppState` field to App struct (coordinator pattern)
-2. Capture snapshot before preview (uses existing state tracking)
-3. Wire state transitions via messages (RequestPreview → StateChanged → ExecutePreview)
-4. Restore snapshot on cancel (delegates to ThemeViewModel, WallpaperViewModel)
-5. Add state-based button sensitivity via #[watch] macros
+**Migration path:** Create new profiles/ structure, keep archiso/ working during transition, validate both profiles, then deprecate old structure.
 
-**Estimated effort:** 4-6 hours (foundation + core workflow)
+### NVIDIA/CUDA Stack
 
-**Risk:** LOW - all infrastructure exists, Relm4 message-passing pattern is well-understood
+The RTX 5070 Ti requires specific driver and framework considerations:
 
-### Theme Validation (VALIDATION.md)
+**Core technologies:**
+- `nvidia-open-dkms` (590.48.01+): **MANDATORY** for Blackwell — proprietary drivers unsupported
+- `cuda` (13.1.1): System toolkit from Arch extra repository
+- `cudnn` (9.14): Deep learning primitives integration
+- `nvidia-container-toolkit`: GPU passthrough for Docker containers
+- PyTorch nightly (`cu128`): Stable releases do NOT support sm_120
+- `ollama-cuda`: Local LLM inference (official repo, not AUR)
 
-**Status:** Security function `parse_and_validate()` exists with comprehensive checks but is bypassed by all call sites
+**Critical requirements:**
+- Kernel parameter: `nvidia-drm.modeset=1`
+- mkinitcpio MODULES: `nvidia nvidia_modeset nvidia_uvm nvidia_drm`
+- Pacman hook for initramfs rebuild on driver updates
+- CUDA path symlink: `/usr/local/cuda -> /opt/cuda` (for JAX compatibility)
 
-**Current problem:**
-- `theme_storage.rs` calls `parse_theme_file()` instead of `parse_and_validate()` in 5 locations
-- Theme imports from untrusted sources lack protection against command injection
-- No validation for dangerous patterns ($(), backticks, eval, etc.)
-- No enforcement of theme_id format, color hex validation, or wallpaper path security
+**Gaming stack** (all in official repos):
+- `steam`, `lib32-nvidia-utils` (requires multilib)
+- `mangohud`, `lib32-mangohud`, `gamemode`, `lib32-gamemode`
+- `gamescope` (micro-compositor for XWayland games)
+- `proton-ge-custom-bin` (AUR)
 
-**Security implications:**
-- **HIGH risk:** `import_theme()` from arbitrary files (user downloads evil-theme.sh from internet)
-- **MEDIUM risk:** Custom theme creation with path traversal or malicious IDs
-- **LOW risk:** Builtin theme corruption detection
+### Feature Landscape
 
-**Implementation path:**
-Replace `parse_theme_file()` with `parse_and_validate()` in 5 call sites (lines 68, 89, 114, 122, 167 of theme_storage.rs). No signature changes needed - functions have identical APIs.
+**Must have (table stakes):**
+- NVIDIA proprietary drivers with CUDA support
+- PyTorch/TensorFlow with GPU acceleration
+- Local LLM inference (Ollama)
+- Steam + Proton for gaming
+- Multi-monitor Hyprland configuration
 
-**Estimated effort:** 1-2 hours (5-line changes + testing with malicious themes)
+**Should have (differentiators):**
+- Keyboard-driven AI workflow integration (Super+A for AI chat)
+- Unified theming extending to AI tools (Open WebUI, Jupyter)
+- GPU monitoring in Waybar
+- MCP servers for AI workflow automation
+- hyprwhspr voice input for AI coding
 
-**Risk:** VERY LOW - validation is well-tested (18 tests), only rejects malformed input
-
-**Critical difference from CLI:** The bash `vulcan-theme` script uses `source "${color_file}"` which executes theme files as bash scripts (HIGH RISK). The Rust GUI only parses with regex and never executes (SAFE). Fixing the GUI is trivial; fixing the CLI requires rewrite.
-
-### BindingMode Auto-Detection (BINDINGMODE.md)
-
-**Status:** BindingMode enum has `CustomOverride` state but automatic transition never implemented
-
-**Current problem:**
-- User applies theme+wallpaper (→ ThemeBound)
-- User manually changes wallpaper
-- UI still shows "Theme Wallpaper" even though user customized
-- Profile saves incorrect binding mode
-
-**Architecture insight:**
-The `WallpaperViewOutput::WallpapersChanged` event already propagates to App level, but App doesn't check if this breaks an existing theme binding. The detection logic is a simple 15-line addition to the existing message handler.
-
-**Implementation path:**
-In `app.rs:294-307` (WallpapersChanged handler):
-1. Check if `current_binding_mode == ThemeBound`
-2. Load current theme and resolve its wallpaper path
-3. Compare new wallpapers with theme wallpaper
-4. If different → transition to `CustomOverride`
-5. Optionally show toast: "Wallpaper customized (keeping theme colors)"
-
-**Estimated effort:** 2-3 hours (implementation + edge case testing)
-
-**Risk:** LOW - uses existing helpers (`resolve_theme_wallpaper()`, `theme_storage::load_theme()`)
-
-**UX improvement:** Automatic state tracking improves profile accuracy and user trust in the UI
-
-### Missing Wallpapers (WALLPAPERS.md)
-
-**Status:** 7 of 10 preset themes missing wallpapers (70% incomplete)
-
-**Themes with wallpapers:** Catppuccin Latte/Mocha, Dracula (3/10)
-
-**Themes needing wallpapers:** Gruvbox Dark/Light, Nord, One Dark, Rosé Pine, Tokyo Night (6/10)
-
-**Themes needing creation:** Vulcan Forge (1/10 - requires AI generation or custom design)
-
-**Implementation path:**
-1. Download 6 wallpapers from documented GPL-compatible sources
-2. Verify color palette matches theme definitions
-3. Update LICENSE files with attribution
-4. Create/commission 1 wallpaper for Vulcan Forge theme
-5. Sync to archiso skeleton for ISO inclusion
-
-**Estimated effort:** 2-4 hours (download + quality verification + Vulcan Forge creation)
-
-**Risk:** VERY LOW - content acquisition task, no code changes
-
-**Quality standards:** 4K resolution (3840x2160), PNG format, under 5MB, matches theme color palette
+**Defer (v2+):**
+- vLLM production server
+- Custom model training GUI
+- Cloud API integrations
+- Kubernetes/ML orchestration
+- Pre-installed large models (ISO bloat)
 
 ### Critical Pitfalls
 
-1. **Scope creep on AppState integration** — The state machine enables many future features (undo/redo, error dialogs, wallpaper preview workflow), but v2.1 should only implement core preview/cancel workflow. Defer UI enhancements to v2.2+.
+22 pitfalls documented across 6 categories. Top risks:
 
-2. **Breaking existing workflows** — All three code items modify core application behavior. Regression testing is critical: verify theme application, profile saving/loading, wallpaper changes, and binding mode persistence.
+1. **Open kernel modules required** (CRITICAL) — Blackwell GPUs won't work with `nvidia-dkms`, only `nvidia-open-dkms`. Symptoms: black screen, no GPU detection. Prevention: Verify driver package before install.
 
-3. **Wallpaper licensing violations** — Avoid Unsplash (license restricts redistribution), stock photos without licensing, or copyrighted artwork. All sources must be GPL-compatible (MIT, GPL-3.0, CC0).
+2. **PCIe Gen1 fallback bug** (CRITICAL) — RTX 5070 Ti may negotiate Gen1 (2.5 GT/s) instead of Gen4 (16 GT/s), causing instability and 75% bandwidth loss. Prevention: Enable Above 4G Decoding + Resizable BAR in BIOS, verify with `nvidia-smi -q | grep "Link Gen"`.
 
-4. **CLI/GUI divergence** — The bash `vulcan-theme` script sources theme files (executes as bash), while the GUI parses safely. Fixing validation in the GUI creates a security discrepancy. Document this gap for v2.2 CLI rewrite.
+3. **sm_120 not supported in stable frameworks** (CRITICAL) — PyTorch stable (2.9.x) only supports up to sm_90. GPU detected but operations fail or fall back to CPU. Prevention: Use PyTorch nightly with CUDA 12.8 index.
 
-5. **Multi-monitor edge cases** — BindingMode detection must handle partial overrides (user changes one monitor but not others). Any customization breaks theme binding.
+4. **Driver/library version mismatch** (HIGH) — After Arch updates, nvidia-smi fails until reboot. Prevention: Pacman hook to rebuild initramfs, always reboot after kernel/nvidia updates.
+
+5. **Suspend/resume crashes Hyprland** (HIGH) — NVIDIA drivers don't preserve video memory without explicit configuration. Prevention: Kernel param `nvidia.NVreg_PreserveVideoMemoryAllocations=1`, enable nvidia-suspend/hibernate/resume services.
+
+6. **Python environment conflicts** (MEDIUM) — PEP 668 prevents system-wide pip installs. Prevention: Always use venvs, recommend Miniconda for ML workloads.
 
 ## Implications for Roadmap
 
-Based on research, recommended phase structure for v2.1:
+Based on research dependencies, the following phase structure is recommended:
 
-### Phase 1: Security Hardening (Validation)
-**Rationale:** Security fixes should always come first. This is the lowest-effort, highest-impact item.
+### Phase 1: Multi-Profile Build Infrastructure
+**Rationale:** All Foundry features depend on the profile system existing. Cannot install NVIDIA packages into T2 profile.
+**Delivers:** profiles/ directory structure, assemble-profile.sh, updated build.sh with --profile flag
+**Effort:** 2-3 days
+**Avoids:** Package conflicts between profiles (Pitfall #20)
+**Research needed:** LOW — archiso behavior well-documented
 
-**Delivers:** Theme import security via `parse_and_validate()` integration
+### Phase 2: NVIDIA Driver Foundation
+**Rationale:** All AI/ML and gaming features require working GPU drivers. Must validate before CUDA stack.
+**Delivers:** Bootable Foundry ISO with nvidia-open-dkms, DRM modeset, pacman hooks
+**Effort:** 1-2 days
+**Addresses:** Table stakes GPU compute foundation
+**Avoids:** Pitfalls #1 (open modules), #2 (PCIe bug), #3 (version mismatch), #6 (DRM), #16 (boot race)
+**Research needed:** LOW — NVIDIA docs and Arch Wiki comprehensive
 
-**Addresses:**
-- Command injection protection for untrusted theme imports
-- Malformed theme rejection with specific error messages
-- Input sanitization for theme_id, colors, wallpaper paths
+### Phase 3: CUDA/AI Stack
+**Rationale:** Once drivers verified, install CUDA toolkit and ML frameworks
+**Delivers:** Working PyTorch/TensorFlow, Ollama, nvidia-container-toolkit
+**Effort:** 1-2 days
+**Uses:** CUDA 13.1.1, PyTorch nightly cu128, ollama-cuda
+**Avoids:** Pitfalls #4 (sm_120), #8 (Python envs), #9 (Docker GPU)
+**Research needed:** MEDIUM — PyTorch nightly API may change
 
-**Implementation:**
-- Replace 5 function calls in `theme_storage.rs`
-- Test with malicious themes (dangerous patterns, invalid IDs, bad colors)
-- Document validation behavior in error messages
+### Phase 4: Desktop Integration
+**Rationale:** Polish Hyprland experience for AI workstation use case
+**Delivers:** Suspend/resume fixes, VRAM monitoring, Hyprland plugins, keybindings
+**Effort:** 1-2 days
+**Implements:** Keyboard-driven AI workflow differentiators
+**Avoids:** Pitfalls #5 (suspend), #10 (VRAM leak), #12 (HDMI color)
+**Research needed:** LOW — Hyprland NVIDIA wiki comprehensive
 
-**Avoids:** Command injection (CRITICAL), path traversal (MEDIUM), theme corruption (LOW)
+### Phase 5: Gaming Profile
+**Rationale:** Gaming is additive after desktop works; requires 32-bit libs and gamescope
+**Delivers:** Steam + Proton, MangoHud, GameMode, gamescope wrapper
+**Effort:** 1 day
+**Addresses:** Gaming table stakes
+**Avoids:** Pitfalls #7 (XWayland flicker), #11 (Proton stuck), #21 (anti-cheat)
+**Research needed:** LOW — well-documented on Arch Wiki
 
-**Estimated effort:** 1-2 hours
-
-**Research flags:** SKIP - implementation path is trivial, well-tested function
-
-### Phase 2: UX Polish (BindingMode + Wallpapers)
-**Rationale:** Group user-visible improvements together. Both items enhance theme/wallpaper experience.
-
-**Delivers:**
-- Automatic CustomOverride detection on manual wallpaper change
-- Complete wallpaper library for all 10 preset themes
-
-**Addresses:**
-- UI accuracy (binding mode reflects reality)
-- Content completeness (all themes visually complete)
-- Profile accuracy (saved binding mode matches actual state)
-
-**Implementation:**
-- Add detection logic to `WallpapersChanged` handler (15-20 lines)
-- Download 6 wallpapers from documented sources
-- Create/commission Vulcan Forge wallpaper
-- Update LICENSE files with attribution
-
-**Avoids:** Confusing UX where UI state doesn't match reality, incomplete theme library
-
-**Estimated effort:** 4-6 hours (2-3 code + 2-4 wallpapers)
-
-**Research flags:** SKIP - BindingMode integration point identified, wallpaper sources documented
-
-### Phase 3: Architecture Cleanup (AppState)
-**Rationale:** Most complex item; implement after simpler fixes prove workflow. Enables future features.
-
-**Delivers:**
-- AppState integration in App (coordinator pattern)
-- Preview → Cancel restores theme AND wallpapers
-- State-based button sensitivity (prevent preview during preview)
-- Foundation for future error dialogs, undo/redo
-
-**Addresses:**
-- Snapshot restoration (currently broken for wallpapers)
-- State machine validation (prevent invalid transitions)
-- Error state tracking (currently only toasts)
-
-**Implementation:**
-1. Add `app_state: AppState` field to App
-2. Wire state transitions (RequestPreview, ApplyChanges, CancelPreview messages)
-3. Capture snapshot before preview
-4. Restore snapshot on cancel (theme + wallpapers + binding_mode)
-5. Add state-based button sensitivity via #[watch] macros
-
-**Deferred to v2.2+:**
-- Error state UI (modal dialog instead of toast)
-- Loading spinner during Applying state
-- Wallpaper preview workflow (currently wallpapers apply immediately)
-- Undo/redo stack (multiple snapshots)
-
-**Avoids:** Feature creep - implement minimal viable state tracking, not full workflow enhancements
-
-**Estimated effort:** 4-6 hours (foundation + core workflow only)
-
-**Research flags:** STANDARD - Relm4 message-passing pattern is well-documented, AppState API is clear
+### Phase 6: AI Tools Integration (Optional)
+**Rationale:** Advanced features once core is stable
+**Delivers:** Open WebUI, ComfyUI setup scripts, Jupyter GPU integration, themed AI tools
+**Effort:** 2-3 days
+**Implements:** Differentiator features
+**Research needed:** MEDIUM — ComfyUI sm_120 support not widely tested
 
 ### Phase Ordering Rationale
 
-**Security first:** Validation is the most critical fix and has zero dependencies on other items.
-
-**UX together:** BindingMode and Wallpapers both enhance the theme/wallpaper experience. Wallpaper downloads can happen in parallel with BindingMode coding.
-
-**Architecture last:** AppState is the most complex item and benefits from proving the workflow with simpler fixes first. It's also the only item that could expand beyond v2.1 scope if not carefully bounded.
-
-**Parallelization opportunity:** Wallpaper acquisition (Phase 2) can start immediately and run in parallel with validation coding (Phase 1).
-
-**Testing strategy:** Each phase produces working, testable output. No phase depends on another, so they can be tested independently.
+1. **Multi-profile first** — Cannot implement Foundry-specific features without profile system
+2. **Drivers before CUDA** — CUDA installation validates against driver; bad driver = debugging nightmare
+3. **CUDA before AI tools** — PyTorch/Ollama require working CUDA
+4. **Desktop before gaming** — Gaming builds on working Wayland + NVIDIA; gamescope is a compositor
+5. **AI tools last** — Optional polish; core workstation functional without them
 
 ### Research Flags
 
-**All phases:** SKIP deeper research - standard patterns with clear implementation paths
+**Phases likely needing deeper research during planning:**
+- **Phase 3 (CUDA/AI Stack):** PyTorch nightly builds change frequently; verify sm_120 support at implementation time
+- **Phase 6 (AI Tools):** ComfyUI + RTX 5070 Ti has sparse real-world reports
 
-**Why skip research:**
-- AppState: Relm4 message-passing is well-documented, module already exists with tests
-- Validation: Function exists, integration is trivial (5 function renames)
-- BindingMode: Integration point identified, helper functions exist
-- Wallpapers: Sources documented, licensing verified, no code changes
-
-**Future research needed (v2.2+):**
-- CLI validation rewrite (replace `source` with safe parsing)
-- Error state UI patterns in GTK4/Relm4
-- Wallpaper preview workflow architecture
+**Phases with standard patterns (skip research-phase):**
+- **Phase 1 (Multi-Profile):** archiso behavior confirmed via source code examination
+- **Phase 2 (Drivers):** NVIDIA + Arch Wiki documentation is comprehensive
+- **Phase 5 (Gaming):** Steam/Proton is mature and well-documented
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| AppState | HIGH | Verified by reading src/state.rs (320 lines, 17 tests pass), component integration points identified |
-| Validation | HIGH | Verified function exists in theme_parser.rs:235-250, call sites identified in theme_storage.rs |
-| BindingMode | HIGH | Event propagation verified in source, integration point is WallpapersChanged handler |
-| Wallpapers | HIGH | All sources documented with GPL-compatible licenses, quality standards defined |
-| Effort estimates | HIGH | All items are bounded tasks with clear implementation paths |
-| Risk assessment | HIGH | Based on code inspection and understanding of Relm4 patterns |
+| Stack | HIGH | Official NVIDIA docs, Arch Wiki, verified package versions |
+| Features | MEDIUM-HIGH | Table stakes validated, differentiators are design decisions |
+| Architecture | MEDIUM | Custom design (base+overlay), not battle-tested but logical |
+| Pitfalls | HIGH | Verified against official docs, GitHub issues, community reports |
 
 **Overall confidence:** HIGH
 
-All research was conducted via direct source code inspection. No speculative implementation - all required functions, structs, and integration points were verified to exist.
-
 ### Gaps to Address
 
-**During implementation:**
-
-1. **AppState message flow testing** — Relm4 message patterns are understood, but haven't tested RequestPreview → StateChanged → ExecutePreview flow in this codebase. Add debug logging for state transitions during development.
-
-2. **Snapshot restoration completeness** — Verify snapshot restores ALL state (theme + wallpapers + binding_mode). Current research assumes binding_mode should be restored, but this needs validation.
-
-3. **Multi-monitor wallpaper comparison** — BindingMode detection compares wallpapers per-monitor. Confirm behavior when theme has one wallpaper but user has multiple monitors.
-
-4. **Vulcan Forge wallpaper aesthetics** — AI-generated wallpapers may require iteration to match theme palette. Budget extra time for quality verification.
-
-**No gaps for:**
-- Validation integration (trivial function rename)
-- BindingMode detection logic (helper functions verified)
-- Wallpaper licensing (all sources pre-verified)
+- **PyTorch sm_120 timeline:** Nightly today, but when will stable support land? Monitor pytorch/pytorch#151376
+- **PCIe bug resolution:** Verify if driver updates fix Gen1 fallback; may need BIOS workarounds
+- **ComfyUI on Blackwell:** Limited real-world reports; may encounter sentencepiece wheel bug
+- **Multi-profile testing:** Recommended architecture not yet validated with actual builds
+- **Ollama VRAM usage:** 16GB sufficient for most models, but larger models (70B) may need offloading
 
 ## Sources
 
 ### Primary (HIGH confidence)
-
-**Source code (verified by direct inspection):**
-- `vulcan-appearance-manager/src/state.rs` (320 lines, AppState implementation + 17 tests)
-- `vulcan-appearance-manager/src/app.rs` (App struct, message handlers, state tracking)
-- `vulcan-appearance-manager/src/services/theme_parser.rs` (parse_and_validate function + tests)
-- `vulcan-appearance-manager/src/services/theme_storage.rs` (validation bypass locations)
-- `vulcan-appearance-manager/src/components/theme_view.rs` (ThemeViewModel state and operations)
-- `vulcan-appearance-manager/src/components/wallpaper_view.rs` (WallpaperView events and output)
-- `vulcan-appearance-manager/src/models/binding.rs` (BindingMode enum + resolve_theme_wallpaper helper)
-- `dotfiles/scripts/.local/bin/vulcan-theme` (bash CLI implementation, source command usage)
-
-**Planning documents (context):**
-- `.planning/phases/06-foundation-architecture/06-VERIFICATION.md` (AppState + validation documented as expected tech debt)
-- `.planning/milestones/v2.0-MILESTONE-AUDIT.md` (all four items identified as known tech debt)
-- `.planning/STATE.md` (current state tracking)
-
-**Wallpaper sources (GPL-compatible):**
-- AngelJumbo/gruvbox-wallpapers (MIT) - Gruvbox Dark/Light
-- linuxdotexe/nordic-wallpapers (GPL-3.0) - Nord
-- joshdick/onedark.vim (MIT) - One Dark
-- rose-pine/wallpapers (MIT) - Rosé Pine
-- enkia/tokyo-night-vscode-theme (MIT) - Tokyo Night
+- [NVIDIA Driver Documentation](https://developer.nvidia.com/blog/nvidia-transitions-fully-towards-open-source-gpu-kernel-modules/) — Open kernel module requirements
+- [Arch Wiki - NVIDIA](https://wiki.archlinux.org/title/NVIDIA) — Driver installation, DRM, pacman hooks
+- [Hyprland NVIDIA Wiki](https://wiki.hypr.land/Nvidia/) — Wayland compositor integration
+- [archiso GitLab](https://github.com/archlinux/archiso) — Profile structure, mkarchiso behavior
+- [CUDA Installation Guide](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/) — Toolkit installation
 
 ### Secondary (MEDIUM confidence)
+- [RTX 5070 Ti Linux Guide](https://medium.com/@mbonsign/complete-guide-for-nvidia-rtx-5070-ti-on-linux-with-pytorch-358454521f04) — Community setup guide
+- [PyTorch Forums sm_120](https://discuss.pytorch.org/t/nvidia-geforce-rtx-5070-ti-with-cuda-capability-sm-120/221509) — Nightly build requirements
+- [PCIe Gen1 Bug Issue](https://github.com/NVIDIA/open-gpu-kernel-modules/issues/1010) — Known Blackwell issue
+- [Open WebUI Documentation](https://docs.openwebui.com/) — Self-hosted AI chat interface
 
-**Relm4 patterns:**
-- Relm4 documentation (message-passing architecture, #[watch] macros, component communication)
-- Centralized state via App struct is idiomatic pattern (verified in Relm4 examples)
-
-**Security best practices:**
-- Input sanitization for shell-adjacent formats (theme files use bash export syntax)
-- Defense in depth (validate even trusted sources)
+### Tertiary (LOW confidence)
+- ComfyUI performance on RTX 5070 Ti — Limited reports, needs validation
+- Multi-monitor gaming with MangoHud — Community reports vary
+- Specific Ollama model VRAM usage — Varies by model and quantization
 
 ---
-
-**Research completed:** 2026-01-30
-
-**Ready for roadmap:** YES
-
-**Total estimated effort:** 8-12 hours across 3 phases
-
-**Risk level:** LOW - all items are maintenance fixes with clear implementation paths
-
-**Recommended for:** v2.1 Maintenance Milestone (tech debt cleanup between major features)
+*Research completed: 2026-02-02*
+*Ready for roadmap: YES*
