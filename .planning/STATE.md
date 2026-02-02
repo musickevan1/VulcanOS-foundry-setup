@@ -10,20 +10,20 @@ See: .planning/PROJECT.md (updated 2026-02-02)
 ## Current Position
 
 Phase: 14 of 22 (Multi-Profile Build Infrastructure)
-Plan: Ready to plan
-Status: Ready to plan Phase 14
-Last activity: 2026-02-02 — v3.0 roadmap created
+Plan: 1 of ~8 complete
+Status: In progress
+Last activity: 2026-02-02 — Completed 14-02-PLAN.md (package split)
 
-Progress: [████████████████████░░░░] 50/~68 plans (v1.0-v2.1 complete, v3.0 TBD)
+Progress: [████████████████████░░░░] 51/~68 plans (v1.0-v2.1 complete, v3.0 in progress)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 50 (v1.0 + v2.0 + v2.1)
+- Total plans completed: 51 (v1.0 + v2.0 + v2.1 + v3.0)
 - v1.0 Foundation: 11 plans
 - v2.0 Appearance Manager: 28 plans
 - v2.1 Maintenance: 9 plans
-- v3.0 Multi-Profile: 0 plans (starting)
+- v3.0 Multi-Profile: 1 plan (14-02 complete)
 
 **By Milestone:**
 
@@ -43,8 +43,16 @@ Progress: [████████████████████░░░
 
 ### Decisions
 
-Decisions are logged in PROJECT.md Key Decisions table.
-All v2.1 decisions have been recorded with outcomes.
+Recent decisions from Phase 14-02:
+
+| Phase | Decision | Rationale | Outcome |
+|-------|----------|-----------|---------|
+| 14-02 | No kernel in base packages | Prevents conflicts between `linux` and `linux-t2` | Each profile specifies its own kernel |
+| 14-02 | nvidia-open-dkms for Foundry | RTX 50 series (Blackwell) requires open-source drivers | Enables RTX 5070 Ti support |
+| 14-02 | CUDA 12.8+ requirement | Blackwell architecture (sm_120) needs CUDA 12.8+ | Documented for Foundry post-install |
+| 14-02 | Speech-to-text in base | Both profiles benefit from local Whisper | hyprwhspr available on T2 and Foundry |
+
+All decisions are also logged in PROJECT.md Key Decisions table.
 
 ### Pending Todos
 
@@ -71,7 +79,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-02
-Stopped at: v3.0 roadmap created, ready to plan Phase 14
+Stopped at: Completed 14-02-PLAN.md (package split)
 Resume file: None
 
-Next: Run `/gsd:plan-phase 14` to create detailed plans for Multi-Profile Build Infrastructure
+Next: Continue with 14-03 (airootfs restructure) or plan remaining Phase 14 plans
