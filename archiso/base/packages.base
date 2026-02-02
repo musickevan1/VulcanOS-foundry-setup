@@ -1,0 +1,185 @@
+# ============================================================================
+# VulcanOS Base Packages - Shared across all profiles
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# BASE SYSTEM (NO KERNEL - profiles add their own)
+# ----------------------------------------------------------------------------
+base
+linux-firmware
+
+# ----------------------------------------------------------------------------
+# BOOTLOADER
+# ----------------------------------------------------------------------------
+grub
+efibootmgr
+syslinux
+
+# ----------------------------------------------------------------------------
+# SYSTEM ESSENTIALS
+# ----------------------------------------------------------------------------
+networkmanager
+sudo
+which
+mkinitcpio
+mkinitcpio-archiso
+
+# ----------------------------------------------------------------------------
+# DESKTOP ENVIRONMENT - Hyprland + SDDM
+# ----------------------------------------------------------------------------
+hyprland
+xdg-desktop-portal-hyprland
+xdg-desktop-portal-gtk
+sddm
+qt6-5compat
+qt6-declarative
+qt6-svg
+polkit-gnome
+waybar
+wofi
+swaync
+hyprlock
+hypridle
+hyprpaper
+swww
+hyprmon-bin
+nwg-displays
+nwg-dock-hyprland
+kitty
+
+# ----------------------------------------------------------------------------
+# FILE MANAGEMENT
+# ----------------------------------------------------------------------------
+# GUI: Nautilus (simple, intuitive, Mac-like)
+nautilus
+gvfs
+gvfs-mtp
+
+# TUI: Yazi (power users, vim-style)
+yazi
+ffmpegthumbnailer
+p7zip
+poppler
+imagemagick
+ripdrag
+
+# ----------------------------------------------------------------------------
+# WAYLAND UTILITIES
+# ----------------------------------------------------------------------------
+wl-clipboard
+grim
+slurp
+swappy
+wf-recorder
+hyprpicker
+brightnessctl
+
+# ----------------------------------------------------------------------------
+# AUDIO - PipeWire Stack (minimal)
+# ----------------------------------------------------------------------------
+pipewire
+wireplumber
+pipewire-pulse
+pipewire-alsa
+pamixer
+
+# ----------------------------------------------------------------------------
+# BASIC TOOLS
+# ----------------------------------------------------------------------------
+git
+neovim
+openssh
+curl
+wget
+
+# ----------------------------------------------------------------------------
+# CLI UTILITIES
+# ----------------------------------------------------------------------------
+socat
+vim
+ripgrep
+fd
+fzf
+bat
+glow
+mdcat
+jq
+wtype
+eza
+btop
+starship
+zoxide
+tree
+less
+unzip
+zip
+cliphist
+
+# ----------------------------------------------------------------------------
+# DEVELOPMENT
+# ----------------------------------------------------------------------------
+docker
+docker-compose
+lazygit
+github-cli
+stow
+base-devel
+
+# ----------------------------------------------------------------------------
+# OPENCODE DEPENDENCIES
+# Note: OpenCode itself installed post-install via:
+#   curl -fsSL https://opencode.ai/install | bash
+# ----------------------------------------------------------------------------
+bash-language-server
+typescript-language-server
+pyright
+yaml-language-server
+lua-language-server
+rust-analyzer
+gopls
+
+# ----------------------------------------------------------------------------
+# SCREENSAVERS
+# ----------------------------------------------------------------------------
+cmatrix
+
+# ----------------------------------------------------------------------------
+# THEMING
+# ----------------------------------------------------------------------------
+nwg-look
+papirus-icon-theme
+kvantum
+qt5ct
+qt6ct
+gnome-themes-extra
+libnotify
+
+# ----------------------------------------------------------------------------
+# PRODUCTIVITY / OFFICE
+# ----------------------------------------------------------------------------
+libreoffice-fresh
+obsidian
+
+# ----------------------------------------------------------------------------
+# MEDIA / ENTERTAINMENT
+# ----------------------------------------------------------------------------
+spotify-launcher
+
+# ----------------------------------------------------------------------------
+# FONTS (minimal)
+# ----------------------------------------------------------------------------
+ttf-jetbrains-mono-nerd
+noto-fonts
+noto-fonts-emoji
+
+# ----------------------------------------------------------------------------
+# SPEECH-TO-TEXT (hyprwhspr - Local Whisper-based)
+# ----------------------------------------------------------------------------
+# hyprwhspr: Native local speech-to-text with Whisper/Parakeet models
+hyprwhspr
+
+# Core dependencies (Python, audio, text output)
+python-requests
+ffmpeg
+wtype
+ydotool
