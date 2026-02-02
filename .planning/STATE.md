@@ -10,20 +10,20 @@ See: .planning/PROJECT.md (updated 2026-02-02)
 ## Current Position
 
 Phase: 14 of 22 (Multi-Profile Build Infrastructure)
-Plan: 3 of ~8 complete
+Plan: 4 of ~8 complete
 Status: In progress
-Last activity: 2026-02-02 — Completed 14-03-PLAN.md (T2 profile configuration files)
+Last activity: 2026-02-02 — Completed 14-04-PLAN.md (Foundry profile configuration files)
 
-Progress: [████████████████████░░░░] 53/~68 plans (v1.0-v2.1 complete, v3.0 in progress)
+Progress: [████████████████████░░░░] 54/~68 plans (v1.0-v2.1 complete, v3.0 in progress)
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 53 (v1.0 + v2.0 + v2.1 + v3.0)
+- Total plans completed: 54 (v1.0 + v2.0 + v2.1 + v3.0)
 - v1.0 Foundation: 11 plans
 - v2.0 Appearance Manager: 28 plans
 - v2.1 Maintenance: 9 plans
-- v3.0 Multi-Profile: 3 plans (14-01, 14-02, 14-03 complete)
+- v3.0 Multi-Profile: 4 plans (14-01, 14-02, 14-03, 14-04 complete)
 
 **By Milestone:**
 
@@ -52,6 +52,9 @@ Recent decisions from Phase 14:
 | 14-01 | Package list merging | cat + grep + sort -u for deduplication | Simple, reliable merge without duplicates |
 | 14-03 | arch-mact2 repo FIRST in T2 pacman.conf | Repository order determines package priority | linux-t2 kernel takes precedence over linux |
 | 14-03 | Copy boot configs as-is | Current configs already T2-specific | No modification needed, preserves tested config |
+| 14-04 | Foundry standard repos only | NO arch-mact2 in Foundry pacman.conf | Foundry is generic AI workstation, not T2-specific |
+| 14-04 | NVIDIA kernel params for Foundry | nvidia-drm.modeset=1 | Required for proper NVIDIA driver initialization |
+| 14-04 | Nouveau fallback boot option | Blacklist NVIDIA modules option | Compatibility if proprietary driver fails |
 
 All decisions are also logged in PROJECT.md Key Decisions table.
 
@@ -80,7 +83,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-02
-Stopped at: Completed 14-03-PLAN.md (T2 profile configuration files)
+Stopped at: Completed 14-04-PLAN.md (Foundry profile configuration files)
 Resume file: None
 
-Next: Continue with remaining Phase 14 plans (14-04+)
+Next: Continue with remaining Phase 14 plans (14-05+)
