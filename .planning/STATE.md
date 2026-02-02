@@ -12,7 +12,7 @@ See: .planning/PROJECT.md (updated 2026-02-02)
 Phase: 14 of 22 (Multi-Profile Build Infrastructure)
 Plan: 1 of ~8 complete
 Status: In progress
-Last activity: 2026-02-02 — Completed 14-02-PLAN.md (package split)
+Last activity: 2026-02-02 — Completed 14-01-PLAN.md (directory structure and build library)
 
 Progress: [████████████████████░░░░] 51/~68 plans (v1.0-v2.1 complete, v3.0 in progress)
 
@@ -23,7 +23,7 @@ Progress: [████████████████████░░░
 - v1.0 Foundation: 11 plans
 - v2.0 Appearance Manager: 28 plans
 - v2.1 Maintenance: 9 plans
-- v3.0 Multi-Profile: 1 plan (14-02 complete)
+- v3.0 Multi-Profile: 1 plan (14-01 complete)
 
 **By Milestone:**
 
@@ -43,14 +43,13 @@ Progress: [████████████████████░░░
 
 ### Decisions
 
-Recent decisions from Phase 14-02:
+Recent decisions from Phase 14-01:
 
 | Phase | Decision | Rationale | Outcome |
 |-------|----------|-----------|---------|
-| 14-02 | No kernel in base packages | Prevents conflicts between `linux` and `linux-t2` | Each profile specifies its own kernel |
-| 14-02 | nvidia-open-dkms for Foundry | RTX 50 series (Blackwell) requires open-source drivers | Enables RTX 5070 Ti support |
-| 14-02 | CUDA 12.8+ requirement | Blackwell architecture (sm_120) needs CUDA 12.8+ | Documented for Foundry post-install |
-| 14-02 | Speech-to-text in base | Both profiles benefit from local Whisper | hyprwhspr available on T2 and Foundry |
+| 14-01 | Multi-profile directory structure | archiso/base/ for shared, archiso/profiles/{t2,foundry}/ for specific | Clean separation per CONTEXT.md |
+| 14-01 | rsync overlay for airootfs | Profile files override base on conflict | Handles permissions and precedence correctly |
+| 14-01 | Package list merging | cat + grep + sort -u for deduplication | Simple, reliable merge without duplicates |
 
 All decisions are also logged in PROJECT.md Key Decisions table.
 
@@ -79,7 +78,7 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-02
-Stopped at: Completed 14-02-PLAN.md (package split)
+Stopped at: Completed 14-01-PLAN.md (directory structure and build library)
 Resume file: None
 
-Next: Continue with 14-03 (airootfs restructure) or plan remaining Phase 14 plans
+Next: Continue with remaining Phase 14 plans
