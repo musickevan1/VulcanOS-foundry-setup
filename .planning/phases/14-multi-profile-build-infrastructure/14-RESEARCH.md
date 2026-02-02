@@ -220,6 +220,198 @@ tiny-dfr
 - **Missing validation:** Never run mkarchiso without checking prerequisites first
 - **Sharing work directories:** Each profile build needs its own work directory to avoid contamination
 
+## Assemble Script Details
+
+### Script Organization
+
+```
+scripts/
+├── build-t2.sh           # Entry point for T2 builds
+├── build-foundry.sh      # Entry point for Foundry builds
+├── build.sh              # Deprecation stub (errors with guidance)
+└── lib/
+    └── build-common.sh   # Shared functions
+```
+
+### Critical rsync Flags
+
+```bash
+# Step 1: Copy base (with --delete to ensure clean slate)
+rsync -a --delete "$base_airootfs/" "$work_dir/airootfs/"
+
+# Step 2: Overlay profile (NO --delete, profile wins on conflict)
+rsync -a "$profile_airootfs/" "$work_dir/airootfs/"
+```
+
+| Flag | Purpose |
+|------|---------|
+| `-a` | Archive: preserves permissions, symlinks, timestamps |
+| `--delete` | FIRST copy only: ensures work dir matches base exactly |
+| NO `--delete` on overlay | Profile adds/overwrites but doesn't delete base files |
+| NO `--ignore-existing` | Profile SHOULD override base files when both exist |
+
+### Error Handling Pattern
+
+```bash
+set -e
+trap cleanup EXIT
+
+cleanup() {
+    local exit_code=$?
+    if [[ $exit_code -ne 0 ]]; then
+        error "Build failed. Cleaning up..."
+    fi
+    [[ -d "$WORK_DIR" ]] && rm -rf "$WORK_DIR"
+    [[ -d "$ASSEMBLED_DIR" ]] && rm -rf "$ASSEMBLED_DIR"
+}
+```
+
+### Edge Cases
+
+| Edge Case | Solution |
+|-----------|----------|
+| Profile dir doesn't exist | Validate before assemble, exit with clear error |
+| Empty profile airootfs | rsync handles gracefully — just copies base |
+| Symlinks in airootfs | rsync `-a` preserves symlinks (correct for stow structure) |
+| Interrupted build | trap EXIT cleans up work directories |
+| Concurrent builds | Different work dirs (`-t2` vs `-foundry`) prevent collision |
+
+### Complete assemble_profile Function
+
+```bash
+assemble_profile() {
+    local profile="$1"
+    local assembled_dir="$2"
+
+    local base_dir="$ARCHISO_DIR/base"
+    local profile_dir="$ARCHISO_DIR/profiles/$profile"
+
+    info "Assembling profile: $profile"
+
+    # Clean assembled directory
+    rm -rf "$assembled_dir"
+    mkdir -p "$assembled_dir"
+
+    # Step 1: Copy base airootfs
+    info "  Copying base airootfs..."
+    rsync -a --delete "$base_dir/airootfs/" "$assembled_dir/airootfs/"
+
+    # Step 2: Overlay profile airootfs (profile wins)
+    if [[ -d "$profile_dir/airootfs" ]]; then
+        info "  Overlaying profile airootfs..."
+        rsync -a "$profile_dir/airootfs/" "$assembled_dir/airootfs/"
+    fi
+
+    # Step 3: Merge package lists
+    info "  Merging package lists..."
+    cat "$base_dir/packages.base" "$profile_dir/packages.profile" | \
+        grep -v '^[[:space:]]*#' | \
+        grep -v '^[[:space:]]*$' | \
+        sort -u > "$assembled_dir/packages.x86_64"
+
+    # Step 4: Copy profile-specific configs
+    info "  Copying profile configs..."
+    cp "$profile_dir/pacman.conf" "$assembled_dir/"
+    cp "$profile_dir/profiledef.sh" "$assembled_dir/"
+
+    # Step 5: Copy boot configs
+    cp -r "$profile_dir/grub" "$assembled_dir/"
+    cp -r "$profile_dir/syslinux" "$assembled_dir/"
+
+    # Step 6: Copy efiboot (profile-specific if exists, else shared)
+    if [[ -d "$profile_dir/efiboot" ]]; then
+        cp -r "$profile_dir/efiboot" "$assembled_dir/"
+    else
+        cp -r "$ARCHISO_DIR/efiboot" "$assembled_dir/"
+    fi
+
+    success "Profile assembled: $assembled_dir"
+}
+```
+
+### Complete validate_profile Function
+
+```bash
+validate_profile() {
+    local profile="$1"
+    local errors=0
+
+    info "Validating profile: $profile"
+
+    local required_files=(
+        "base/packages.base"
+        "base/airootfs/etc/skel"
+        "profiles/$profile/packages.profile"
+        "profiles/$profile/pacman.conf"
+        "profiles/$profile/profiledef.sh"
+        "profiles/$profile/grub/grub.cfg"
+        "profiles/$profile/syslinux/syslinux.cfg"
+    )
+
+    for file in "${required_files[@]}"; do
+        if [[ ! -e "$ARCHISO_DIR/$file" ]]; then
+            error "Missing: $file"
+            ((errors++))
+        fi
+    done
+
+    if [[ ! -d "$ARCHISO_DIR/base/airootfs" ]]; then
+        error "Missing: base/airootfs directory"
+        ((errors++))
+    fi
+
+    if [[ ! -d "$ARCHISO_DIR/profiles/$profile/airootfs" ]]; then
+        warn "No profile-specific airootfs (will use base only)"
+    fi
+
+    if [[ $errors -gt 0 ]]; then
+        error "Validation failed with $errors error(s)"
+        exit 1
+    fi
+
+    success "Validation passed"
+}
+```
+
+### build-t2.sh Entry Point
+
+```bash
+#!/bin/bash
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
+ARCHISO_DIR="$PROJECT_DIR/archiso"
+PROFILE="t2"
+WORK_DIR="/tmp/vulcanos-work-$PROFILE"
+ASSEMBLED_DIR="/tmp/vulcanos-assembled-$PROFILE"
+OUT_DIR="$PROJECT_DIR/out"
+
+source "$SCRIPT_DIR/lib/build-common.sh"
+trap cleanup EXIT
+
+main() {
+    echo "=========================================="
+    echo "  VulcanOS T2 - Build"
+    echo "=========================================="
+
+    check_root
+    check_dependencies
+    validate_profile "$PROFILE"
+
+    clean_build "$WORK_DIR" "$ASSEMBLED_DIR"
+    assemble_profile "$PROFILE" "$ASSEMBLED_DIR"
+
+    run_mkarchiso "$ASSEMBLED_DIR" "$WORK_DIR" "$OUT_DIR"
+
+    generate_checksums "$OUT_DIR"
+    fix_permissions "$OUT_DIR"
+    show_info "$OUT_DIR" "$PROFILE"
+}
+
+main "$@"
+```
+
 ## Don't Hand-Roll
 
 Problems that look simple but have existing solutions:
@@ -440,6 +632,254 @@ python-tensorflow-cuda
 ```
 
 **Note:** CUDA alone is ~3GB. Full ML stack may push ISO to 10GB+. Consider making ML packages installer-time rather than ISO-time.
+
+## Package Split Analysis
+
+Based on current `packages.x86_64` (198 lines), here's the verified split:
+
+### packages.base (~85 packages)
+All shared packages — desktop, tools, development, fonts, audio, theming:
+
+```
+# BASE SYSTEM (NO KERNEL)
+base
+linux-firmware
+
+# BOOTLOADER
+grub
+efibootmgr
+syslinux
+
+# SYSTEM ESSENTIALS
+networkmanager
+sudo
+which
+mkinitcpio
+mkinitcpio-archiso
+
+# DESKTOP ENVIRONMENT
+hyprland
+xdg-desktop-portal-hyprland
+xdg-desktop-portal-gtk
+sddm
+qt6-5compat
+qt6-declarative
+qt6-svg
+polkit-gnome
+waybar
+wofi
+swaync
+hyprlock
+hypridle
+hyprpaper
+swww
+hyprmon-bin
+nwg-displays
+nwg-dock-hyprland
+kitty
+
+# FILE MANAGEMENT
+nautilus
+gvfs
+gvfs-mtp
+yazi
+ffmpegthumbnailer
+p7zip
+poppler
+imagemagick
+ripdrag
+
+# WAYLAND UTILITIES
+wl-clipboard
+grim
+slurp
+swappy
+wf-recorder
+hyprpicker
+brightnessctl
+
+# AUDIO
+pipewire
+wireplumber
+pipewire-pulse
+pipewire-alsa
+pamixer
+
+# BASIC TOOLS
+git
+neovim
+openssh
+curl
+wget
+
+# CLI UTILITIES
+socat
+vim
+ripgrep
+fd
+fzf
+bat
+glow
+mdcat
+jq
+wtype
+eza
+btop
+starship
+zoxide
+tree
+less
+unzip
+zip
+cliphist
+
+# DEVELOPMENT
+docker
+docker-compose
+lazygit
+github-cli
+stow
+base-devel
+
+# LANGUAGE SERVERS
+bash-language-server
+typescript-language-server
+pyright
+yaml-language-server
+lua-language-server
+rust-analyzer
+gopls
+
+# SCREENSAVERS
+cmatrix
+
+# THEMING
+nwg-look
+papirus-icon-theme
+kvantum
+qt5ct
+qt6ct
+gnome-themes-extra
+libnotify
+
+# PRODUCTIVITY
+libreoffice-fresh
+obsidian
+
+# MEDIA
+spotify-launcher
+
+# FONTS
+ttf-jetbrains-mono-nerd
+noto-fonts
+noto-fonts-emoji
+
+# SPEECH-TO-TEXT
+hyprwhspr
+python-requests
+ffmpeg
+ydotool
+```
+
+### profiles/t2/packages.profile (6 packages)
+
+```
+# T2 KERNEL
+linux-t2
+linux-t2-headers
+
+# T2 HARDWARE
+apple-bcm-firmware
+apple-t2-audio-config
+t2fanrd
+tiny-dfr
+```
+
+### profiles/foundry/packages.profile (~10 packages)
+
+```
+# GENERIC KERNEL
+linux
+linux-headers
+
+# NVIDIA GPU DRIVERS (RTX 5070 Ti)
+nvidia-open-dkms
+nvidia-utils
+nvidia-settings
+lib32-nvidia-utils
+
+# CUDA/ML
+cuda
+cudnn
+nvidia-container-toolkit
+```
+
+### Key Decisions
+- **No kernel in base** — Avoids conflicts between linux and linux-t2
+- **wl-clipboard once** — Was duplicated in original, now in base only
+- **NVIDIA in Foundry only** — T2 MacBook has no dedicated GPU
+- **Speech-to-text in base** — Both profiles can use local Whisper
+- **Development tools in base** — Same dev experience on both machines
+
+## Migration Strategy
+
+### Current State
+
+```
+archiso/
+├── packages.x86_64      # 197 lines, T2-specific (linux-t2, apple-*)
+├── pacman.conf          # arch-mact2 COMMENTED OUT (VM testing mode)
+├── profiledef.sh        # Single profile
+├── grub/, syslinux/     # Single boot configs
+└── airootfs/            # 5.8MB overlay
+    ├── etc/modprobe.d/  # T2-SPECIFIC: apple-bce.conf, apple-gmux.conf
+    └── etc/skel/        # SHARED: hypr, kitty, themes, etc.
+```
+
+### Migration Approach: Copy-First, Remove-Last
+
+1. **Create new structure** (add directories, don't touch existing)
+2. **Copy content** (base gets shared, profiles get specific)
+3. **Create new scripts** (build-t2.sh, build-foundry.sh, lib/)
+4. **Test T2 build** (compare to known-working ISO)
+5. **Test Foundry build** (new profile, expect issues)
+6. **Remove old structure** (only after both verified)
+
+### What Goes Where
+
+**base/airootfs/etc/skel/** — All dotfiles (shared desktop experience)
+**base/airootfs/usr/** — Scripts, themes, icons, backgrounds
+**profiles/t2/airootfs/etc/modprobe.d/** — apple-bce.conf, apple-gmux.conf
+**profiles/t2/pacman.conf** — WITH arch-mact2 repo UNCOMMENTED
+**profiles/foundry/airootfs/etc/** — mkinitcpio.conf with nvidia modules
+
+### Critical Discovery
+
+Current `pacman.conf` has arch-mact2 **commented out** — it's in VM testing mode. The T2 profile's pacman.conf must have arch-mact2 **uncommented** and placed FIRST for kernel priority.
+
+### Verification Checklist
+
+**After T2 build:**
+- [ ] ISO size similar to previous
+- [ ] ISO boots in QEMU and on T2 hardware
+- [ ] WiFi works (apple-bcm-firmware)
+- [ ] Kernel is `linux-t2` not `linux`
+
+**After Foundry build:**
+- [ ] ISO boots in QEMU
+- [ ] Kernel is `linux` not `linux-t2`
+- [ ] No T2 packages present
+- [ ] NVIDIA drivers present
+
+### Rollback Plan
+
+```bash
+# Before migration: commit everything
+git add -A && git commit -m "Pre-multiprofile backup"
+
+# If migration fails:
+git checkout archiso/
+```
 
 ## Open Questions
 
