@@ -178,14 +178,14 @@ Plans:
 **Plans**: 8 plans
 
 Plans:
-- [ ] 14-01-PLAN.md — Directory structure + shared build library
-- [ ] 14-02-PLAN.md — Package split (base + T2 + Foundry)
-- [ ] 14-03-PLAN.md — T2 profile configs (pacman.conf, profiledef.sh, boot menus)
-- [ ] 14-04-PLAN.md — Foundry profile configs (pacman.conf, profiledef.sh, boot menus)
-- [ ] 14-05-PLAN.md — Migrate airootfs to base + T2 overlay
-- [ ] 14-06-PLAN.md — Create build-t2.sh entry point
-- [ ] 14-07-PLAN.md — Create build-foundry.sh entry point
-- [ ] 14-08-PLAN.md — Deprecate build.sh + verification checkpoint
+- [x] 14-01-PLAN.md — Directory structure + shared build library
+- [x] 14-02-PLAN.md — Package split (base + T2 + Foundry)
+- [x] 14-03-PLAN.md — T2 profile configs (pacman.conf, profiledef.sh, boot menus)
+- [x] 14-04-PLAN.md — Foundry profile configs (pacman.conf, profiledef.sh, boot menus)
+- [x] 14-05-PLAN.md — Migrate airootfs to base + T2 overlay
+- [x] 14-06-PLAN.md — Create build-t2.sh entry point
+- [x] 14-07-PLAN.md — Create build-foundry.sh entry point
+- [x] 14-08-PLAN.md — Deprecate build.sh + verification checkpoint
 
 #### Phase 15: NVIDIA Driver Foundation
 **Goal**: Foundry profile boots with working NVIDIA RTX 5070 Ti drivers and proper suspend/resume
@@ -332,7 +332,7 @@ Plans:
 | 11. Security Hardening | v2.1 | 1/1 | Complete | 2026-01-30 |
 | 12. UX Polish | v2.1 | 3/3 | Complete | 2026-02-01 |
 | 13. Architecture Cleanup | v2.1 | 5/5 | Complete | 2026-02-01 |
-| 14. Multi-Profile Build Infrastructure | v3.0 | 0/8 | Planned | - |
+| 14. Multi-Profile Build Infrastructure | v3.0 | 8/8 | Complete | 2026-02-03 |
 | 15. NVIDIA Driver Foundation | v3.0 | 0/TBD | Not started | - |
 | 16. CUDA/AI Stack | v3.0 | 0/TBD | Not started | - |
 | 17. Gaming Stack | v3.0 | 0/TBD | Not started | - |
@@ -343,4 +343,4 @@ Plans:
 | 22. Profile-Aware Dotfiles | v3.0 | 0/TBD | Not started | - |
 
 ---
-*Last updated: 2026-02-02 (Phase 14 planned - 8 plans in 3 waves)*
+*Last updated: 2026-02-03 (Phase 14 complete - 8 plans executed)*
