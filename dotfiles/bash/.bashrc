@@ -329,8 +329,5 @@ esac
 
 # =============================================================================
 # OPENCODE & MCP ENVIRONMENT VARIABLES
+# Secrets are stored in ~/.bashrc.local (not tracked by git)
 # =============================================================================
-export BRAVE_API_KEY="REDACTED_BRAVE_KEY"
-export GITHUB_TOKEN="REDACTED_GITHUB_TOKEN"
-export CONTEXT7_API_KEY="REDACTED_CONTEXT7_KEY"
-export LINEAR_API_KEY=""
