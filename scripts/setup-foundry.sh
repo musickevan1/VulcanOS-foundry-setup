@@ -102,6 +102,12 @@ preflight() {
         exit 1
     fi
 
+    # Ensure rsync is available (needed for Phase 4)
+    if ! command -v rsync &>/dev/null; then
+        info "Installing rsync (required for setup)..."
+        pacman -S --needed --noconfirm rsync
+    fi
+
     success "Preflight checks passed"
 }
 
@@ -257,6 +263,25 @@ NeedsTargets
 Exec = /usr/bin/mkinitcpio -P
 HOOK
     info "  NVIDIA pacman hook installed"
+
+    # Suspend/resume VRAM preservation
+    if [[ -f "$grub_default" ]]; then
+        if ! grep -q 'NVreg_PreserveVideoMemoryAllocations' "$grub_default"; then
+            sed -i 's/^GRUB_CMDLINE_LINUX_DEFAULT="\(.*\)"/GRUB_CMDLINE_LINUX_DEFAULT="\1 nvidia.NVreg_PreserveVideoMemoryAllocations=1"/' "$grub_default"
+            info "  Added NVreg_PreserveVideoMemoryAllocations=1 to GRUB cmdline"
+        else
+            info "  NVreg_PreserveVideoMemoryAllocations already in GRUB cmdline"
+        fi
+    fi
+
+    # Enable NVIDIA power management services (suspend/hibernate/resume)
+    for svc in nvidia-suspend nvidia-hibernate nvidia-resume; do
+        if systemctl enable "$svc.service" 2>/dev/null; then
+            info "  Enabled: $svc"
+        else
+            warn "  Could not enable: $svc (nvidia-utils may not be installed yet)"
+        fi
+    done
 
     # Rebuild initramfs
     info "  Rebuilding initramfs..."
