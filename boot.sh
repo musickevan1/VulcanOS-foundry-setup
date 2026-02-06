@@ -9,7 +9,7 @@
 
 set -euo pipefail
 
-REPO_URL="https://github.com/musickevan1/VulcanOS.git"
+REPO_URL="${VULCAN_REPO_URL:-https://github.com/musickevan1/VulcanOS-foundry-setup.git}"
 CLONE_DIR="$HOME/VulcanOS"
 PROFILES_DIR="archiso/profiles"
 
